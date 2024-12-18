@@ -106,10 +106,6 @@ export async function POST(request: Request) {
           system,
           messages: coreMessages,
           maxSteps: 20,
-//					onStepFinish: ({response: {messages}}) => {
-          // console.log(messages);
-//					},
-          // experimental_activeTools: allTools,
           tools: {
             ...getVoterAiChatUiToolset(),
             fetchStaticMapTool,
@@ -141,10 +137,6 @@ export async function POST(request: Request) {
               }
             }
             streamingData.writeData('call completed');
-          },
-          experimental_telemetry: {
-            isEnabled: true,
-            functionId: 'stream-text',
           },
         });
 
