@@ -36,11 +36,6 @@ export default function HomePage() {
 							<TrackingLink category="home" action="header" href="/login">Sign In</TrackingLink>
 						</motion.div>
 					</Button>
-					<Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
-						<motion.div whileHover={hoverScale}>
-							<TrackingLink href="/register" action="header" category="home">Sign Up</TrackingLink>
-						</motion.div>
-					</Button>
 				</nav>
 			</motion.header>
 
@@ -88,7 +83,9 @@ export default function HomePage() {
 					>
 						<Button asChild size="lg" className="bg-[#F74040] hover:bg-[#F74040]/90 text-white">
 							<motion.div whileHover={hoverScale}>
-								<TrackingLink action="Get Started" category="h	ome" href="/register">Get Started</TrackingLink>
+								<TrackingLink href="/login" category="home" action="Get Started">
+									Get Started with Google
+								</TrackingLink>
 							</motion.div>
 						</Button>
 						<Button asChild size="lg" variant="outline" className="text-gray-800 hover:text-gray-900 dark:text-white dark:hover:text-white">
@@ -144,6 +141,7 @@ export default function HomePage() {
 				</div>
 			</div>
 
+
 			{/* CTA Section */}
 			<div className="py-16 bg-gray-50 dark:bg-transparent">
 				<hr className="border-t border-gray-700/30 w-full mx-auto mb-16 hidden dark:block" />
@@ -160,7 +158,7 @@ export default function HomePage() {
 					</p>
 					<Button asChild size="lg" className="bg-[#F74040] hover:bg-[#F74040]/90 text-white">
 						<motion.div whileHover={hoverScale}>
-							<TrackingLink href="/register" category="home" action="Create Free Account">Create Free
+							<TrackingLink href="/login" category="home" action="Create Free Account">Create Free
 								Account</TrackingLink>
 						</motion.div>
 					</Button>

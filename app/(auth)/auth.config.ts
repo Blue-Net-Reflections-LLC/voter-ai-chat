@@ -13,6 +13,7 @@ export const authConfig = {
 
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
+      // return true;
       const isLoggedIn = !!auth?.user;
 			const isHomePage = nextUrl.pathname === '/'
 				const isOnChat = nextUrl.pathname.startsWith('/chat');
