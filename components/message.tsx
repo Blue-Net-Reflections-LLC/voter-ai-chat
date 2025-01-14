@@ -20,19 +20,21 @@ export const hideToolUiList = [
 	"executeSelects",
 	"listVoterDataMappingKeysTool",
 	"voterDataColumnLookupTool",
+	"similarBillsTool",
+	"billsQueryTool"
 ];
 
-const isToolResult = (message: Message) =>  message?.toolInvocations?.find(v => v.state  === 'result')
+const isToolResult = (message: Message) => message?.toolInvocations?.find(v => v.state === 'result')
 
 export const PreviewMessage = ({
-																 chatId,
-																 message,
-																 block,
-																 setBlock,
-																 vote,
-																 isLoading,
-																 streaming,
-															 }: {
+	chatId,
+	message,
+	block,
+	setBlock,
+	vote,
+	isLoading,
+	streaming,
+}: {
 	chatId: string;
 	message: Message;
 	block: UIBlock;
@@ -44,19 +46,22 @@ export const PreviewMessage = ({
 
 	return (
 		<motion.div
-			className={`w-full mx-auto max-w-3xl px-4 group/message`}
-			initial={{y: 5, opacity: 0}}
-			animate={{y: 0, opacity: 1}}
+			className={`w-full mx-auto max-w-3xl px-4 group/message` + (message.role === 'user' ? " pt-8 border-t border-border" : '')}
+			initial={{ y: 5, opacity: 0 }}
+			animate={{ y: 0, opacity: 1 }}
 			data-role={message.role}
 		>
 			<div
 				className={cx(
 					'group-data-[role=user]/message:bg-red-600 group-data-[role=user]/message:text-primary-foreground flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
+					{
+						'text-xs': message.role === 'assistant'
+					}
 				)}
 			>
 				{message.role === 'assistant' && (
 					<div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border">
-						<RippleEffect isAnimating={streaming || isLoading}><Logo width={32}/></RippleEffect>
+						<RippleEffect isAnimating={streaming || isLoading}><Logo width={32} /></RippleEffect>
 					</div>
 				)}
 
@@ -70,9 +75,9 @@ export const PreviewMessage = ({
 					{message.toolInvocations && message.toolInvocations.length > 0 && (
 						<div className="flex flex-col gap-4">
 							{message.toolInvocations.map((toolInvocation) => {
-								const {toolName, toolCallId, state, args} = toolInvocation;
+								const { toolName, toolCallId, state, args } = toolInvocation;
 								if (state === 'result') {
-									const {result} = toolInvocation;
+									const { result } = toolInvocation;
 
 									return (
 										<div key={toolCallId}>
