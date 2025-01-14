@@ -1,7 +1,7 @@
 
 import React, { memo, } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+	import remarkGfm from 'remark-gfm';
 import '../styles/table-styles.css';
 
 const NonMemoizedMarkdown = ({ children }: { children: string, streaming?: boolean }) => {

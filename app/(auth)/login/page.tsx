@@ -2,20 +2,14 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { ClipboardList, MapPin, UserCheck, BarChart2 } from 'lucide-react';
-
-import { AuthForm } from '@/components/auth-form';
-import { SubmitButton } from '@/components/submit-button';
+import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-
-import { login, type LoginActionState } from '../actions';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import useGoogleAnalytics from "@/hooks/useGoogleAnalytics";
 import TrackingLink from "@/components/ui/TrackingLink";
+import { googleAuthenticate } from '../actions';
 
 const fadeInUp = {
 	initial: { opacity: 0, y: 20 },
@@ -24,36 +18,11 @@ const fadeInUp = {
 };
 
 export default function LoginPage() {
-	const router = useRouter();
 	const { trackEvent } = useGoogleAnalytics();
 
-	const [email, setEmail] = useState('');
-	const [isSuccessful, setIsSuccessful] = useState(false);
-
-	const [state, formAction] = useActionState<LoginActionState, FormData>(
-		login,
-		{
-			status: 'idle',
-		},
-	);
-
-	useEffect(() => {
-		if (state.status === 'failed') {
-			toast.error('Invalid credentials!');
-		} else if (state.status === 'invalid_data') {
-			toast.error('Failed validating your submission!');
-		} else if (state.status === 'success') {
-			setIsSuccessful(true);
-			toast.success('Login successful!');
-			router.refresh();
-		}
-		trackEvent("signin", "response", state.status, 0 )
-	}, [state.status, router]);
-
-	const handleSubmit = (formData: FormData) => {
-		setEmail(formData.get('email') as string);
-		trackEvent("signin", "cta", "Sign In", 0 )
-		formAction(formData);
+	const handleGoogleSignIn = async () => {
+		trackEvent("signin", "cta", "Google Sign In", 0);
+		await googleAuthenticate();
 	};
 
 	return (
@@ -88,32 +57,23 @@ export default function LoginPage() {
 							<CardHeader>
 								<h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 text-center">Sign In</h1>
 								<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-									Use your email and password to sign in
+									Continue with your Google account
 								</p>
 							</CardHeader>
-							<CardContent>
-								<AuthForm action={handleSubmit} defaultEmail={email}>
-									<SubmitButton isSuccessful={isSuccessful} className="bg-[#F74040] hover:bg-[#F74040]/90 text-white">Sign in</SubmitButton>
-								</AuthForm>
+							<CardContent className="space-y-4">
+								<Button 
+									onClick={handleGoogleSignIn} 
+									className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"
+								>
+									<Image 
+										src="/images/google.svg" 
+										alt="Google" 
+										width={20} 
+										height={20}
+									/>
+									Sign in with Google
+								</Button>
 							</CardContent>
-							<CardFooter className="flex flex-col space-y-4">
-								<p className="text-sm text-gray-600 dark:text-gray-400">
-									{"Don't have an account? "}
-									<TrackingLink category="login" action="Click Sign up link"
-										href="/register"
-										className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
-									>
-										Sign up
-									</TrackingLink>
-									{' for free.'}
-								</p>
-								{/*<Link*/}
-								{/*	href="/forgot-password"*/}
-								{/*	className="text-sm text-blue-600 hover:underline dark:text-blue-400"*/}
-								{/*>*/}
-								{/*	Forgot your password?*/}
-								{/*</Link>*/}
-							</CardFooter>
 						</Card>
 					</motion.div>
 
