@@ -24,16 +24,19 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, profile }) {
       if (!profile?.email) return false;
+      if (!user.id) return false;
+      if (!profile.email) return false;
       
-      const [firstName = null, ...lastNameParts] = (profile.name || '').split(' ');
-      const lastName = lastNameParts.join(' ') || null;
+      const nameParts = profile.name?.split(' ') || [];
+      const firstName = nameParts[0] || null;
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : null;
 
       await upsertUser({
         id: user.id,
-        email: profile.email,
+        email: profile.email as string,
         firstName,
         lastName,
-        image: profile.image ?? null,
+        image: typeof profile.image === 'string' ? profile.image : null,
         emailVerified: new Date()
       });
       
