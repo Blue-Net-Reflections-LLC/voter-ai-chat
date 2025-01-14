@@ -46,7 +46,10 @@ export async function createUser(email: string, password: string) {
   const hash = hashSync(password, salt);
 
   try {
-    return await db.insert(user).values({ email, password: hash });
+    return await db.insert(user).values({
+      id: crypto.randomUUID(),
+      email,
+    });
   } catch (error) {
     console.error('Failed to create user in database');
     throw error;
@@ -283,6 +286,53 @@ export async function getSuggestionsByDocumentId({
     console.error(
       'Failed to get suggestions by document version from database',
     );
+    throw error;
+  }
+}
+
+export async function upsertUser({
+  id,
+  email,
+  firstName,
+  lastName,
+  image,
+  emailVerified
+}: {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  image?: string | null;
+  emailVerified?: Date | null;
+}) {
+  try {
+    const existingUsers = await db
+      .select()
+      .from(user)
+      .where(eq(user.email, email));
+
+    if (existingUsers.length > 0) {
+      return await db
+        .update(user)
+        .set({
+          firstName,
+          lastName,
+          image,
+          emailVerified
+        })
+        .where(eq(user.email, email));
+    }
+
+    return await db.insert(user).values({
+      id,
+      email,
+      firstName,
+      lastName,
+      image,
+      emailVerified
+    });
+  } catch (error) {
+    console.error('Failed to upsert user in database:', error);
     throw error;
   }
 }

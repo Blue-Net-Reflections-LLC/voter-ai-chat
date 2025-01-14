@@ -49,7 +49,7 @@ export const fetchStaticMapTool = tool({
 	description: "Generates a static map image from Google Maps API using a pre-constructed endpoint URL. This tool accepts a valid endpoint (excluding the API key) and fetches the map image, returning the image URL.",
 	parameters: staticMapSchema,
 	execute: async ({ endpoint }: { endpoint: string }) => {
-		const result = await fetchStaticMap(endpoint);
+		const result = await 	fetchStaticMap(endpoint);
 
 		// Return result as-is, adhering to the FetchStaticMapResponse type
 		return result;
