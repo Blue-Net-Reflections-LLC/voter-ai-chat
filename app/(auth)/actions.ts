@@ -11,7 +11,7 @@ export async function googleAuthenticate() {
 
 export async function signOutAction() {
   await signOut({
-    callbackUrl: '/',
+    redirectTo: '/',
     redirect: true
   });
 }
