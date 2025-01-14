@@ -1,6 +1,7 @@
 import NextAuth, { DefaultSession } from 'next-auth';
 import Google from 'next-auth/providers/google';
-import { upsertUser } from '@/lib/db/queries';
+import { upsertUser, getUserIdByEmail } from '@/lib/db/queries';
+
 
 // Extend the built-in session type
 declare module 'next-auth' {
@@ -43,8 +44,9 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
       return true;
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+      if (session.user?.email) {
+        const existingId = await getUserIdByEmail(session.user.email);
+        session.user.id = existingId || token.sub!;
       }
       return session;
     }

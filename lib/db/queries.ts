@@ -336,3 +336,17 @@ export async function upsertUser({
     throw error;
   }
 }
+
+export async function getUserIdByEmail(email: string): Promise<string | null> {
+  try {
+    const [existingUser] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, email));
+    
+    return existingUser?.id || null;
+  } catch (error) {
+    console.error('Failed to get user ID from database');
+    throw error;
+  }
+}

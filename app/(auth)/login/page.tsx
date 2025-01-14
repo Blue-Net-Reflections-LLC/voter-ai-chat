@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { ClipboardList, MapPin, UserCheck, BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import useGoogleAnalytics from "@/hooks/useGoogleAnalytics";
 import TrackingLink from "@/components/ui/TrackingLink";
 import { googleAuthenticate } from '../actions';
