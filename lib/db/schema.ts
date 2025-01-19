@@ -116,7 +116,7 @@ export const userProfile = pgTable('UserProfile', {
   userId: uuid('userId')
     .notNull()
     .references(() => user.id),
-  role: varchar('role', { length: 32 }).notNull(),
+  role: varchar('role', { length: 32 }),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 });
