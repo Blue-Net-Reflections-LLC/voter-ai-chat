@@ -1,10 +1,11 @@
 'use server'
 
-import { createUserProfile } from '@/lib/db/queries'
+import { updateUserProfile } from '@/lib/db/queries'
 
 export async function createProfile(userId: string, role: string) {
   try {
-    return await createUserProfile(userId, role)
+    await updateUserProfile(userId, { role })
+    return true
   } catch (error) {
     console.error('Failed to create user profile:', error)
     throw new Error('Failed to create user profile')

@@ -353,16 +353,16 @@ export async function getUserIdByEmail(email: string): Promise<string | null> {
   }
 }
 
-export async function createUserProfile(userId: string, role: string): Promise<UserProfile> {
-  try {
-    const [profile] = await db.insert(userProfile).values({
-      userId,
-      role,
-    }).returning();
-    return profile;
-  } catch (error) {
-    console.error('Failed to create user profile in database');
-    throw error;
+export async function createUserProfile(userId: string) {
+  const existing = await db
+    .select()
+    .from(userProfile)
+    .where(eq(userProfile.userId, userId));
+
+  if (existing.length === 0) {
+    await db.insert(userProfile).values({
+      userId
+    });
   }
 }
 
@@ -376,19 +376,14 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   }
 }
 
-export async function updateUserProfile(userId: string, role: string): Promise<UserProfile> {
+export async function updateUserProfile(userId: string, data: { role?: string }) {
   try {
-    const [profile] = await db
+    await db
       .update(userProfile)
-      .set({ 
-        role,
-        updatedAt: new Date()
-      })
-      .where(eq(userProfile.userId, userId))
-      .returning();
-    return profile;
+      .set(data)
+      .where(eq(userProfile.userId, userId));
   } catch (error) {
-    console.error('Failed to update user profile in database');
+    console.error('Failed to update user profile');
     throw error;
   }
 }
