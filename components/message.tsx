@@ -46,7 +46,7 @@ export const PreviewMessage = ({
 
 	return (
 		<motion.div
-			className={`w-full mx-auto max-w-3xl px-4 group/message` + (message.role === 'user' ? " pt-8 border-t border-border" : '')}
+			className={`w-full mx-auto max-w-3xl px-4 group/message${message.role === 'user' ? " pt-8 border-t border-border" : ''}`}
 			initial={{ y: 5, opacity: 0 }}
 			animate={{ y: 0, opacity: 1 }}
 			data-role={message.role}

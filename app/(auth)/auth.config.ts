@@ -27,7 +27,6 @@ export const authConfig = {
       const isOnLogin = nextUrl.pathname.startsWith('/login');
       const isOnOnboarding = nextUrl.pathname.startsWith('/onboarding');
 
-      console.log("isLoggedIn", isLoggedIn);
       if (isLoggedIn && isOnOnboarding) {
         const { hasRole } = await checkUserProfile(nextUrl.origin, headers);
         if (hasRole) {
