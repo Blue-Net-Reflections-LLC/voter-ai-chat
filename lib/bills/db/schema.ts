@@ -61,4 +61,4 @@ CREATE TABLE IF NOT EXISTS roll_call_votes (
     PRIMARY KEY (roll_call_id, sponsor_id),
     CONSTRAINT fk_roll_call_votes_vote FOREIGN KEY (roll_call_id) REFERENCES roll_calls(roll_call_id) ON DELETE CASCADE,
     CONSTRAINT fk_roll_call_votes_sponsor FOREIGN KEY (sponsor_id) REFERENCES sponsors(sponsor_id) ON DELETE CASCADE
-);`; 
+);`;
