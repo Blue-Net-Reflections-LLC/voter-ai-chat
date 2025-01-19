@@ -4,13 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { 
-  UserIcon, 
-  BookOpenIcon, 
-  MegaphoneIcon, 
-  NewspaperIcon, 
-  UserPlusIcon 
-} from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { createProfile } from '../actions'
 
@@ -19,31 +12,31 @@ const roles = [
     id: 'voter',
     name: 'REGISTERED VOTER',
     description: 'Access your voter registration status and district information',
-    Icon: UserIcon,
+    icon: '🗳️',
   },
   {
     id: 'researcher',
     name: 'RESEARCHER',
     description: 'Analyze voter registration patterns and demographics',
-    Icon: BookOpenIcon,
+    icon: '📚',
   },
   {
     id: 'canvasser',
     name: 'CANVASSER',
     description: 'Get insights for voter outreach and canvassing planning',
-    Icon: MegaphoneIcon,
+    icon: '📢',
   },
   {
     id: 'media',
     name: 'NEWS MEDIA',
     description: 'Access data for election coverage and voter trends',
-    Icon: NewspaperIcon,
+    icon: '📰',
   },
   {
     id: 'candidate',
     name: 'POLITICIAN/CANDIDATE',
     description: 'Understand your constituency and voter demographics',
-    Icon: UserPlusIcon,
+    icon: '👥',
   },
 ]
 
@@ -109,7 +102,9 @@ export default function OnboardingPage() {
               </div>
               <div className="flex flex-col items-center text-center pt-8 space-y-4">
                 <div className="w-12 h-12 flex items-center justify-center bg-gradient-to-b from-blue-500/20 to-blue-500/10 rounded-2xl shadow-lg">
-                  <role.Icon size={24} className="text-blue-400" strokeWidth={1.5} />
+                  <span className="text-2xl" role="img" aria-label={role.name}>
+                    {role.icon}
+                  </span>
                 </div>
                 <p className="text-sm text-gray-400 leading-relaxed">
                   {role.description}
