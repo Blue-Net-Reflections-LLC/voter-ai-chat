@@ -122,20 +122,35 @@ export function SuggestionsWidget({
           Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-8 w-full" />
           ))
-        ) : suggestions.length > 0 ? (
-          suggestions.map((suggestion, index) => (
+        ) : (suggestions?.length ?? 0) > 0 ? (
+          (suggestions || []).map((suggestion, index) => (
             <TooltipProvider key={index}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
                     className="inline-flex whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground text-left border rounded-xl px-4 py-3.5 text-xs flex-1 gap-1 w-full h-auto justify-start items-start"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.preventDefault();
+                      if (isChatLoading) return; // Don't process if currently streaming
+                      
                       onSuggestionClick(suggestion.text);
-                      const submitButton = document.querySelector('.btn-submit-prompt');
-                      if (submitButton instanceof HTMLButtonElement) {
-                        submitButton.click();
+                      
+                      // Poll until input value is updated
+                      const maxAttempts = 50; // 5 seconds max
+                      let attempts = 0;
+                      
+                      while (attempts < maxAttempts) {
+                        const input = document.querySelector('.multimodal-input') as HTMLTextAreaElement;
+                        if (input?.value === suggestion.text) {
+                          const submitButton = document.querySelector('.btn-submit-prompt');
+                          if (submitButton instanceof HTMLButtonElement) {
+                            submitButton.click();
+                          }
+                          break;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms between checks
+                        attempts++;
                       }
                     }}
                   >
