@@ -134,7 +134,7 @@ export function Chat({
 
 	return (
 		<>
-			<div className="flex min-w-0 h-dvh dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900">
+			<div className="flex min-w-0 h-dvh bg-background">
 				<div className="flex flex-col flex-1 min-w-0">
 					<ChatHeader selectedModelId={selectedModelId}/>
 					<div
