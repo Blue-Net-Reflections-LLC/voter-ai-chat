@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useWindowSize } from 'usehooks-ts';
+import { cn } from '@/lib/utils';
 
 import { ChatHeader } from '@/components/chat-header';
 import { PreviewMessage } from '@/components/message';
@@ -13,6 +14,7 @@ import { useScrollToBottom } from '@/components/use-scroll-to-bottom';
 import type { Vote } from '@/lib/db/schema';
 import { fetcher } from '@/lib/utils';
 import { RolesSidebar, type Role } from '@/components/roles-sidebar';
+import { SuggestionsWidget } from '@/components/suggestions-widget';
 
 import { Block, type UIBlock } from './block';
 import { BlockStreamHandler } from './block-stream-handler';
@@ -43,6 +45,7 @@ export function Chat({
 	const {mutate} = useSWRConfig();
 	const [streaming, setStreaming] = useState(false);
 	const [selectedRole, setSelectedRole] = useState<Role>();
+	const [isCollapsed, setIsCollapsed] = useState(false);
 
 	const {
 		messages,
@@ -119,6 +122,14 @@ export function Chat({
 		}
 	};
 
+	const handleSuggestionClick = (suggestion: string) => {
+		setInput(suggestion);
+		const form = document.querySelector('form');
+		if (form) {
+			form.dispatchEvent(new Event('submit', { cancelable: true }));
+		}
+	};
+
 	// Fetch current role on mount
 	useEffect(() => {
 		fetch('/api/profile/role')
@@ -139,7 +150,7 @@ export function Chat({
 					<ChatHeader selectedModelId={selectedModelId}/>
 					<div
 						ref={messagesContainerRef}
-						className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4"
+						className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 px-4"
 					>
 						{messages.length === 0 && <Overview/>}
 
@@ -194,11 +205,27 @@ export function Chat({
 							className="text-blue-500 underline hover:text-blue-700"   href="mailto:horace.reid@bluenetreflections.com">Horace Reid III</TrackingLink> @ 2024</div>
 				</div>
 				
-				<RolesSidebar
-					roles={AVAILABLE_ROLES}
-					selectedRole={selectedRole}
-					onRoleSelect={handleRoleSelect}
-				/>
+				<div className={cn(
+					"flex flex-col flex-shrink-0 border-l border-gray-200 dark:border-gray-800",
+					isCollapsed ? "w-12" : "w-64"
+				)}>
+					<RolesSidebar
+						roles={AVAILABLE_ROLES}
+						selectedRole={selectedRole}
+						onRoleSelect={handleRoleSelect}
+						onCollapsedChange={setIsCollapsed}
+					/>
+					{!isCollapsed && (
+						<SuggestionsWidget
+							selectedRole={selectedRole}
+							messages={messages}
+							onSuggestionClick={handleSuggestionClick}
+							className="border-t border-gray-200 dark:border-gray-800"
+							isLoading={isLoading}
+							isCollapsed={isCollapsed}
+						/>
+					)}
+				</div>
 			</div>
 
 			<AnimatePresence>

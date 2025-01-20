@@ -9,7 +9,7 @@ export async function GET() {
   }
 
   const profile = await getUserProfile(session.user.id)
-  return NextResponse.json({ 
+      return NextResponse.json({ 
     hasRole: !!profile?.role 
   })
 } 
