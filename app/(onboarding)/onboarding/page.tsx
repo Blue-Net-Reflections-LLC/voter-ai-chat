@@ -67,7 +67,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0D0F13] to-[#1C1F26] text-white">
+    <div className="min-h-screen bg-background text-white">
       <div className="max-w-6xl mx-auto px-6 py-12 md:py-16">
         <div className="space-y-6 w-full">
           <div className="space-y-2">
