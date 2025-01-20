@@ -22,9 +22,10 @@ type RolesSidebarProps = {
   roles: Role[];
   selectedRole?: Role;
   onRoleSelect: (role: Role) => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 };
 
-export function RolesSidebar({ roles, selectedRole, onRoleSelect }: RolesSidebarProps) {
+export function RolesSidebar({ roles, selectedRole, onRoleSelect, onCollapsedChange }: RolesSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleRoleSelect = (role: Role) => {
@@ -41,6 +42,11 @@ export function RolesSidebar({ roles, selectedRole, onRoleSelect }: RolesSidebar
     window.dispatchEvent(event);
   };
 
+  const handleCollapse = (collapsed: boolean) => {
+    setIsCollapsed(collapsed);
+    onCollapsedChange?.(collapsed);
+  };
+
   return (
     <div 
       className={cn(
@@ -49,7 +55,7 @@ export function RolesSidebar({ roles, selectedRole, onRoleSelect }: RolesSidebar
       )}
     >
       <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={() => handleCollapse(!isCollapsed)}
         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 self-start rounded-lg m-2"
         aria-label={isCollapsed ? "Expand roles sidebar" : "Collapse roles sidebar"}
       >

@@ -23,6 +23,7 @@ type SuggestionsWidgetProps = {
   onSuggestionClick: (suggestion: string) => void;
   className?: string;
   isLoading: boolean;
+  isCollapsed?: boolean;
 };
 
 export function SuggestionsWidget({ 
@@ -30,7 +31,8 @@ export function SuggestionsWidget({
   messages,
   onSuggestionClick,
   className,
-  isLoading: isChatLoading
+  isLoading: isChatLoading,
+  isCollapsed
 }: SuggestionsWidgetProps) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -44,14 +46,32 @@ export function SuggestionsWidget({
 
       setIsLoadingSuggestions(true);
       try {
-        const recentMessages = messages.slice(-3);
+        // Get the last 3 user messages and their first corresponding assistant responses
+        const relevantMessages = [];
+        const userMessages = messages
+          .filter(m => m.role === 'user')
+          .slice(-3); // Get last 3 user messages
+
+        for (const userMsg of userMessages) {
+          // Find the user message index
+          const userIndex = messages.findIndex(m => m === userMsg);
+          // Add the user message
+          relevantMessages.push(userMsg);
+          // Find the first assistant response after this user message
+          const assistantResponse = messages
+            .slice(userIndex + 1)
+            .find(m => m.role === 'assistant');
+          if (assistantResponse) {
+            relevantMessages.push(assistantResponse);
+          }
+        }
         
         const response = await fetch('/api/contextual-suggestions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             role: selectedRole,
-            messages: recentMessages
+            messages: relevantMessages
           }),
         });
 
@@ -75,7 +95,7 @@ export function SuggestionsWidget({
     }
   }, [selectedRole, messages, isChatLoading]);
 
-  if (!selectedRole) {
+  if (!selectedRole || isCollapsed) {
     return null;
   }
 
@@ -109,7 +129,7 @@ export function SuggestionsWidget({
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full text-right text-sm font-normal h-auto py-1.5 px-3 whitespace-normal hover:bg-gray-100 dark:hover:bg-gray-800 overflow-hidden"
+                    className="inline-flex whitespace-nowrap font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground text-left border rounded-xl px-4 py-3.5 text-xs flex-1 gap-1 w-full h-auto justify-start items-start"
                     onClick={(e) => {
                       e.preventDefault();
                       onSuggestionClick(suggestion.text);
@@ -119,7 +139,7 @@ export function SuggestionsWidget({
                       }
                     }}
                   >
-                    <div className="w-full text-right truncate">
+                    <div className="w-full text-left">
                       {suggestion.text}
                     </div>
                   </Button>

@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useWindowSize } from 'usehooks-ts';
+import { cn } from '@/lib/utils';
 
 import { ChatHeader } from '@/components/chat-header';
 import { PreviewMessage } from '@/components/message';
@@ -44,6 +45,7 @@ export function Chat({
 	const {mutate} = useSWRConfig();
 	const [streaming, setStreaming] = useState(false);
 	const [selectedRole, setSelectedRole] = useState<Role>();
+	const [isCollapsed, setIsCollapsed] = useState(false);
 
 	const {
 		messages,
@@ -203,19 +205,26 @@ export function Chat({
 							className="text-blue-500 underline hover:text-blue-700"   href="mailto:horace.reid@bluenetreflections.com">Horace Reid III</TrackingLink> @ 2024</div>
 				</div>
 				
-				<div className="flex flex-col w-64 flex-shrink-0 border-l border-gray-200 dark:border-gray-800">
+				<div className={cn(
+					"flex flex-col flex-shrink-0 border-l border-gray-200 dark:border-gray-800",
+					isCollapsed ? "w-12" : "w-64"
+				)}>
 					<RolesSidebar
 						roles={AVAILABLE_ROLES}
 						selectedRole={selectedRole}
 						onRoleSelect={handleRoleSelect}
+						onCollapsedChange={setIsCollapsed}
 					/>
-					<SuggestionsWidget
-						selectedRole={selectedRole}
-						messages={messages}
-						onSuggestionClick={handleSuggestionClick}
-						className="border-t border-gray-200 dark:border-gray-800"
-						isLoading={isLoading}
-					/>
+					{!isCollapsed && (
+						<SuggestionsWidget
+							selectedRole={selectedRole}
+							messages={messages}
+							onSuggestionClick={handleSuggestionClick}
+							className="border-t border-gray-200 dark:border-gray-800"
+							isLoading={isLoading}
+							isCollapsed={isCollapsed}
+						/>
+					)}
 				</div>
 			</div>
 
