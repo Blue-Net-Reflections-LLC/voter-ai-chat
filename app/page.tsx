@@ -21,7 +21,7 @@ const hoverScale = {
 
 export default function HomePage() {
 	return (
-		<div className="flex min-h-screen flex-col bg-white dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900">
+		<div className="flex min-h-screen flex-col bg-background">
 			{/* Header */}
 			<motion.header
 				className="container mx-auto px-4 py-6 flex justify-end items-center"
@@ -41,7 +41,7 @@ export default function HomePage() {
 
 			{/* Hero Section */}
 			<motion.div
-				className="flex flex-col items-center justify-center px-4 py-12 text-center bg-gray-50 dark:bg-transparent dark:border-t dark:border-gray-800"
+				className="flex flex-col items-center justify-center px-4 py-12 text-center bg-muted/50"
 				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
 				transition={{ duration: 0.5, delay: 0.2 }}
@@ -100,10 +100,8 @@ export default function HomePage() {
 				</div>
 			</motion.div>
 
-			<hr className="border-t border-gray-700/30 w-full mx-auto my-8 hidden dark:block" />
-
 			{/* Features Section */}
-			<div className="container mx-auto px-4 py-12 bg-white dark:bg-transparent">
+			<div className="container mx-auto px-4 py-12 bg-background">
 				<motion.h2
 					className="text-xl sm:text-2xl md:text-3xl text-gray-600 dark:text-gray-200 font-normal text-center mb-12"
 					{...fadeInUp}
@@ -143,8 +141,7 @@ export default function HomePage() {
 
 
 			{/* CTA Section */}
-			<div className="py-16 bg-gray-50 dark:bg-transparent">
-				<hr className="border-t border-gray-700/30 w-full mx-auto mb-16 hidden dark:block" />
+			<div className="py-16 bg-muted/50">
 				<motion.div
 					className="container mx-auto px-4 text-center"
 					initial={{ opacity: 0, y: 20 }}
