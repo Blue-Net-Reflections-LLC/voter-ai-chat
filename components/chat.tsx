@@ -22,6 +22,7 @@ import { Overview } from './overview';
 import { toast } from 'sonner';
 import TrackingLink from "@/components/ui/TrackingLink";
 import { ThinkingMessage } from "@/components/ThinkingMessage";
+import { EditProvider } from './message';
 
 // Example roles - replace with actual roles from your system
 const AVAILABLE_ROLES: Role[] = [
@@ -135,140 +136,146 @@ export function Chat({
 	}, []);
 
 	return (
-		<>
-			<div className="flex min-w-0 h-dvh bg-muted/30">
-				<div className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-					<div className="mx-auto w-full max-w-[90rem]">
-						<ChatHeader selectedModelId={selectedModelId}/>
+		<EditProvider>
+			<>
+				<div className="flex min-w-0 h-dvh bg-muted/30">
+					<div className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
+						<div className="mx-auto w-full max-w-[90rem]">
+							<ChatHeader selectedModelId={selectedModelId}/>
+						</div>
 					</div>
-				</div>
-				<div ref={messagesContainerRef} className="flex flex-1 min-w-0 overflow-y-auto pt-16">
-					<div className={cn(
-						"flex flex-col flex-1 min-w-0 transition-all duration-300",
-						!isCollapsed && "pr-64"
-					)}>
-						<div className="flex flex-col min-w-0 gap-16 flex-1 pb-36">
-							{messages.length === 0 && <Overview/>}
-							{messages.reduce((groups: JSX.Element[], message, index) => {
-								if (message.role === 'user') {
-									// Get all assistant responses until the next user message
-									const responses = [];
-									let i = index + 1;
-									while (i < messages.length && messages[i].role === 'assistant') {
-										// Only add non-empty assistant messages
-										if (messages[i].content) {
-											responses.push(messages[i]);
+					<div ref={messagesContainerRef} className="flex flex-1 min-w-0 overflow-y-auto pt-16">
+						<div className={cn(
+							"flex flex-col flex-1 min-w-0 transition-all duration-300",
+							!isCollapsed && "pr-64"
+						)}>
+							<div className="flex flex-col min-w-0 gap-16 flex-1 pb-36">
+								{messages.length === 0 && <Overview/>}
+								{messages.reduce((groups: JSX.Element[], message, index) => {
+									if (message.role === 'user') {
+										// Get all assistant responses until the next user message
+										const responses = [];
+										let i = index + 1;
+										while (i < messages.length && messages[i].role === 'assistant') {
+											// Only add non-empty assistant messages
+											if (messages[i].content) {
+												responses.push(messages[i]);
+											}
+											i++;
 										}
-										i++;
-									}
-									
-									groups.push(
-										<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm w-full max-w-[50rem] mx-auto px-6">
-											<PreviewMessage
-												key={message.id}
-												chatId={id}
-												message={message}
-												block={block}
-												setBlock={setBlock}
-												vote={votes?.find((v) => v.messageId === message.id)}
-												isLoading={isLoading}
-												streaming={streaming}
-											/>
-											{responses.map((response, responseIndex) => (
+										
+										groups.push(
+											<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm w-full max-w-[50rem] mx-auto px-6">
 												<PreviewMessage
-													key={response.id}
+													key={message.id}
 													chatId={id}
-													message={response}
+													message={message}
 													block={block}
 													setBlock={setBlock}
-													vote={votes?.find((v) => v.messageId === response.id)}
+													vote={votes?.find((v) => v.messageId === message.id)}
 													isLoading={isLoading}
 													streaming={streaming}
-													isFirstAssistantMessage={responseIndex === 0}
+													setMessages={setMessages}
+													append={append}
 												/>
-											))}
-										</div>
-									);
-								}
-								return groups;
-							}, [])}
+												{responses.map((response, responseIndex) => (
+													<PreviewMessage
+														key={response.id}
+														chatId={id}
+														message={response}
+														block={block}
+														setBlock={setBlock}
+														vote={votes?.find((v) => v.messageId === response.id)}
+														isLoading={isLoading}
+														streaming={streaming}
+														isFirstAssistantMessage={responseIndex === 0}
+														setMessages={setMessages}
+														append={append}
+													/>
+												))}
+											</div>
+										);
+									}
+									return groups;
+								}, [])}
 
-							{isLoading &&
-								// messages.length > 0 &&
-								// messages[messages.length - 1].role === 'user' &&
-								(
-									<ThinkingMessage haltAnimation={streaming}/>
-								)}
+								{isLoading &&
+									// messages.length > 0 &&
+									// messages[messages.length - 1].role === 'user' &&
+									(
+										<ThinkingMessage haltAnimation={streaming}/>
+									)}
 
-							<div
-								ref={messagesEndRef}
-								className="shrink-0 min-w-[24px] min-h-[24px]"
-							/>
-						</div>
-						<div className="absolute bottom-0 left-0 right-0 z-10">
-							<div className={cn(
-								"relative mx-auto w-full transition-all duration-300",
-								!isCollapsed && "pr-64"
-							)}>
-								<div className="w-full max-w-[50rem] mx-auto">
-									<form className="flex mx-auto pb-3 md:pb-2 gap-2 w-full px-6">
-										<MultimodalInput
-											chatId={id}
-											input={input}
-											setInput={setInput}
-											handleSubmit={handleSubmit}
-											isLoading={isLoading}
-											stop={stop}
-											attachments={attachments}
-											setAttachments={setAttachments}
-											messages={messages}
-											setMessages={setMessages}
-											append={append}
-										/>
-									</form>
-									<div className="pb-1.5 text-center text-sm">Developed by{' '}
-										<TrackingLink
-											category="chat"
-											action="developer-click"
-											className="text-blue-500 underline hover:text-blue-700" href="mailto:horace.reid@bluenetreflections.com">Horace Reid III</TrackingLink> @ 2024</div>
+								<div
+									ref={messagesEndRef}
+									className="shrink-0 min-w-[24px] min-h-[24px]"
+								/>
+							</div>
+							<div className="absolute bottom-0 left-0 right-0 z-10">
+								<div className={cn(
+									"relative mx-auto w-full transition-all duration-300",
+									!isCollapsed && "pr-64"
+								)}>
+									<div className="w-full max-w-[50rem] mx-auto">
+										<form className="flex mx-auto pb-3 md:pb-2 gap-2 w-full px-6">
+											<MultimodalInput
+												chatId={id}
+												input={input}
+												setInput={setInput}
+												handleSubmit={handleSubmit}
+												isLoading={isLoading}
+												stop={stop}
+												attachments={attachments}
+												setAttachments={setAttachments}
+												messages={messages}
+												setMessages={setMessages}
+												append={append}
+											/>
+										</form>
+										<div className="pb-1.5 text-center text-sm">Developed by{' '}
+											<TrackingLink
+												category="chat"
+												action="developer-click"
+												className="text-blue-500 underline hover:text-blue-700" href="mailto:horace.reid@bluenetreflections.com">Horace Reid III</TrackingLink> @ 2024</div>
+									</div>
 								</div>
 							</div>
 						</div>
+						
+						<RolesSidebar
+							roles={AVAILABLE_ROLES}
+							selectedRole={selectedRole}
+							onRoleSelect={handleRoleSelect}
+							isCollapsed={isCollapsed}
+							setIsCollapsed={setIsCollapsed}
+						/>
 					</div>
-					
-					<RolesSidebar
-						roles={AVAILABLE_ROLES}
-						selectedRole={selectedRole}
-						onRoleSelect={handleRoleSelect}
-						isCollapsed={isCollapsed}
-						setIsCollapsed={setIsCollapsed}
-					/>
 				</div>
-			</div>
 
-			<AnimatePresence>
-				{block?.isVisible && (
-					<Block
-						chatId={id}
-						input={input}
-						setInput={setInput}
-						handleSubmit={handleSubmit}
-						isLoading={isLoading}
-						stop={stop}
-						attachments={attachments}
-						setAttachments={setAttachments}
-						append={append}
-						block={block}
-						setBlock={setBlock}
-						messages={messages}
-						setMessages={setMessages}
-						votes={votes}
-						streaming={streaming}
-					/>
-				)}
-			</AnimatePresence>
+				<AnimatePresence>
+					{block?.isVisible && (
+						<Block
+							chatId={id}
+							input={input}
+							setInput={setInput}
+							handleSubmit={handleSubmit}
+							isLoading={isLoading}
+							stop={stop}
+							attachments={attachments}
+							setAttachments={setAttachments}
+							append={append}
+							block={block}
+							setBlock={setBlock}
+							messages={messages}
+							setMessages={setMessages}
+							votes={votes}
+							streaming={streaming}
+						/>
+					)}
+				</AnimatePresence>
 
-			<BlockStreamHandler streamingData={streamingData} setBlock={setBlock}/>
-		</>
+				<BlockStreamHandler streamingData={streamingData} setBlock={setBlock}/>
+			</>
+		</EditProvider>
 	);
 }
