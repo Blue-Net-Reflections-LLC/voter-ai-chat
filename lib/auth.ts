@@ -1,4 +1,4 @@
-import { type DefaultSession, type NextAuthConfig } from 'next-auth';
+import type { NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
 
 import { upsertUser } from './db/queries';
@@ -6,8 +6,8 @@ import { upsertUser } from './db/queries';
 export const authOptions: NextAuthConfig = {
   providers: [
     Google({
-      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? '',
     }),
   ],
   pages: {

@@ -1,0 +1,121 @@
+"use client"
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { 
+  UserIcon, 
+  BookOpenIcon, 
+  MegaphoneIcon, 
+  NewspaperIcon, 
+  UserPlusIcon 
+} from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { createUserProfile } from '@/lib/db/queries'
+import { useSession } from 'next-auth/react'
+import { toast } from '@/components/ui/use-toast'
+
+const roles = [
+  {
+    id: 'voter',
+    name: 'Registered Voter',
+    description: 'Access your voter registration status and district information',
+    icon: UserIcon,
+  },
+  {
+    id: 'researcher',
+    name: 'Researcher',
+    description: 'Analyze voter registration patterns and demographics',
+    icon: BookOpenIcon,
+  },
+  {
+    id: 'canvasser',
+    name: 'Canvasser',
+    description: 'Get insights for voter outreach and canvassing planning',
+    icon: MegaphoneIcon,
+  },
+  {
+    id: 'media',
+    name: 'News Media',
+    description: 'Access data for election coverage and voter trends',
+    icon: NewspaperIcon,
+  },
+  {
+    id: 'candidate',
+    name: 'Politician/Candidate',
+    description: 'Understand your constituency and voter demographics',
+    icon: UserPlusIcon,
+  },
+]
+
+export function RoleSelection() {
+  const [selectedRole, setSelectedRole] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const { data: session } = useSession()
+
+  const handleRoleSelect = async (roleId: string) => {
+    if (!session?.user?.id) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to select a role",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSelectedRole(roleId)
+    setIsLoading(true)
+
+    try {
+      await createUserProfile(session.user.id, roleId)
+      router.push('/chat')
+    } catch (error) {
+      console.error('Failed to save user role:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save your role. Please try again.",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      {roles.map((role) => (
+        <TooltipProvider key={role.id}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card
+                className={`p-6 cursor-pointer transition-all hover:border-primary ${
+                  selectedRole === role.id ? 'border-primary' : ''
+                }`}
+                onClick={() => !isLoading && handleRoleSelect(role.id)}
+              >
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="p-3 rounded-full bg-primary/10">
+                    <role.icon className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold">{role.name}</h3>
+                  <p className="text-sm text-muted-foreground">{role.description}</p>
+                  <Button
+                    variant={selectedRole === role.id ? "default" : "outline"}
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading && selectedRole === role.id ? "Saving..." : "Select Role"}
+                  </Button>
+                </div>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{role.description}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ))}
+    </div>
+  )
+}

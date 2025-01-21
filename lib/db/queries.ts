@@ -15,6 +15,8 @@ import {
   type Message,
   message,
   vote,
+  userProfile,
+  type UserProfile,
 } from './schema';
 
 // Optionally, if not using email/pass login, you can
@@ -347,6 +349,41 @@ export async function getUserIdByEmail(email: string): Promise<string | null> {
     return existingUser?.id || null;
   } catch (error) {
     console.error('Failed to get user ID from database');
+    throw error;
+  }
+}
+
+export async function createUserProfile(userId: string) {
+  const existing = await db
+    .select()
+    .from(userProfile)
+    .where(eq(userProfile.userId, userId));
+
+  if (existing.length === 0) {
+    await db.insert(userProfile).values({
+      userId
+    });
+  }
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  try {
+    const profiles = await db.select().from(userProfile).where(eq(userProfile.userId, userId));
+    return profiles[0] || null;
+  } catch (error) {
+    console.error('Failed to get user profile from database');
+    throw error;
+  }
+}
+
+export async function updateUserProfile(userId: string, data: { role?: string }) {
+  try {
+    await db
+      .update(userProfile)
+      .set(data)
+      .where(eq(userProfile.userId, userId));
+  } catch (error) {
+    console.error('Failed to update user profile');
     throw error;
   }
 }
