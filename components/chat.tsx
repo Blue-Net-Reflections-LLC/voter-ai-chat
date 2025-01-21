@@ -141,9 +141,7 @@ export function Chat({
 						<ChatHeader selectedModelId={selectedModelId}/>
 					</div>
 				</div>
-				<div ref={messagesContainerRef} className="flex flex-1 min-w-0 overflow-y-auto pt-16" style={{ 
-					paddingRight: selectedRole ? (isCollapsed ? '3rem' : '16rem') : 0 
-				}}>
+				<div ref={messagesContainerRef} className="flex flex-1 min-w-0 overflow-y-auto pt-16">
 					<div className="flex flex-col flex-1 min-w-0">
 						<div className="flex flex-col min-w-0 gap-16 flex-1 pb-36">
 							{messages.length === 0 && <Overview/>}
@@ -161,7 +159,7 @@ export function Chat({
 									}
 									
 									groups.push(
-										<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm w-full max-w-[50rem] mx-auto px-4">
+										<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm w-full max-w-[50rem] mx-auto px-6">
 											<PreviewMessage
 												key={message.id}
 												chatId={id}
@@ -203,9 +201,9 @@ export function Chat({
 								className="shrink-0 min-w-[24px] min-h-[24px]"
 							/>
 						</div>
-						<div className="fixed bottom-0 left-0 right-0 z-10">
+						<div className="absolute bottom-0 left-0 right-0 z-10">
 							<div className="mx-auto w-full max-w-[50rem]">
-								<form className="flex mx-auto px-4 pb-3 md:pb-2 gap-2 w-full">
+								<form className="flex mx-auto pb-3 md:pb-2 gap-2 w-full max-w-[50rem] px-6">
 									<MultimodalInput
 										chatId={id}
 										input={input}
