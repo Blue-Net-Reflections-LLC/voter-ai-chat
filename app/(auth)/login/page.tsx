@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import useGoogleAnalytics from "@/hooks/useGoogleAnalytics";
 import TrackingLink from "@/components/ui/TrackingLink";
 import { googleAuthenticate } from '../actions';
+import { GridPattern } from '@/components/ui/grid-pattern';
+import { cn } from '@/lib/utils';
 
 const fadeInUp = {
 	initial: { opacity: 0, y: 20 },
@@ -26,7 +28,15 @@ export default function LoginPage() {
 	};
 
 	return (
-		<div className="flex min-h-screen flex-col bg-background">
+		<div className="flex min-h-screen flex-col bg-background relative overflow-hidden">
+			<GridPattern
+				className={cn(
+					"[mask-image:radial-gradient(1000px_circle_at_center,white,transparent)]",
+					"opacity-20"
+				)}
+				width={40}
+				height={40}
+			/>
 			<motion.header
 				className="container mx-auto px-4 py-6 flex justify-between items-center"
 				initial={{ opacity: 0, y: -20 }}

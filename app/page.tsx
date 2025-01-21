@@ -7,6 +7,8 @@ import { BarChart, ChevronRight, FileText, MapPin, PieChart } from 'lucide-react
 import { ThemeToggle } from '@/components/theme-toggle'
 import { motion } from 'framer-motion'
 import TrackingLink from "@/components/ui/TrackingLink";
+import { GridPattern } from '@/components/ui/grid-pattern';
+import { cn } from '@/lib/utils';
 
 const fadeInUp = {
 	initial: { opacity: 0, y: 20 },
@@ -21,7 +23,15 @@ const hoverScale = {
 
 export default function HomePage() {
 	return (
-		<div className="flex min-h-screen flex-col bg-background">
+		<div className="flex min-h-screen flex-col bg-background relative overflow-hidden">
+			<GridPattern
+				className={cn(
+					"[mask-image:radial-gradient(1000px_circle_at_center,white,transparent)]",
+					"opacity-20"
+				)}
+				width={40}
+				height={40}
+			/>
 			{/* Header */}
 			<motion.header
 				className="container mx-auto px-4 py-6 flex justify-end items-center"
@@ -41,7 +51,7 @@ export default function HomePage() {
 
 			{/* Hero Section */}
 			<motion.div
-				className="flex flex-col items-center justify-center px-4 py-12 text-center bg-muted/50"
+				className="flex flex-col items-center justify-center px-4 py-12 text-center"
 				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
 				transition={{ duration: 0.5, delay: 0.2 }}
@@ -101,7 +111,7 @@ export default function HomePage() {
 			</motion.div>
 
 			{/* Features Section */}
-			<div className="container mx-auto px-4 py-12 bg-background">
+			<div className="container mx-auto px-4 py-12">
 				<motion.h2
 					className="text-xl sm:text-2xl md:text-3xl text-gray-600 dark:text-gray-200 font-normal text-center mb-12"
 					{...fadeInUp}
@@ -141,7 +151,7 @@ export default function HomePage() {
 
 
 			{/* CTA Section */}
-			<div className="py-16 bg-muted/50">
+			<div className="py-16">
 				<motion.div
 					className="container mx-auto px-4 text-center"
 					initial={{ opacity: 0, y: 20 }}
