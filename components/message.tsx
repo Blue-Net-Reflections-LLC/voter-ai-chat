@@ -4,6 +4,7 @@ import type { Message } from 'ai';
 import cx from 'classnames';
 import { motion } from 'framer-motion';
 import type { Dispatch, SetStateAction } from 'react';
+import { cn } from '@/lib/utils';
 
 import type { Vote } from '@/lib/db/schema';
 
@@ -34,6 +35,7 @@ export const PreviewMessage = ({
 	vote,
 	isLoading,
 	streaming,
+	isFirstAssistantMessage = true,
 }: {
 	chatId: string;
 	message: Message;
@@ -42,30 +44,41 @@ export const PreviewMessage = ({
 	vote: Vote | undefined;
 	isLoading: boolean;
 	streaming: boolean;
+	isFirstAssistantMessage?: boolean;
 }) => {
 
 	return (
 		<motion.div
-			className={`w-full mx-auto max-w-3xl px-4 group/message${message.role === 'user' ? " pt-8 border-t border-border" : ''}`}
+			className={cn(
+				"w-full group/message",
+				message.role === 'user' ? "flex justify-end mb-6" : "mt-6"
+			)}
 			initial={{ y: 5, opacity: 0 }}
 			animate={{ y: 0, opacity: 1 }}
 			data-role={message.role}
 		>
 			<div
-				className={cx(
-					'group-data-[role=user]/message:bg-red-600 group-data-[role=user]/message:text-primary-foreground flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
-					{
-						'text-xs': message.role === 'assistant'
-					}
+				className={cn(
+					'flex gap-4',
+					message.role === 'user' 
+						? 'bg-red-600 text-primary-foreground px-4 py-2 rounded-xl max-w-[75%]' 
+						: 'w-full text-base'
 				)}
 			>
-				{message.role === 'assistant' && (
-					<div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border">
-						<RippleEffect isAnimating={streaming || isLoading}><Logo width={32} /></RippleEffect>
+				{message.role === 'assistant' && isFirstAssistantMessage && (
+					<div className="size-8 flex items-center justify-center shrink-0 relative">
+						<span className="text-2xl" role="img" aria-label="AI Assistant">🤖</span>
+						<span className="text-lg absolute -top-4 -right-2" role="img" aria-label="Idea">💡</span>
 					</div>
 				)}
+				{message.role === 'assistant' && !isFirstAssistantMessage && (
+					<div className="size-8 shrink-0" />
+				)}
 
-				<div className="flex flex-col gap-2 w-full overflow-x-hidden">
+				<div className={cn(
+					"flex flex-col gap-2 overflow-x-hidden",
+					message.role === 'user' ? 'w-fit' : 'w-full'
+				)}>
 					{message.content && (
 						<div className="flex flex-col gap-4">
 							<Markdown streaming={streaming}>{message.content as string}</Markdown>

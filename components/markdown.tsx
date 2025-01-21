@@ -1,4 +1,3 @@
-
 import React, { memo, } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 	import remarkGfm from 'remark-gfm';
@@ -92,7 +91,7 @@ const NonMemoizedMarkdown = ({ children }: { children: string, streaming?: boole
     },
     h3: ({ node, children, ...props }) => {
       return (
-        <h3 className="text-xl font-semibold mt-6 mb-2" {...props}>
+        <h3 className="text-xl font-semibold mt-0" {...props}>
           {children}
         </h3>
       );

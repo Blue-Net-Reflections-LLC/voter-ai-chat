@@ -6,6 +6,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSession } from 'next-auth/react'
 import { createProfile } from '../actions'
+import { GridPattern } from '@/components/ui/grid-pattern'
+import { cn } from '@/lib/utils'
 
 const roles = [
   {
@@ -67,7 +69,15 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0D0F13] to-[#1C1F26] text-white">
+    <div className="min-h-screen bg-background text-white relative overflow-hidden">
+      <GridPattern
+        className={cn(
+          "[mask-image:radial-gradient(1000px_circle_at_center,white,transparent)]",
+          "opacity-20"
+        )}
+        width={40}
+        height={40}
+      />
       <div className="max-w-6xl mx-auto px-6 py-12 md:py-16">
         <div className="space-y-6 w-full">
           <div className="space-y-2">

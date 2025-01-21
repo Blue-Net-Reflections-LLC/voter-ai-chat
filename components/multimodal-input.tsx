@@ -90,7 +90,7 @@ export function MultimodalInput({
   const adjustHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-			textareaRef.current.style.maxHeight = "200px";
+			textareaRef.current.style.maxHeight = "100px";
 			textareaRef.current.style.overflowY = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight + 2}px`;
     }
