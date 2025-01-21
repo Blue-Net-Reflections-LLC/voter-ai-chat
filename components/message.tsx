@@ -4,6 +4,7 @@ import type { Message } from 'ai';
 import cx from 'classnames';
 import { motion } from 'framer-motion';
 import type { Dispatch, SetStateAction } from 'react';
+import { cn } from '@/lib/utils';
 
 import type { Vote } from '@/lib/db/schema';
 
@@ -48,15 +49,20 @@ export const PreviewMessage = ({
 
 	return (
 		<motion.div
-			className={`w-full group/message${message.role === 'user' ? " mb-6" : " mt-6"}`}
+			className={cn(
+				"w-full group/message",
+				message.role === 'user' ? "flex justify-end mb-6" : "mt-6"
+			)}
 			initial={{ y: 5, opacity: 0 }}
 			animate={{ y: 0, opacity: 1 }}
 			data-role={message.role}
 		>
 			<div
-				className={cx(
-					'flex gap-4 w-full',
-					message.role === 'user' ? 'bg-red-600 text-primary-foreground px-3 w-fit ml-auto max-w-2xl py-2 rounded-xl' : 'text-base'
+				className={cn(
+					'flex gap-4',
+					message.role === 'user' 
+						? 'bg-red-600 text-primary-foreground px-4 py-2 rounded-xl max-w-[75%]' 
+						: 'w-full text-base'
 				)}
 			>
 				{message.role === 'assistant' && isFirstAssistantMessage && (
@@ -69,7 +75,10 @@ export const PreviewMessage = ({
 					<div className="size-8 shrink-0" />
 				)}
 
-				<div className="flex flex-col gap-2 w-full overflow-x-hidden">
+				<div className={cn(
+					"flex flex-col gap-2 overflow-x-hidden",
+					message.role === 'user' ? 'w-fit' : 'w-full'
+				)}>
 					{message.content && (
 						<div className="flex flex-col gap-4">
 							<Markdown streaming={streaming}>{message.content as string}</Markdown>
