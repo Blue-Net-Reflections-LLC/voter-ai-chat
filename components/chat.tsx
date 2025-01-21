@@ -7,6 +7,9 @@ import { useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useWindowSize } from 'usehooks-ts';
 import { cn } from '@/lib/utils';
+import { ChevronDown, ArrowDown } from 'lucide-react';
+import { Button } from './ui/button';
+import { BetterTooltip } from './ui/tooltip';
 
 import { ChatHeader } from '@/components/chat-header';
 import { PreviewMessage } from '@/components/message';
@@ -91,8 +94,7 @@ export function Chat({
 		fetcher,
 	);
 
-	const [messagesContainerRef, messagesEndRef] =
-		useScrollToBottom<HTMLDivElement>();
+	const [messagesContainerRef, bottomRef, isAtBottom, scrollToBottom] = useScrollToBottom<HTMLDivElement>();
 
 	const [attachments, setAttachments] = useState<Array<Attachment>>([]);
 
@@ -165,7 +167,7 @@ export function Chat({
 										}
 										
 										groups.push(
-											<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm w-full max-w-[50rem] mx-auto px-6">
+											<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm ring-1 ring-black/[0.03] dark:ring-white/[0.02] dark:shadow-lg dark:shadow-white/[0.03] w-full max-w-[50rem] mx-auto px-6">
 												<PreviewMessage
 													key={message.id}
 													chatId={id}
@@ -206,10 +208,7 @@ export function Chat({
 										<ThinkingMessage haltAnimation={streaming}/>
 									)}
 
-								<div
-									ref={messagesEndRef}
-									className="shrink-0 min-w-[24px] min-h-[24px]"
-								/>
+								<div ref={bottomRef} />
 							</div>
 							<div className="absolute bottom-0 left-0 right-0 z-10">
 								<div className={cn(
@@ -275,6 +274,30 @@ export function Chat({
 				</AnimatePresence>
 
 				<BlockStreamHandler streamingData={streamingData} setBlock={setBlock}/>
+
+				{!isAtBottom && (
+					<div className={cn(
+						"absolute bottom-32 left-0 right-0 z-10",
+						!isCollapsed && "pr-64"
+					)}>
+						<div className="w-full max-w-[50rem] mx-auto px-6">
+							<div className="flex justify-center">
+								<BetterTooltip content="Jump to bottom">
+									<Button
+										size="icon"
+										variant="outline"
+										className="size-8 rounded-full opacity-80 hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+										onClick={scrollToBottom}
+									>
+										<ArrowDown className="size-4" />
+									</Button>
+								</BetterTooltip>
+							</div>
+						</div>
+					</div>
+				)}
+
+				<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background to-transparent h-36 pointer-events-none" />
 			</>
 		</EditProvider>
 	);
