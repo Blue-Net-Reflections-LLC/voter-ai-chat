@@ -134,7 +134,7 @@ export function Chat({
 
 	return (
 		<>
-			<div className="flex min-w-0 h-dvh bg-background">
+			<div className="flex min-w-0 h-dvh bg-muted/30">
 				<div className="flex flex-col flex-1 min-w-0">
 					<ChatHeader selectedModelId={selectedModelId}/>
 					<div
@@ -143,22 +143,45 @@ export function Chat({
 					>
 						{messages.length === 0 && <Overview/>}
 
-						{messages.filter(v => !!v.content).map((message, index) => (
-							<PreviewMessage
-								key={message.id}
-								chatId={id}
-								message={message}
-								block={block}
-								setBlock={setBlock}
-								isLoading={isLoading && messages.length - 1 === index}
-								streaming={streaming}
-								vote={
-									votes
-										? votes.find((vote) => vote.messageId === message.id)
-										: undefined
+						{messages.reduce((groups: JSX.Element[], message, index) => {
+							if (message.role === 'user') {
+								// Get all assistant responses until the next user message
+								const responses = [];
+								let i = index + 1;
+								while (i < messages.length && messages[i].role === 'assistant') {
+									responses.push(messages[i]);
+									i++;
 								}
-							/>
-						))}
+								
+								groups.push(
+									<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm max-w-4xl mx-auto w-full px-4">
+										<PreviewMessage
+											key={message.id}
+											chatId={id}
+											message={message}
+											block={block}
+											setBlock={setBlock}
+											vote={votes?.find((v) => v.messageId === message.id)}
+											isLoading={isLoading}
+											streaming={streaming}
+										/>
+										{responses.map(response => (
+											<PreviewMessage
+												key={response.id}
+												chatId={id}
+												message={response}
+												block={block}
+												setBlock={setBlock}
+												vote={votes?.find((v) => v.messageId === response.id)}
+												isLoading={isLoading}
+												streaming={streaming}
+											/>
+										))}
+									</div>
+								);
+							}
+							return groups;
+						}, [])}
 
 						{isLoading &&
 							// messages.length > 0 &&

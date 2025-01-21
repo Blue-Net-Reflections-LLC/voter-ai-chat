@@ -46,17 +46,15 @@ export const PreviewMessage = ({
 
 	return (
 		<motion.div
-			className={`w-full mx-auto max-w-3xl px-4 group/message${message.role === 'user' ? " pt-8 border-t border-border" : ''}`}
+			className={`w-full group/message${message.role === 'user' ? " mb-6" : " mt-6"}`}
 			initial={{ y: 5, opacity: 0 }}
 			animate={{ y: 0, opacity: 1 }}
 			data-role={message.role}
 		>
 			<div
 				className={cx(
-					'group-data-[role=user]/message:bg-red-600 group-data-[role=user]/message:text-primary-foreground flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
-					{
-						'text-base': message.role === 'assistant'
-					}
+					'flex gap-4 w-full',
+					message.role === 'user' ? 'bg-red-600 text-primary-foreground px-3 w-fit ml-auto max-w-2xl py-2 rounded-xl' : 'text-base'
 				)}
 			>
 				{message.role === 'assistant' && (
@@ -69,7 +67,7 @@ export const PreviewMessage = ({
 				<div className="flex flex-col gap-2 w-full overflow-x-hidden">
 					{message.content && (
 						<div className="flex flex-col gap-4">
-							<Markdown streaming={streaming} className="text-base">{message.content as string}</Markdown>
+							<Markdown streaming={streaming}>{message.content as string}</Markdown>
 						</div>
 					)}
 
