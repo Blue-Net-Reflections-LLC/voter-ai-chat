@@ -233,11 +233,9 @@ export function Block({
 									setBlock={setBlock}
 									streaming={streaming}
 									isLoading={isLoading && index === messages.length - 1}
-									vote={
-										votes
-											? votes.find((vote) => vote.messageId === message.id)
-											: undefined
-									}
+									vote={votes?.find((vote) => vote.messageId === message.id)}
+									append={append}
+									setMessages={setMessages}
 								/>
 							))}
 
