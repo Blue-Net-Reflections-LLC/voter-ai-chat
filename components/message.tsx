@@ -13,8 +13,6 @@ import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
 import ErrorBubble from "@/components/ui/error-bubble";
-import RippleEffect from "@/components/RippleEffect";
-import Logo from "@/components/ui/voter-ai-icon";
 
 export const hideToolUiList = [
 	"fetchTableDdls",
