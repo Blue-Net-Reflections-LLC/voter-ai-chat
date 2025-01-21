@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useWindowSize } from 'usehooks-ts';
+import { cn } from '@/lib/utils';
 
 import { ChatHeader } from '@/components/chat-header';
 import { PreviewMessage } from '@/components/message';
@@ -142,7 +143,10 @@ export function Chat({
 					</div>
 				</div>
 				<div ref={messagesContainerRef} className="flex flex-1 min-w-0 overflow-y-auto pt-16">
-					<div className="flex flex-col flex-1 min-w-0">
+					<div className={cn(
+						"flex flex-col flex-1 min-w-0",
+						!isCollapsed && "pr-64"
+					)}>
 						<div className="flex flex-col min-w-0 gap-16 flex-1 pb-36">
 							{messages.length === 0 && <Overview/>}
 							{messages.reduce((groups: JSX.Element[], message, index) => {
@@ -202,27 +206,32 @@ export function Chat({
 							/>
 						</div>
 						<div className="absolute bottom-0 left-0 right-0 z-10">
-							<div className="mx-auto w-full max-w-[50rem]">
-								<form className="flex mx-auto pb-3 md:pb-2 gap-2 w-full max-w-[50rem] px-6">
-									<MultimodalInput
-										chatId={id}
-										input={input}
-										setInput={setInput}
-										handleSubmit={handleSubmit}
-										isLoading={isLoading}
-										stop={stop}
-										attachments={attachments}
-										setAttachments={setAttachments}
-										messages={messages}
-										setMessages={setMessages}
-										append={append}
-									/>
-								</form>
-								<div className="pb-1.5 text-center text-sm">Developed by{' '}
-									<TrackingLink
-										category="chat"
-										action="developer-click"
-										className="text-blue-500 underline hover:text-blue-700" href="mailto:horace.reid@bluenetreflections.com">Horace Reid III</TrackingLink> @ 2024</div>
+							<div className={cn(
+								"relative mx-auto w-full",
+								!isCollapsed && "pr-64"
+							)}>
+								<div className="w-full max-w-[50rem] mx-auto">
+									<form className="flex mx-auto pb-3 md:pb-2 gap-2 w-full px-6">
+										<MultimodalInput
+											chatId={id}
+											input={input}
+											setInput={setInput}
+											handleSubmit={handleSubmit}
+											isLoading={isLoading}
+											stop={stop}
+											attachments={attachments}
+											setAttachments={setAttachments}
+											messages={messages}
+											setMessages={setMessages}
+											append={append}
+										/>
+									</form>
+									<div className="pb-1.5 text-center text-sm">Developed by{' '}
+										<TrackingLink
+											category="chat"
+											action="developer-click"
+											className="text-blue-500 underline hover:text-blue-700" href="mailto:horace.reid@bluenetreflections.com">Horace Reid III</TrackingLink> @ 2024</div>
+								</div>
 							</div>
 						</div>
 					</div>
