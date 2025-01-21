@@ -167,7 +167,7 @@ export function Chat({
 										}
 										
 										groups.push(
-											<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm w-full max-w-[50rem] mx-auto px-6">
+											<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm ring-1 ring-black/[0.03] dark:ring-white/[0.02] dark:shadow-lg dark:shadow-white/[0.03] w-full max-w-[50rem] mx-auto px-6">
 												<PreviewMessage
 													key={message.id}
 													chatId={id}
@@ -282,7 +282,7 @@ export function Chat({
 					)}>
 						<div className="w-full max-w-[50rem] mx-auto px-6">
 							<div className="flex justify-center">
-								<BetterTooltip content="Scroll to bottom">
+								<BetterTooltip content="Jump to bottom">
 									<Button
 										size="icon"
 										variant="outline"
