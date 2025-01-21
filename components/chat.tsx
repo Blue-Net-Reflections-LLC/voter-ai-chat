@@ -149,12 +149,15 @@ export function Chat({
 								const responses = [];
 								let i = index + 1;
 								while (i < messages.length && messages[i].role === 'assistant') {
-									responses.push(messages[i]);
+									// Only add non-empty assistant messages
+									if (messages[i].content) {
+										responses.push(messages[i]);
+									}
 									i++;
 								}
 								
 								groups.push(
-									<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm max-w-4xl mx-auto w-full px-4">
+									<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm max-w-[50rem] mx-auto w-full px-4">
 										<PreviewMessage
 											key={message.id}
 											chatId={id}
@@ -195,7 +198,7 @@ export function Chat({
 							className="shrink-0 min-w-[24px] min-h-[24px]"
 						/>
 					</div>
-					<form className="flex mx-auto px-4 pb-3 md:pb-2 gap-2 w-full md:max-w-3xl">
+					<form className="flex mx-auto px-4 pb-3 md:pb-2 gap-2 w-full max-w-[56rem]">
 						<MultimodalInput
 							chatId={id}
 							input={input}
