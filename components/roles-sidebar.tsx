@@ -41,12 +41,11 @@ export function RolesSidebar({ roles, selectedRole, onRoleSelect, isCollapsed, s
   };
 
   return (
-    <div 
-      className={cn(
-        "fixed right-4 top-16 flex flex-col border-l border-gray-200 dark:border-gray-800 transition-all duration-300 h-[calc(100dvh-4rem)] bg-background/50 backdrop-blur-sm",
-        isCollapsed ? "w-12" : "w-64"
-      )}
-    >
+    <div className={cn(
+      "absolute right-0 top-0 flex flex-col border-l border-gray-200 dark:border-gray-800 h-[calc(100dvh-4rem)] bg-background/50 backdrop-blur-sm transition-all duration-300 mr-4",
+      isCollapsed ? "w-12" : "w-64"
+    )}>
+      <div className="h-16" /> {/* Spacer for header */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 self-start rounded-lg m-2"
