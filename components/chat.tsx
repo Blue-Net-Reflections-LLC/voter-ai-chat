@@ -168,7 +168,7 @@ export function Chat({
 											isLoading={isLoading}
 											streaming={streaming}
 										/>
-										{responses.map(response => (
+										{responses.map((response, responseIndex) => (
 											<PreviewMessage
 												key={response.id}
 												chatId={id}
@@ -178,6 +178,7 @@ export function Chat({
 												vote={votes?.find((v) => v.messageId === response.id)}
 												isLoading={isLoading}
 												streaming={streaming}
+												isFirstAssistantMessage={responseIndex === 0}
 											/>
 										))}
 									</div>

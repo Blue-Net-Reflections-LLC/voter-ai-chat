@@ -34,6 +34,7 @@ export const PreviewMessage = ({
 	vote,
 	isLoading,
 	streaming,
+	isFirstAssistantMessage = true,
 }: {
 	chatId: string;
 	message: Message;
@@ -42,6 +43,7 @@ export const PreviewMessage = ({
 	vote: Vote | undefined;
 	isLoading: boolean;
 	streaming: boolean;
+	isFirstAssistantMessage?: boolean;
 }) => {
 
 	return (
@@ -57,11 +59,14 @@ export const PreviewMessage = ({
 					message.role === 'user' ? 'bg-red-600 text-primary-foreground px-3 w-fit ml-auto max-w-2xl py-2 rounded-xl' : 'text-base'
 				)}
 			>
-				{message.role === 'assistant' && (
+				{message.role === 'assistant' && isFirstAssistantMessage && (
 					<div className="size-8 flex items-center justify-center shrink-0 relative">
 						<span className="text-2xl" role="img" aria-label="AI Assistant">🤖</span>
 						<span className="text-lg absolute -top-4 -right-2" role="img" aria-label="Idea">💡</span>
 					</div>
+				)}
+				{message.role === 'assistant' && !isFirstAssistantMessage && (
+					<div className="size-8 shrink-0" />
 				)}
 
 				<div className="flex flex-col gap-2 w-full overflow-x-hidden">

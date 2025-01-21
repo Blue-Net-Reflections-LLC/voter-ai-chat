@@ -273,7 +273,7 @@ export function MultimodalInput({
         value={input}
         onChange={handleInput}
         className={cx(
-          'border-red min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-xl text-base dark:bg-zinc-900 ',
+          'border border-red-600 min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-xl text-base dark:bg-zinc-900 focus:ring-0 focus:border-red-600 focus-visible:ring-0',
           className,
         )}
         rows={3}
