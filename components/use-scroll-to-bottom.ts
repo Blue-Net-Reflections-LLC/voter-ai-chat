@@ -5,13 +5,23 @@ export function useScrollToBottom<T extends HTMLElement>(): [React.RefObject<T>,
   const bottomRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
 
+  // Initial mount scroll
+  useEffect(() => {
+    const container = containerRef.current;
+    const bottomElement = bottomRef.current;
+    
+    if (container && bottomElement) {
+      bottomElement.scrollIntoView({ behavior: 'auto' });
+    }
+  }, []); // Only run once on mount
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
-      // Consider user "at bottom" if they're within 100px of the bottom
+      // More lenient check for "at bottom" - within 100px
       const isAtBottom = scrollHeight - (scrollTop + clientHeight) < 100;
       shouldAutoScrollRef.current = isAtBottom;
     };
@@ -20,6 +30,7 @@ export function useScrollToBottom<T extends HTMLElement>(): [React.RefObject<T>,
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Handle new content
   useEffect(() => {
     const container = containerRef.current;
     const bottomElement = bottomRef.current;
