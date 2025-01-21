@@ -60,8 +60,9 @@ export const PreviewMessage = ({
 				)}
 			>
 				{message.role === 'assistant' && (
-					<div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border">
-						<RippleEffect isAnimating={streaming || isLoading}><Logo width={32} /></RippleEffect>
+					<div className="size-8 flex items-center justify-center shrink-0 relative">
+						<span className="text-2xl" role="img" aria-label="AI Assistant">🤖</span>
+						<span className="text-lg absolute -top-4 -right-2" role="img" aria-label="Idea">💡</span>
 					</div>
 				)}
 
