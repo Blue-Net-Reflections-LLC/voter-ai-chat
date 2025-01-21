@@ -1,6 +1,6 @@
-import NextAuth, { DefaultSession } from 'next-auth';
+import NextAuth, { type DefaultSession } from 'next-auth';
 import Google from 'next-auth/providers/google';
-import { upsertUser, getUserIdByEmail } from '@/lib/db/queries';
+import { upsertUser, getUserIdByEmail, createUserProfile, } from '@/lib/db/queries';
 
 
 // Extend the built-in session type
@@ -40,13 +40,19 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
         image: typeof profile.image === 'string' ? profile.image : null,
         emailVerified: new Date()
       });
+
+      // Get the actual user ID from the database and create profile if needed
+      const userId = await getUserIdByEmail(profile.email);
+      if (userId) {
+        await createUserProfile(userId);
+      }
       
       return true;
     },
     async session({ session, token }) {
       if (session.user?.email) {
         const existingId = await getUserIdByEmail(session.user.email);
-        session.user.id = existingId || token.sub!;
+        session.user.id = existingId || token.sub || '';
       }
       return session;
     }

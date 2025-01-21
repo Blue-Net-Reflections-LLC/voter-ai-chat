@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import useGoogleAnalytics from "@/hooks/useGoogleAnalytics";
 import TrackingLink from "@/components/ui/TrackingLink";
 import { googleAuthenticate } from '../actions';
+import { GridPattern } from '@/components/ui/grid-pattern';
+import { cn } from '@/lib/utils';
 
 const fadeInUp = {
 	initial: { opacity: 0, y: 20 },
@@ -26,7 +28,15 @@ export default function LoginPage() {
 	};
 
 	return (
-		<div className="flex min-h-screen flex-col bg-white dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900">
+		<div className="flex min-h-screen flex-col bg-background relative overflow-hidden">
+			<GridPattern
+				className={cn(
+					"[mask-image:radial-gradient(1000px_circle_at_center,white,transparent)]",
+					"opacity-20"
+				)}
+				width={40}
+				height={40}
+			/>
 			<motion.header
 				className="container mx-auto px-4 py-6 flex justify-between items-center"
 				initial={{ opacity: 0, y: -20 }}
@@ -53,7 +63,7 @@ export default function LoginPage() {
 						animate="animate"
 						variants={fadeInUp}
 					>
-						<Card className="bg-white dark:bg-gray-800/50 shadow-lg">
+						<Card className="bg-background shadow-lg">
 							<CardHeader>
 								<h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 text-center">Sign In</h1>
 								<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
@@ -63,7 +73,7 @@ export default function LoginPage() {
 							<CardContent className="space-y-4">
 								<Button 
 									onClick={handleGoogleSignIn} 
-									className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600"
+									className="w-full flex items-center justify-center gap-2 bg-background hover:bg-muted text-foreground border border-border"
 								>
 									<Image 
 										src="/images/google.svg" 
