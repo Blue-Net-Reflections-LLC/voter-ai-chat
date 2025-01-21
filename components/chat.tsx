@@ -144,7 +144,7 @@ export function Chat({
 				</div>
 				<div ref={messagesContainerRef} className="flex flex-1 min-w-0 overflow-y-auto pt-16">
 					<div className={cn(
-						"flex flex-col flex-1 min-w-0",
+						"flex flex-col flex-1 min-w-0 transition-all duration-300",
 						!isCollapsed && "pr-64"
 					)}>
 						<div className="flex flex-col min-w-0 gap-16 flex-1 pb-36">
@@ -207,7 +207,7 @@ export function Chat({
 						</div>
 						<div className="absolute bottom-0 left-0 right-0 z-10">
 							<div className={cn(
-								"relative mx-auto w-full",
+								"relative mx-auto w-full transition-all duration-300",
 								!isCollapsed && "pr-64"
 							)}>
 								<div className="w-full max-w-[50rem] mx-auto">
