@@ -21,11 +21,11 @@ type RolesSidebarProps = {
   roles: Role[];
   selectedRole?: Role;
   onRoleSelect: (role: Role) => void;
+  isCollapsed: boolean;
+  setIsCollapsed: (collapsed: boolean) => void;
 };
 
-export function RolesSidebar({ roles, selectedRole, onRoleSelect }: RolesSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
+export function RolesSidebar({ roles, selectedRole, onRoleSelect, isCollapsed, setIsCollapsed }: RolesSidebarProps) {
   const handleRoleSelect = (role: Role) => {
     const prevRole = selectedRole;
     onRoleSelect(role);
@@ -43,7 +43,7 @@ export function RolesSidebar({ roles, selectedRole, onRoleSelect }: RolesSidebar
   return (
     <div 
       className={cn(
-        "sticky top-0 flex flex-col border-l border-gray-200 dark:border-gray-800 transition-all duration-300 h-dvh bg-background/50 backdrop-blur-sm",
+        "fixed right-4 top-16 flex flex-col border-l border-gray-200 dark:border-gray-800 transition-all duration-300 h-[calc(100dvh-4rem)] bg-background/50 backdrop-blur-sm",
         isCollapsed ? "w-12" : "w-64"
       )}
     >

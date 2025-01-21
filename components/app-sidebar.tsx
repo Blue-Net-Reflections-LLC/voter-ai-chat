@@ -19,13 +19,14 @@ import {
 } from '@/components/ui/sidebar';
 import { BetterTooltip } from '@/components/ui/tooltip';
 import Link from 'next/link';
+import { SidebarToggle } from '@/components/sidebar-toggle';
 
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
 
   return (
-    <Sidebar className="group-data-[side=left]:border-r-0">
+    <Sidebar className="group-data-[side=left]:border-r-0 fixed left-0 top-16 h-[calc(100dvh-4rem)]">
       <SidebarHeader>
         <SidebarMenu>
           <div className="flex flex-row justify-between items-center">
@@ -37,23 +38,26 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               className="flex flex-row gap-3 items-center"
             >
               <span className="text-lg font-semibold px-2 hover:bg-muted rounded-md cursor-pointer">
-								<img src="/images/original-logo.svg" alt="Voter AI Logo" className="w-[70%]" />
+                New Chat
               </span>
             </Link>
-            <BetterTooltip content="New Chat" align="start">
-              <Button
-                variant="ghost"
-                type="button"
-                className="p-2 h-fit"
-                onClick={() => {
-                  setOpenMobile(false);
-                  router.push('/');
-                  router.refresh();
-                }}
-              >
-                <PlusIcon />
-              </Button>
-            </BetterTooltip>
+            <div className="flex items-center">
+              <SidebarToggle />
+              <BetterTooltip content="New Chat" align="start">
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="p-2 h-fit"
+                  onClick={() => {
+                    setOpenMobile(false);
+                    router.push('/');
+                    router.refresh();
+                  }}
+                >
+                  <PlusIcon />
+                </Button>
+              </BetterTooltip>
+            </div>
           </div>
         </SidebarMenu>
       </SidebarHeader>
