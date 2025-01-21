@@ -65,9 +65,6 @@ export const PreviewMessage = ({
 						<span className="text-lg absolute -top-4 -right-2" role="img" aria-label="Idea">💡</span>
 					</div>
 				)}
-				{message.role === 'assistant' && !isFirstAssistantMessage && (
-					<div className="size-8 shrink-0" />
-				)}
 
 				<div className="flex flex-col gap-2 w-full overflow-x-hidden">
 					{message.content && (

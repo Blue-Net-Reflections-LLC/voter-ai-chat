@@ -43,7 +43,7 @@ export function RolesSidebar({ roles, selectedRole, onRoleSelect }: RolesSidebar
   return (
     <div 
       className={cn(
-        "flex flex-col border-l border-gray-200 dark:border-gray-800 transition-all duration-300",
+        "sticky top-0 flex flex-col border-l border-gray-200 dark:border-gray-800 transition-all duration-300 h-dvh bg-background/50 backdrop-blur-sm",
         isCollapsed ? "w-12" : "w-64"
       )}
     >
