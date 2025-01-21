@@ -1,6 +1,4 @@
 'use client';
-import { useRouter } from 'next/navigation';
-import { useWindowSize } from 'usehooks-ts';
 import { ThemeToggle } from "@/components/theme-toggle";
 import Link from 'next/link';
 

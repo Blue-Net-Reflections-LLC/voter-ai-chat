@@ -1,6 +1,4 @@
 'use client';
-
-import { useState } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -50,6 +48,7 @@ export function RolesSidebar({ roles, selectedRole, onRoleSelect, isCollapsed, s
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 self-start rounded-lg m-2"
         aria-label={isCollapsed ? "Expand roles sidebar" : "Collapse roles sidebar"}
+        type="button"
       >
         {isCollapsed ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
       </button>
@@ -68,6 +67,7 @@ export function RolesSidebar({ roles, selectedRole, onRoleSelect, isCollapsed, s
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={() => handleRoleSelect(role)}
                     className={cn(
                       "w-full flex items-center gap-2 px-4 py-2 rounded-lg text-left",
