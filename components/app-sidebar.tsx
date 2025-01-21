@@ -80,11 +80,17 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       </Sidebar>
       <div
         onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            setOpen(!open);
+          }
+        }}
         className={cn(
-          "fixed left-64 top-[72px] p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-300 z-40 cursor-pointer",
-          !open && "left-0"
+          "fixed top-[72px] p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-300 z-40 cursor-pointer",
+          open ? "left-64" : "left-0"
         )}
         role="button"
+        tabIndex={0}
         aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
       >
         <SidebarToggle />
