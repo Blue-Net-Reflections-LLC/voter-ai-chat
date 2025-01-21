@@ -43,6 +43,7 @@ export function Chat({
 	const {mutate} = useSWRConfig();
 	const [streaming, setStreaming] = useState(false);
 	const [selectedRole, setSelectedRole] = useState<Role>();
+	const [isCollapsed, setIsCollapsed] = useState(false);
 
 	const {
 		messages,
@@ -134,11 +135,17 @@ export function Chat({
 
 	return (
 		<>
-			<div className="flex min-w-0 h-dvh bg-muted/30 overflow-hidden">
-				<div ref={messagesContainerRef} className="flex flex-1 min-w-0 overflow-y-auto">
-					<div className="flex flex-col flex-1 min-w-0">
+			<div className="flex min-w-0 h-dvh bg-muted/30">
+				<div className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
+					<div className="mx-auto w-full max-w-[90rem]">
 						<ChatHeader selectedModelId={selectedModelId}/>
-						<div className="flex flex-col min-w-0 gap-16 flex-1 pt-4">
+					</div>
+				</div>
+				<div ref={messagesContainerRef} className="flex flex-1 min-w-0 overflow-y-auto pt-16" style={{ 
+					paddingRight: selectedRole ? (isCollapsed ? '3rem' : '16rem') : 0 
+				}}>
+					<div className="flex flex-col flex-1 min-w-0">
+						<div className="flex flex-col min-w-0 gap-16 flex-1 pb-36">
 							{messages.length === 0 && <Overview/>}
 							{messages.reduce((groups: JSX.Element[], message, index) => {
 								if (message.role === 'user') {
@@ -154,7 +161,7 @@ export function Chat({
 									}
 									
 									groups.push(
-										<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm max-w-[50rem] mx-auto w-full px-4">
+										<div key={message.id} className="bg-card/50 rounded-xl p-6 shadow-sm w-full max-w-[50rem] mx-auto px-4">
 											<PreviewMessage
 												key={message.id}
 												chatId={id}
@@ -196,32 +203,38 @@ export function Chat({
 								className="shrink-0 min-w-[24px] min-h-[24px]"
 							/>
 						</div>
-						<form className="flex mx-auto px-4 pb-3 md:pb-2 gap-2 w-full max-w-[56rem]">
-							<MultimodalInput
-								chatId={id}
-								input={input}
-								setInput={setInput}
-								handleSubmit={handleSubmit}
-								isLoading={isLoading}
-								stop={stop}
-								attachments={attachments}
-								setAttachments={setAttachments}
-								messages={messages}
-								setMessages={setMessages}
-								append={append}
-							/>
-						</form>
-						<div className="pb-1.5 text-center text-sm">Developed by{' '}
-							<TrackingLink
-								category="chat"
-								action="developer-click"
-								className="text-blue-500 underline hover:text-blue-700"   href="mailto:horace.reid@bluenetreflections.com">Horace Reid III</TrackingLink> @ 2024</div>
+						<div className="fixed bottom-0 left-0 right-0 z-10">
+							<div className="mx-auto w-full max-w-[50rem]">
+								<form className="flex mx-auto px-4 pb-3 md:pb-2 gap-2 w-full">
+									<MultimodalInput
+										chatId={id}
+										input={input}
+										setInput={setInput}
+										handleSubmit={handleSubmit}
+										isLoading={isLoading}
+										stop={stop}
+										attachments={attachments}
+										setAttachments={setAttachments}
+										messages={messages}
+										setMessages={setMessages}
+										append={append}
+									/>
+								</form>
+								<div className="pb-1.5 text-center text-sm">Developed by{' '}
+									<TrackingLink
+										category="chat"
+										action="developer-click"
+										className="text-blue-500 underline hover:text-blue-700" href="mailto:horace.reid@bluenetreflections.com">Horace Reid III</TrackingLink> @ 2024</div>
+							</div>
+						</div>
 					</div>
 					
 					<RolesSidebar
 						roles={AVAILABLE_ROLES}
 						selectedRole={selectedRole}
 						onRoleSelect={handleRoleSelect}
+						isCollapsed={isCollapsed}
+						setIsCollapsed={setIsCollapsed}
 					/>
 				</div>
 			</div>
