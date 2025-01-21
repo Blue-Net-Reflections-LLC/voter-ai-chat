@@ -1,71 +1,33 @@
-import { useEffect, useRef, type RefObject } from 'react';
-import throttle from 'lodash.throttle';
+import { useEffect, useRef } from 'react';
 
-export function useScrollToBottom<T extends HTMLElement>(): [
-  RefObject<T>,
-  RefObject<T>,
-] {
+export function useScrollToBottom<T extends HTMLElement>(): [React.RefObject<T>, React.RefObject<HTMLDivElement>] {
   const containerRef = useRef<T>(null);
-  const endRef = useRef<T>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
 
-	useEffect(() => {
-		const container = containerRef.current;
-		const end = endRef.current;
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-		if (container && end) {
-			const observerCallback = (mutationRecords: MutationRecord[]) => {
-				// Function to check if any parent has the "DO-NOT-JUMP-DOWN" class
-				const hasDoNotJumpDownParent = (node: Node): boolean => {
-					let currentNode: HTMLElement | null = node as HTMLElement;
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // Consider user "at bottom" if they're within 100px of the bottom
+      const isAtBottom = scrollHeight - (scrollTop + clientHeight) < 100;
+      shouldAutoScrollRef.current = isAtBottom;
+    };
 
-					while (currentNode) {
-						if (currentNode.classList?.contains("DO-NOT-JUMP-DOWN")) {
-							return true;
-						}
-						currentNode = currentNode.parentElement;
-					}
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
 
-					return false;
-				};
+  useEffect(() => {
+    const container = containerRef.current;
+    const bottomElement = bottomRef.current;
 
-				// Check each mutation record for affected nodes
-				for (const record of mutationRecords) {
-					// Check added nodes
-					for (const node of record.addedNodes) {
-						if (!hasDoNotJumpDownParent(node)) {
-							end.scrollIntoView({ behavior: 'instant', block: 'end' });
-							return; // Scroll only once
-						}
-					}
+    if (container && bottomElement && shouldAutoScrollRef.current) {
+      bottomElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
 
-					// Check target element (if mutation affected attributes)
-					if (
-						record.target &&
-						!hasDoNotJumpDownParent(record.target)
-					) {
-						end.scrollIntoView({ behavior: 'instant', block: 'end' });
-						return; // Scroll only once
-					}
-				}
-			};
-
-			// Wrap observer callback with lodash throttle (5ms)
-			const throttledCallback = throttle(observerCallback, 5);
-
-			const observer = new MutationObserver(throttledCallback);
-
-			observer.observe(container, {
-				childList: true,
-				subtree: true,
-				attributes: true,
-				characterData: true,
-			});
-
-			return () => {
-				observer.disconnect();
-				throttledCallback.cancel(); // Cleanup throttle
-			};
-		}
-	}, []);
-  return [containerRef, endRef];
+  return [containerRef, bottomRef];
 }

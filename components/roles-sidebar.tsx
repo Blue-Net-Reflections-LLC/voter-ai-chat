@@ -21,11 +21,11 @@ type RolesSidebarProps = {
   roles: Role[];
   selectedRole?: Role;
   onRoleSelect: (role: Role) => void;
+  isCollapsed: boolean;
+  setIsCollapsed: (collapsed: boolean) => void;
 };
 
-export function RolesSidebar({ roles, selectedRole, onRoleSelect }: RolesSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
+export function RolesSidebar({ roles, selectedRole, onRoleSelect, isCollapsed, setIsCollapsed }: RolesSidebarProps) {
   const handleRoleSelect = (role: Role) => {
     const prevRole = selectedRole;
     onRoleSelect(role);
@@ -41,12 +41,11 @@ export function RolesSidebar({ roles, selectedRole, onRoleSelect }: RolesSidebar
   };
 
   return (
-    <div 
-      className={cn(
-        "flex flex-col border-l border-gray-200 dark:border-gray-800 transition-all duration-300",
-        isCollapsed ? "w-12" : "w-64"
-      )}
-    >
+    <div className={cn(
+      "absolute right-0 top-0 flex flex-col border-l border-gray-200 dark:border-gray-800 h-screen bg-background/50 backdrop-blur-sm transition-all duration-300 mr-4",
+      isCollapsed ? "w-12" : "w-64"
+    )}>
+      <div className="h-16" /> {/* Spacer for header */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 self-start rounded-lg m-2"
