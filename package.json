@@ -22,7 +22,8 @@
     "voterdata:create-embeddings": "cross-env NODE_OPTIONS=\"--max-old-space-size=12288\" tsx lib/voter/batch/create-embeddings.ts",
     "bills:import": "cross-env NODE_OPTIONS=\"--max-old-space-size=12288\" tsx lib/bills/index.ts",
     "bills:debug": "cross-env NODE_OPTIONS=\"--max-old-space-size=12288\" tsx --inspect-brk lib/bills/index.ts",
-    "gavoterhistory:import": "cross-env NODE_OPTIONS=\"--max-old-space-size=12288\" tsx lib/ga-voter-history/import/parse-history-csv.ts"
+    "gavoterhistory:import": "cross-env NODE_OPTIONS=\" --max-old-space-size=12288\" tsx lib/ga-voter-history/import/parse-history-csv.ts",
+    "gareg:import": "cross-env NODE_OPTIONS=\" --max-old-space-size=12288\" tsx lib/ga-voter-registration/import/parse-registration-csv.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.5",
