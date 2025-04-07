@@ -71,11 +71,17 @@ Please put the migration script into `lib\ga-voter-registration\migrations` fold
 *   **Unique Constraint:** Apply a unique constraint to the `voter_registration_number` column.
 *   **Timestamps:** Include `created_at` and `updated_at` columns (`TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`). Implement a trigger to automatically update `updated_at` on row modification.
 *   **Columns:** Define columns based on the CSV header.
-    *   **County:** Store both the original `county` name (from CSV) and a derived `county_code` (3-digit FIPS code). Use the mapping from `lib/voter/query/voter-lookup-values/county_code.ts` for the lookup, storing the FIPS code in `county_code`.
+    *   **County:** Store both the original `county` name (from CSV) and a derived `county_code` (3-digit FIPS code). Use the mapping from `lib/voter/query/voter-lookup-values/county_code.ts` for the lookup, storing the FIPS code in `county_code`. (Note: Prepend '13' to `county_code` for full Census County GEOID).
     *   **Dates:** Store columns like `registration_date`, `last_modified_date`, `date_of_last_contact`, `last_vote_date`, and `voter_created_date` as `DATE` type. Parse incoming MM/DD/YYYY strings.
     *   **Zip Codes:** Store `residence_zipcode` and `mailing_zipcode` as `VARCHAR(5)`. Incoming zip codes (including ZIP+4) should be normalized to the first 5 digits during ETL.
-    *   **Other Varchars:** Use `VARCHAR` for text fields (names, addresses, statuses, precincts, districts, etc.). Since specific lengths are not provided by the source, use `VARCHAR` without explicit length limits where appropriate, or make reasonable estimates if necessary for database constraints.
-    *   Column names should follow snake_case convention (e.g., `voter_registration_number`, `last_name`, `residence_street_number`).
+    *   **Districts (Normalized):**
+        *   `congressional_district`: Store as `VARCHAR(4)` (State FIPS '13' + 2-digit padded number). Matches Census GEOID.
+        *   `state_senate_district`: Store as `VARCHAR(5)` (State FIPS '13' + 3-digit padded number). Matches Census GEOID (SLDU).
+        *   `state_house_district`: Store as `VARCHAR(5)` (State FIPS '13' + 3-digit padded number). Matches Census GEOID (SLDL).
+        *   `county_commission_district`: Store as `VARCHAR(3)` (3-digit padded number). Local identifier.
+        *   `school_board_district`: Store as `VARCHAR(3)` (3-digit padded number). Local identifier (does not directly match Census School District GEOID without crosswalk).
+        *   Other districts (`judicial_district`, `city_council_district`, etc.): Store as `VARCHAR` based on source data (no normalization applied).
+    *   **Other Varchars:** Use `VARCHAR` for text fields (names, addresses, statuses, precincts, non-normalized districts, etc.). Column names should follow snake_case convention.
 
 **Indexes:**
 
@@ -92,10 +98,18 @@ We must support both insert and update for voter reg list data based on a regist
 *   **Upserts:** Use an "upsert" mechanism (insert or update on conflict) based on the unique `voter_registration_number`.
 *   **Batching:** Process and upsert data in batches of **500 rows** to improve performance.
 *   **Data Transformation:**
-    *   **County Code Lookup:** Derive `county_code` from the `County` column using the map in `lib/voter/query/voter-lookup-values/county_code.ts`, handling potential mismatches (e.g., spacing, case) as done in the voter history import.
-    *   **Zip Code Normalization:** Truncate or parse `Residence Zipcode` and `Mailing Zipcode` values to store only the first 5 digits.
-    *   **Date Parsing:** Parse date strings (MM/DD/YYYY) into `DATE` format.
-*   **Error Handling:** If a row has missing essential data (like `Voter Registration Number`) or cannot be processed due to invalid formats (like unparseable dates or zip codes), skip the row and log a warning indicating the row data and the reason for skipping. Continue processing the rest of the file.
+    *   **County Code Lookup:** Derive `county_code` (3-digit FIPS) from the `County` column.
+    *   **District Normalization:** Apply padding and FIPS prepending as follows:
+        *   Congressional: Pad number to 2 digits, prepend '13'.
+        *   State Senate: Pad number to 3 digits, prepend '13'.
+        *   State House: Pad number to 3 digits, prepend '13'.
+        *   County Commission: Pad number to 3 digits.
+        *   School Board: Pad number to 3 digits.
+        *   Treat non-numeric district inputs as `NULL` during normalization.
+    *   **Zip Code Normalization:** Truncate or parse `Residence Zipcode` and `Mailing Zipcode` values to store only the first 5 digits. Treat invalid/empty results as `NULL`.
+    *   **Date Parsing:** Parse date strings (MM/DD/YYYY) into `DATE` format. Treat invalid/empty results as `NULL`.
+    *   **Null Handling:** Convert empty strings from the CSV to `NULL` for other non-transformed fields.
+*   **Error Handling:** If a row has missing essential data (like `Voter Registration Number`, `County`) or cannot be processed due to invalid formats resulting in `NULL` for required derived codes (like `county_code`), skip the row and log a warning indicating the row data and the reason for skipping. Continue processing the rest of the file.
 *   **Script Execution:** The script should be runnable via `pnpm` similar to other import scripts defined in `package.json`.
 
 As the system starts to get exposure, we most likely will need to import new districts / counties, or even a state level import

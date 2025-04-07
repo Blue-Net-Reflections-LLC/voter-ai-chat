@@ -36,14 +36,14 @@ CREATE TABLE IF NOT EXISTS GA_VOTER_REGISTRATION_LIST (
     county_precinct_description VARCHAR,             -- Description of the county precinct.
     municipal_precinct VARCHAR,                      -- Municipal election precinct code, if applicable.
     municipal_precinct_description VARCHAR,          -- Description of the municipal precinct.
-    congressional_district VARCHAR,                  -- US Congressional District number.
-    state_senate_district VARCHAR,                   -- State Senate District number.
-    state_house_district VARCHAR,                    -- State House District number.
-    judicial_district VARCHAR,                       -- Judicial District name or number.
-    county_commission_district VARCHAR,              -- County Commission District number.
-    school_board_district VARCHAR,                   -- School Board District number.
-    city_council_district VARCHAR,                   -- City Council District number, if applicable.
-    municipal_school_board_district VARCHAR,         -- Municipal School Board District, if applicable.
+    congressional_district VARCHAR(4),               -- Normalized US Congressional District number (State FIPS + 2-digit CD).
+    state_senate_district VARCHAR(5),                -- Normalized State Senate District number (State FIPS + 3-digit SLDU).
+    state_house_district VARCHAR(5),                 -- Normalized State House District number (State FIPS + 3-digit SLDL).
+    judicial_district VARCHAR,                       -- Judicial District name or number (not normalized).
+    county_commission_district VARCHAR(3),           -- Normalized County Commission District number (3-digit padded).
+    school_board_district VARCHAR(3),                -- Normalized School Board District number (3-digit padded, local identifier).
+    city_council_district VARCHAR,                   -- City Council District number, if applicable (not normalized).
+    municipal_school_board_district VARCHAR,         -- Municipal School Board District, if applicable (not normalized).
     water_board_district VARCHAR,                    -- Water Board District, if applicable.
     super_council_district VARCHAR,                  -- Super Council District, if applicable.
     super_commissioner_district VARCHAR,             -- Super Commissioner District, if applicable.
@@ -100,14 +100,14 @@ COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.county_precinct IS 'County election
 COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.county_precinct_description IS 'Text description of the county precinct.';
 COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.municipal_precinct IS 'Municipal election precinct code, if the voter resides within a municipality.';
 COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.municipal_precinct_description IS 'Text description of the municipal precinct.';
-COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.congressional_district IS 'US Congressional District number assigned to the voter.';
-COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.state_senate_district IS 'State Senate District number assigned to the voter.';
-COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.state_house_district IS 'State House District number assigned to the voter.';
-COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.judicial_district IS 'Judicial District name or number assigned to the voter.';
-COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.county_commission_district IS 'County Commission District number assigned to the voter.';
-COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.school_board_district IS 'School Board District number assigned to the voter.';
-COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.city_council_district IS 'City Council District number, if applicable.';
-COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.municipal_school_board_district IS 'Municipal School Board District, if applicable.';
+COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.congressional_district IS 'Normalized US Congressional District GEOID (State FIPS + 2-digit CD).';
+COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.state_senate_district IS 'Normalized State Senate District GEOID (State FIPS + 3-digit SLDU).';
+COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.state_house_district IS 'Normalized State House District GEOID (State FIPS + 3-digit SLDL).';
+COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.judicial_district IS 'Judicial District name or number assigned to the voter (not normalized).';
+COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.county_commission_district IS 'Normalized County Commission District number (3-digit padded).';
+COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.school_board_district IS 'Normalized School Board District number (3-digit padded, local identifier).';
+COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.city_council_district IS 'City Council District number, if applicable (not normalized).';
+COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.municipal_school_board_district IS 'Municipal School Board District, if applicable (not normalized).';
 COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.water_board_district IS 'Water Board District, if applicable.';
 COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.super_council_district IS 'Super Council District, if applicable.';
 COMMENT ON COLUMN GA_VOTER_REGISTRATION_LIST.super_commissioner_district IS 'Super Commissioner District, if applicable.';
