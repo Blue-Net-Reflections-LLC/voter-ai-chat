@@ -25,8 +25,7 @@ export default async function Page(props: { params: { state: string } }) {
       id={id}
       initialMessages={[]}
       selectedModelId={selectedModelId}
-      // TODO: Pass the state down to the Chat component if needed for context/prompting
-      // initialState={state} // Example 
+      state={state}
     />
   );
 } 

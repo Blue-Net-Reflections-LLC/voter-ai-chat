@@ -11,7 +11,7 @@ import { getAnthropicModel } from "@/chat-models/anthropic";
 import { fetchStaticChartTool } from "@/lib/tools/fetchStaticChartTool";
 import fs from 'fs/promises'; // Import fs/promises
 import path from 'path'; // Import path
-import { NextResponse } from 'next/server'; // Import NextResponse
+import { NextRequest, NextResponse } from 'next/server'; // Import NextRequest/Response
 
 export const maxDuration = 60; // This function can run for a maximum of 30 seconds
 
@@ -63,15 +63,21 @@ const attachCacheControl = (userMessage: CoreUserMessage) => {
 
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Extract state from query parameters
+    const { searchParams } = request.nextUrl;
+    const state = searchParams.get('state');
+    console.log(`[API Chat POST] State from query param: ${state}, type: ${typeof state}`);
+
+    // Read body for other data (messages, id, modelId)
     const {
       id,
       messages: originMessages,
       modelId,
-      state, // <-- Receive state from the body
-    }: { id: string; messages: Array<Message>; modelId: string; state?: string } = // Make state optional for type safety
-      await request.json();
+      // state is now from query params, not body
+    }: { id: string; messages: Array<Message>; modelId: string } = await request.json();
+    console.log(`[API Chat POST] Body contents: id=${id}, modelId=${modelId}, messages=${originMessages.length}`);
 
     const session = await auth();
 
@@ -79,9 +85,10 @@ export async function POST(request: Request) {
       return new Response('Unauthorized', {status: 401});
     }
     
-    // Validate state received from frontend (redundant with middleware but safer)
+    // Validate state (now from query param)
     if (!state || typeof state !== 'string' || !/^[a-zA-Z]{2}$/.test(state)) {
-        return NextResponse.json({ error: 'Invalid state provided in request body.' }, { status: 400 });
+        console.error(`[API Chat POST] Invalid state detected: '${state}'`);
+        return NextResponse.json({ error: 'Invalid state provided in request query.' }, { status: 400 });
     }
 
     const model = models.find((model) => model.id === modelId);

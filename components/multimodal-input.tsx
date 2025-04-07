@@ -55,6 +55,7 @@ export function MultimodalInput({
   append,
   handleSubmit,
   className,
+  state,
 }: {
   chatId: string;
   input: string;
@@ -76,6 +77,7 @@ export function MultimodalInput({
     chatRequestOptions?: ChatRequestOptions,
   ) => void;
   className?: string;
+  state: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -109,7 +111,7 @@ export function MultimodalInput({
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
-    window.history.replaceState({}, '', `/chat/${chatId}`);
+    window.history.replaceState({}, '', `/${state}/chat/${chatId}`);
 
     handleSubmit(undefined, {
       experimental_attachments: attachments,
@@ -128,6 +130,7 @@ export function MultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
+    state,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -202,7 +205,7 @@ export function MultimodalInput({
                   variant="ghost"
                   onClick={async () => {
 										trackEvent("chat", "click-suggestion", suggestedAction.action);
-                    window.history.replaceState({}, '', `/chat/${chatId}`);
+                    window.history.replaceState({}, '', `/${state}/chat/${chatId}`);
 
                     append({
                       role: 'user',

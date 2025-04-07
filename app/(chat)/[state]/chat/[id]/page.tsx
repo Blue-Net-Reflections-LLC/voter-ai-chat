@@ -19,7 +19,17 @@ export default async function Page(props: ChatPageProps) {
   const id = props.params.id;     // <-- Access directly
   const state = props.params.state; // <-- Access directly
 
-  // TODO: Validate the state param (e.g., check if it's a supported state)
+  // --- Add Guard Clause --- 
+  // Check if state is valid before proceeding
+  if (!state || typeof state !== 'string' || !/^[a-zA-Z]{2}$/.test(state)) {
+      console.error(`Invalid state param received in chat [id] page: ${state}`);
+      // Return null or a loading/error component
+      // You could potentially redirect to /chat here as well if state is totally invalid
+      // return redirect('/chat');
+      return <div>Loading state data...</div>; 
+  }
+  // --- End Guard Clause ---
+
   console.log(`Rendering chat ${id} for state: ${state}`);
 
   // Verify that the specified id is a UUID
@@ -66,8 +76,7 @@ export default async function Page(props: ChatPageProps) {
       id={chat.id}
       initialMessages={convertToUIMessages(messagesFromDb)}
       selectedModelId={selectedModelId}
-      // TODO: Pass the state down to the Chat component if needed
-      // initialState={state} // Example
+      state={state}
     />
   );
 } 

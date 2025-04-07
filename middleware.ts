@@ -8,6 +8,7 @@ export const config = {
   matcher: [
     '/', 
     '/([a-zA-Z]{2})/chat/:path*',
+    '/chat/:path*',
     '/login', 
     '/register', 
     '/onboarding', 

@@ -41,14 +41,14 @@ export function Chat({
 	id,
 	initialMessages,
 	selectedModelId,
+	state,
 }: {
 	id: string;
 	initialMessages: Array<Message>;
 	selectedModelId: string;
+	state: string;
 }) {
 	const {mutate} = useSWRConfig();
-	const params = useParams();
-	const state = params?.state as string | undefined;
 	const [streaming, setStreaming] = useState(false);
 	const [selectedRole, setSelectedRole] = useState<Role>();
 	const [isCollapsed, setIsCollapsed] = useState(false);
@@ -65,13 +65,16 @@ export function Chat({
 		data: streamingData,
 		error,
 	} = useChat({
-		body: {id, modelId: selectedModelId, state},
+		api: `/api/chat?state=${state}`,
+		body: {id, modelId: selectedModelId},
 		initialMessages,
 		onResponse: () => {
 			setStreaming(true);
 		},
 		onFinish: () => {
-			mutate('/api/history');
+			// Mutate using the state-aware key
+			const historyApiKey = state ? `/api/history?state=${state}` : '/api/history'; // Construct key
+			mutate(historyApiKey); 
 			setStreaming(false)
 		},
 	});
@@ -232,6 +235,7 @@ export function Chat({
 												messages={messages}
 												setMessages={setMessages}
 												append={append}
+												state={state}
 											/>
 										</form>
 										<div className="pb-1.5 text-center text-sm">Developed by{' '}
