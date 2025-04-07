@@ -9,8 +9,44 @@ import { getVoterAiChatUiToolset } from "@/lib/voter/query/voter-ui-toolset";
 import { fetchStaticMapTool } from "@/lib/tools/fetchStaticMapTool";
 import { getAnthropicModel } from "@/chat-models/anthropic";
 import { fetchStaticChartTool } from "@/lib/tools/fetchStaticChartTool";
+import fs from 'fs/promises'; // Import fs/promises
+import path from 'path'; // Import path
+import { NextResponse } from 'next/server'; // Import NextResponse
 
 export const maxDuration = 60; // This function can run for a maximum of 30 seconds
+
+// Helper function to load system prompt
+async function getSystemPrompt(state: string | undefined): Promise<string> {
+  // Default prompt if state is missing or invalid (though middleware should prevent this)
+  const defaultPrompt = "You are a helpful assistant."; 
+  
+  if (!state || typeof state !== 'string' || !/^[a-zA-Z]{2}$/.test(state)) {
+    console.warn('Invalid or missing state in getSystemPrompt, using default.');
+    return defaultPrompt;
+  }
+
+  const stateAbbr = state.toUpperCase();
+  // TODO: Check against a list of *supported* states here again for safety?
+  
+  const promptPath = path.join(process.cwd(), 'lib', 'state-prompts', stateAbbr.toLowerCase(), 'system-prompt.md');
+  
+  try {
+    const promptContent = await fs.readFile(promptPath, 'utf-8');
+    console.log(`Loaded system prompt for state: ${stateAbbr}`);
+    return promptContent;
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.error(`System prompt not found for state: ${stateAbbr} at path ${promptPath}`);
+      // Return a generic error prompt or the default, but signal an issue
+      return `Error: System configuration for state ${stateAbbr} is missing. Please contact support.`; 
+    } else {
+      console.error(`Error reading system prompt for state ${stateAbbr}:`, error);
+      // Throw an error to be caught by the main handler, resulting in 500
+      throw new Error(`Failed to load system configuration for state ${stateAbbr}.`);
+    }
+  }
+}
+
 const attachCacheControl = (userMessage: CoreUserMessage) => {
   if (typeof userMessage.content === 'string') {
     // Convert the string to an array containing a single TextPart
@@ -33,13 +69,19 @@ export async function POST(request: Request) {
       id,
       messages: originMessages,
       modelId,
-    }: { id: string; messages: Array<Message>; modelId: string } =
+      state, // <-- Receive state from the body
+    }: { id: string; messages: Array<Message>; modelId: string; state?: string } = // Make state optional for type safety
       await request.json();
 
     const session = await auth();
 
     if (!session || !session.user || !session.user.id) {
       return new Response('Unauthorized', {status: 401});
+    }
+    
+    // Validate state received from frontend (redundant with middleware but safer)
+    if (!state || typeof state !== 'string' || !/^[a-zA-Z]{2}$/.test(state)) {
+        return NextResponse.json({ error: 'Invalid state provided in request body.' }, { status: 400 });
     }
 
     const model = models.find((model) => model.id === modelId);
@@ -96,14 +138,24 @@ export async function POST(request: Request) {
       ],
     });
 
+    // --- Load State-Specific System Prompt ---
+    const systemPromptContent = await getSystemPrompt(state);
+    // Check if getSystemPrompt returned an error message prompt
+    if (systemPromptContent.startsWith('Error:')) {
+        // Return a user-facing error immediately, preventing call to Anthropic
+        // Consider a more structured error response if needed
+        return new Response(systemPromptContent, { status: 500 });
+    }
+    // -----------------------------------------
+
     return createDataStreamResponse({
       execute: async (streamingData) => {
-        const {model, systemMessage: system} = getAnthropicModel()
+        const {model /* Remove hardcoded systemMessage here */ } = getAnthropicModel()
         streamingData.writeData('initialized call');
 
         const result = streamText({
           model,
-          system,
+          system: systemPromptContent, // <-- Use loaded system prompt
           messages: coreMessages,
           maxSteps: 20,
           tools: {
@@ -155,6 +207,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Error processing request", error);
+     // Handle errors from getSystemPrompt here as well
+    if (error instanceof Error && error.message.includes('Failed to load system configuration')) {
+        return new Response(error.message, { status: 500 });
+    }
     return new Response('Oops! Something went wrong. Please try again in a few moments.', {
       status: 500,
     });

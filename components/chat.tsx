@@ -4,6 +4,7 @@ import type { Attachment, Message } from 'ai';
 import { useChat } from 'ai/react';
 import { AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import useSWR, { useSWRConfig } from 'swr';
 import { useWindowSize } from 'usehooks-ts';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,8 @@ export function Chat({
 	selectedModelId: string;
 }) {
 	const {mutate} = useSWRConfig();
+	const params = useParams();
+	const state = params?.state as string | undefined;
 	const [streaming, setStreaming] = useState(false);
 	const [selectedRole, setSelectedRole] = useState<Role>();
 	const [isCollapsed, setIsCollapsed] = useState(false);
@@ -62,7 +65,7 @@ export function Chat({
 		data: streamingData,
 		error,
 	} = useChat({
-		body: {id, modelId: selectedModelId},
+		body: {id, modelId: selectedModelId, state},
 		initialMessages,
 		onResponse: () => {
 			setStreaming(true);

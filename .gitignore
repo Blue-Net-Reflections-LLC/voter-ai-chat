@@ -47,3 +47,4 @@ yarn-error.log*
 # Ignore GA Voter History data files to remove them from source control
 lib/ga-voter-history/data/
 lib/ga-voter-history/data-processed/
+temp/
