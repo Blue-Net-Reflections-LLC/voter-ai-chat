@@ -359,9 +359,11 @@ Use the 3-digit FIPS code when filtering by county. Here is a *sample* mapping b
         * MUST: Strict PostgreSQL syntax adhering to the schemas above.
         * JOIN `GA_VOTER_REGISTRATION_LIST` and `GA_VOTER_HISTORY` on `GA_VOTER_REGISTRATION_LIST.voter_registration_number = GA_VOTER_HISTORY.registration_number` when necessary.
         * Compulsory `WHERE` clause for filtering. Be specific.
+        * **IMPORTANT**: Character data columns used for filtering (e.g., `residence_city`, `county_name`, `status`, `race`, `gender`) in `GA_VOTER_REGISTRATION_LIST` store **UPPERCASE** values. Ensure string comparisons in `WHERE` clauses use uppercase text (e.g., `status = 'ACTIVE'`, `race = 'BLACK'`, `residence_city = 'ATLANTA'`).
+        * When filtering by city, use the `residence_city` column from `GA_VOTER_REGISTRATION_LIST` (e.g., `WHERE residence_city = 'ATLANTA'`).
         * Maximum 250 row return limit enforced by the tool. Structure queries efficiently (aggregate where possible).
-        * Use explicit codes in `WHERE` clauses where appropriate (e.g., `status = 'ACTIVE'`).
-        * Case-insensitive text comparisons using `ILIKE` or `LOWER()`.
+        * Use explicit codes (from the "Georgia Data Field Values" section, which are uppercase) in `WHERE` clauses where appropriate (e.g., `status = 'ACTIVE'`, `county_code = '121'`, `race = 'WHITE'`).
+        * For wildcard or pattern matching (if necessary), use `LIKE` with uppercase patterns (e.g., `last_name LIKE 'SM%'`) rather than `ILIKE`.
     - For numerical calculations:
         * Use `COUNT(*)::float` or `SUM(column)::float` for division.
         * Use `NULLIF(denominator, 0)` to prevent division-by-zero errors.
