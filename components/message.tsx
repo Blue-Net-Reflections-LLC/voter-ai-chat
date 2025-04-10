@@ -18,7 +18,8 @@ import { PreviewAttachment } from './preview-attachment';
 import ErrorBubble from "@/components/ui/error-bubble";
 
 export const hideToolUiList = [
-	"executeSelects",
+	"executeSelectsTool",
+	"districtLookupTool",
 ];
 
 const isToolResult = (message: Message) => message?.toolInvocations?.find(v => v.state === 'result')
