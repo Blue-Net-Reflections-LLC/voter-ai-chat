@@ -9,15 +9,15 @@ import { convertToUIMessages, isUUID } from '@/lib/utils';
 
 // This page now receives state and id as parameters
 interface ChatPageProps {
-  params: {
+  params: Promise<{
     id: string;
     state: string;
-  };
+  }>;
 }
 
 export default async function Page(props: ChatPageProps) {
-  const id = props.params.id;     // <-- Access directly
-  const state = props.params.state; // <-- Access directly
+  const id = (await props.params).id;     // <-- Access directly
+  const state = (await props.params).state; // <-- Access directly
 
   // --- Add Guard Clause --- 
   // Check if state is valid before proceeding

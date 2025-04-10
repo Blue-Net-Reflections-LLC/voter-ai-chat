@@ -276,6 +276,7 @@ export function Chat({
 							setMessages={setMessages}
 							votes={votes}
 							streaming={streaming}
+							state={state}
 						/>
 					)}
 				</AnimatePresence>
