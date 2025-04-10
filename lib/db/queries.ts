@@ -376,11 +376,24 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   }
 }
 
-export async function updateUserProfile(userId: string, data: { role?: string }) {
+export async function updateUserProfile(userId: string, data: { role?: string; selectedState?: string }) {
   try {
+    // Filter out undefined values before setting
+    const updateData = Object.entries(data).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key as keyof typeof data] = value;
+      }
+      return acc;
+    }, {} as typeof data);
+
+    if (Object.keys(updateData).length === 0) {
+      console.warn('updateUserProfile called with no data to update.');
+      return; // Nothing to update
+    }
+
     await db
       .update(userProfile)
-      .set(data)
+      .set(updateData) // Use the filtered updateData object
       .where(eq(userProfile.userId, userId));
   } catch (error) {
     console.error('Failed to update user profile');

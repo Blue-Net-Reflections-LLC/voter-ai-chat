@@ -43,3 +43,8 @@ yarn-error.log*
 .vercel
 /public/uploads/
 *.tsbuildinfo
+
+# Ignore GA Voter History data files to remove them from source control
+lib/ga-voter-history/data/
+lib/ga-voter-history/data-processed/
+temp/

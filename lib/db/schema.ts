@@ -117,6 +117,7 @@ export const userProfile = pgTable('UserProfile', {
     .notNull()
     .references(() => user.id),
   role: varchar('role', { length: 32 }),
+  selectedState: varchar('selectedState', { length: 2 }),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 });

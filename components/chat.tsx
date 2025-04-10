@@ -4,6 +4,7 @@ import type { Attachment, Message } from 'ai';
 import { useChat } from 'ai/react';
 import { AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import useSWR, { useSWRConfig } from 'swr';
 import { useWindowSize } from 'usehooks-ts';
 import { cn } from '@/lib/utils';
@@ -40,10 +41,12 @@ export function Chat({
 	id,
 	initialMessages,
 	selectedModelId,
+	state,
 }: {
 	id: string;
 	initialMessages: Array<Message>;
 	selectedModelId: string;
+	state: string;
 }) {
 	const {mutate} = useSWRConfig();
 	const [streaming, setStreaming] = useState(false);
@@ -62,13 +65,16 @@ export function Chat({
 		data: streamingData,
 		error,
 	} = useChat({
+		api: `/api/chat?state=${state}`,
 		body: {id, modelId: selectedModelId},
 		initialMessages,
 		onResponse: () => {
 			setStreaming(true);
 		},
 		onFinish: () => {
-			mutate('/api/history');
+			// Mutate using the state-aware key
+			const historyApiKey = state ? `/api/history?state=${state}` : '/api/history'; // Construct key
+			mutate(historyApiKey); 
 			setStreaming(false)
 		},
 	});
@@ -229,6 +235,7 @@ export function Chat({
 												messages={messages}
 												setMessages={setMessages}
 												append={append}
+												state={state}
 											/>
 										</form>
 										<div className="pb-1.5 text-center text-sm">Developed by{' '}
@@ -269,6 +276,7 @@ export function Chat({
 							setMessages={setMessages}
 							votes={votes}
 							streaming={streaming}
+							state={state}
 						/>
 					)}
 				</AnimatePresence>
