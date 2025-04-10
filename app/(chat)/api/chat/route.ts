@@ -147,12 +147,13 @@ export async function POST(request: NextRequest) {
 
     // --- Load State-Specific System Prompt ---
     const systemPromptContent = await getSystemPrompt(state);
-    // Check if getSystemPrompt returned an error message prompt
     if (systemPromptContent.startsWith('Error:')) {
-        // Return a user-facing error immediately, preventing call to Anthropic
-        // Consider a more structured error response if needed
         return new Response(systemPromptContent, { status: 500 });
     }
+
+    // --- Inject Current Date ---
+    const currentDate = new Date().toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    const finalSystemPrompt = `Current date is ${currentDate}.\n\n${systemPromptContent}`;
     // -----------------------------------------
 
     return createDataStreamResponse({
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
 
         const result = streamText({
           model,
-          system: systemPromptContent, // <-- Use loaded system prompt
+          system: finalSystemPrompt, // <-- Use prompt with date injected
           messages: coreMessages,
           maxSteps: 20,
           tools: {

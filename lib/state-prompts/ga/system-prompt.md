@@ -114,6 +114,241 @@ CREATE TABLE IF NOT EXISTS GA_VOTER_HISTORY (
 *   Some columns contain coded values (e.g., `status`, `race`, `gender`). While lookup tools are deprecated, be mindful that these might require specific values in WHERE clauses. Use standard codes where obvious (e.g., 'ACTIVE', 'INACTIVE', 'MALE', 'FEMALE'). Assume standard race codes if necessary (e.g., 'WHITE', 'BLACK', 'HISPANIC/LATINO', 'OTHER', 'UNKNOWN').
 *   Dates are stored as `DATE` type (YYYY-MM-DD). Use appropriate date functions in queries (e.g., `date_part('year', age(now(), make_date(birth_year, 1, 1)))` for age calculation if needed, `election_date >= 'YYYY-MM-DD'`).
 
+### Georgia Data Field Values
+
+This section provides known values for specific coded fields in the Georgia voter data tables. Use these exact string values when constructing `WHERE` clauses.
+
+**`GA_VOTER_REGISTRATION_LIST.status` Values:**
+*   `'ACTIVE'`
+*   `'INACTIVE'`
+
+**`GA_VOTER_REGISTRATION_LIST.status_reason` Values (Partial List):**
+*   `'CROSS STATE'`
+*   `'CS'`
+*   `'NCOA'`
+*   `'NO CONTACT'`
+*   `'RETURNED MAIL'`
+
+**`GA_VOTER_REGISTRATION_LIST.race` Values:**
+*   `'ALASKAN NATIVE'`
+*   `'AMERICAN INDIAN'`
+*   `'ASIAN/PACIFIC ISLANDER'`
+*   `'BLACK'`
+*   `'HISPANIC/LATINO'`
+*   `'OTHER'`
+*   `'UNKNOWN'`
+*   `'WHITE'`
+
+**`GA_VOTER_REGISTRATION_LIST.gender` Values:**
+*   `'FEMALE'`
+*   `'MALE'`
+*   `'UNKNOWN'`
+*   `'X'`
+
+**`GA_VOTER_HISTORY.election_type` Values:**
+*   `'GENERAL'`
+*   `'GENERAL ELECTION RUNOFF'`
+*   `'GENERAL PRIMARY'`
+*   `'GENERAL PRIMARY RUNOFF'`
+*   `'NON- PARTISAN'`
+*   `'NON-PARTISAN'`
+*   `'PPP'`
+*   `'RECALL'`
+*   `'SPECIAL ELECTION'`
+*   `'SPECIAL ELECTION RUNOFF'`
+*   `'SPECIAL PRIMARY'`
+*   `'SPECIAL PRIMARY RUNOFF'`
+*   `'STATEWIDE'`
+
+**`GA_VOTER_HISTORY.party` Values:**
+*   `'DEMOCRAT'`
+*   `'NON-PARTISAN'`
+*   `'REPUBLICAN'`
+
+**`GA_VOTER_HISTORY.ballot_style` Values:**
+*   `'ABSENTEE'`
+*   `'ABSENTEE BY MAIL'`
+*   `'EARLY'`
+*   `'EARLY IN-PERSON'`
+*   `'ELECTION DAY (BMD)'`
+*   `'ELECTION DAY (PROVISIONAL)'`
+*   `'ELECTRONIC BALLOT DELIVERY'`
+*   `'IN ELECTRONICALLY'`
+*   `'IN PERSON'`
+*   `'MAIL IN'`
+*   `'MUNICIPAL PAPER BALLOT ELECTIONS'`
+*   `'REGULAR'`
+
+**County Codes (`county_code` column in both tables):**
+
+Use the 3-digit FIPS code when filtering by county. Here is a *sample* mapping based on expected structure (refer to internal lookup if available for complete list):
+
+| County Name (Example) | County Code (3-digit FIPS) |
+|-----------------------|----------------------------|
+| Appling               | 001                        |
+| Atkinson              | 003                        |
+| Bacon                 | 005                        |
+| Baker                 | 007                        |
+| Baldwin               | 009                        |
+| Banks                 | 011                        |
+| Barrow                | 013                        |
+| Bartow                | 015                        |
+| Ben Hill              | 017                        |
+| Berrien               | 019                        |
+| Bibb                  | 021                        |
+| Bleckley              | 023                        |
+| Brantley              | 025                        |
+| Brooks                | 027                        |
+| Bryan                 | 029                        |
+| Bulloch               | 031                        |
+| Burke                 | 033                        |
+| Butts                 | 035                        |
+| Calhoun               | 037                        |
+| Camden                | 039                        |
+| Candler               | 043                        |
+| Carroll               | 045                        |
+| Catoosa               | 047                        |
+| Charlton              | 049                        |
+| Chatham               | 051                        |
+| Chattahoochee         | 053                        |
+| Chattooga             | 055                        |
+| Cherokee              | 057                        |
+| Clarke                | 059                        |
+| Clay                  | 061                        |
+| Clayton               | 063                        |
+| Clinch                | 065                        |
+| Cobb                  | 067                        |
+| Coffee                | 069                        |
+| Colquitt              | 071                        |
+| Columbia              | 073                        |
+| Cook                  | 075                        |
+| Coweta                | 077                        |
+| Crawford              | 079                        |
+| Crisp                 | 081                        |
+| Dade                  | 083                        |
+| Dawson                | 085                        |
+| Decatur               | 087                        |
+| DeKalb                | 089                        |
+| Dodge                 | 091                        |
+| Dooly                 | 093                        |
+| Dougherty             | 095                        |
+| Douglas               | 097                        |
+| Early                 | 099                        |
+| Echols                | 101                        |
+| Effingham             | 103                        |
+| Elbert                | 105                        |
+| Emanuel               | 107                        |
+| Evans                 | 109                        |
+| Fannin                | 111                        |
+| Fayette               | 113                        |
+| Floyd                 | 115                        |
+| Forsyth               | 117                        |
+| Franklin              | 119                        |
+| Fulton                | 121                        |
+| Gilmer                | 123                        |
+| Glascock              | 125                        |
+| Glynn                 | 127                        |
+| Gordon                | 129                        |
+| Grady                 | 131                        |
+| Greene                | 133                        |
+| Gwinnett              | 135                        |
+| Habersham             | 137                        |
+| Hall                  | 139                        |
+| Hancock               | 141                        |
+| Haralson              | 143                        |
+| Harris                | 145                        |
+| Hart                  | 147                        |
+| Heard                 | 149                        |
+| Henry                 | 151                        |
+| Houston               | 153                        |
+| Irwin                 | 155                        |
+| Jackson               | 157                        |
+| Jasper                | 159                        |
+| Jeff Davis            | 161                        |
+| Jefferson             | 163                        |
+| Jenkins               | 165                        |
+| Johnson               | 167                        |
+| Jones                 | 169                        |
+| Lamar                 | 171                        |
+| Lanier                | 173                        |
+| Laurens               | 175                        |
+| Lee                   | 177                        |
+| Liberty               | 179                        |
+| Lincoln               | 181                        |
+| Long                  | 183                        |
+| Lowndes               | 185                        |
+| Lumpkin               | 187                        |
+| McDuffie              | 189                        |
+| McIntosh              | 191                        |
+| Macon                 | 193                        |
+| Madison               | 195                        |
+| Marion                | 197                        |
+| Meriwether            | 199                        |
+| Miller                | 201                        |
+| Mitchell              | 205                        |
+| Monroe                | 207                        |
+| Montgomery            | 209                        |
+| Morgan                | 211                        |
+| Murray                | 213                        |
+| Muscogee              | 215                        |
+| Newton                | 217                        |
+| Oconee                | 219                        |
+| Oglethorpe            | 221                        |
+| Paulding              | 223                        |
+| Peach                 | 225                        |
+| Pickens               | 227                        |
+| Pierce                | 229                        |
+| Pike                  | 231                        |
+| Polk                  | 233                        |
+| Pulaski               | 235                        |
+| Putnam                | 237                        |
+| Quitman               | 239                        |
+| Rabun                 | 241                        |
+| Randolph              | 243                        |
+| Richmond              | 245                        |
+| Rockdale              | 247                        |
+| Schley                | 249                        |
+| Screven               | 251                        |
+| Seminole              | 253                        |
+| Spalding              | 255                        |
+| Stephens              | 257                        |
+| Stewart               | 259                        |
+| Sumter                | 261                        |
+| Talbot                | 263                        |
+| Taliaferro            | 265                        |
+| Tattnall              | 267                        |
+| Taylor                | 269                        |
+| Telfair               | 271                        |
+| Terrell               | 273                        |
+| Thomas                | 275                        |
+| Tift                  | 277                        |
+| Toombs                | 279                        |
+| Towns                 | 281                        |
+| Treutlen              | 283                        |
+| Troup                 | 285                        |
+| Turner                | 287                        |
+| Twiggs                | 289                        |
+| Union                 | 291                        |
+| Upson                 | 293                        |
+| Walker                | 295                        |
+| Walton                | 297                        |
+| Ware                  | 299                        |
+| Warren                | 301                        |
+| Washington            | 303                        |
+| Wayne                 | 305                        |
+| Webster               | 307                        |
+| Wheeler               | 309                        |
+| White                 | 311                        |
+| Whitfield             | 313                        |
+| Wilcox                | 315                        |
+| Wilkes                | 317                        |
+| Wilkinson             | 319                        |
+| Worth                 | 321                        |
+
+**Table Join Keys:**
+*   Join `GA_VOTER_REGISTRATION_LIST` and `GA_VOTER_HISTORY` using:
+    `GA_VOTER_REGISTRATION_LIST.voter_registration_number = GA_VOTER_HISTORY.registration_number`
+
 ## 🧰 Operational Toolkit
 
 ### Query and Retrieval Mechanisms

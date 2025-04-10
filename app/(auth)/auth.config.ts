@@ -65,6 +65,11 @@ export const authConfig = {
       }
 
       // New addition: Handle state-specific routes
+      if (isStateChatRoute && !isLoggedIn) {
+        // Redirect unauthenticated users to login
+        return Response.redirect(new URL('/login', nextUrl));
+      }
+
       if (isStateChatRoute && isLoggedIn) {
         // For state routes, check if state is supported
         if (!urlState || !SUPPORTED_STATES.has(urlState)) {
