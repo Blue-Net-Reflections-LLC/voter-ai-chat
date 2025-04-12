@@ -63,6 +63,7 @@ export function Block({
 												setMessages,
 												votes,
 												streaming,
+												state,
 											}: {
 	chatId: string;
 	input: string;
@@ -76,7 +77,8 @@ export function Block({
 	messages: Array<Message>;
 	setMessages: Dispatch<SetStateAction<Array<Message>>>;
 	votes: Array<Vote> | undefined;
-	streaming: boolean,
+	streaming: boolean;
+	state: string;
 	append: (
 		message: Message | CreateMessage,
 		chatRequestOptions?: ChatRequestOptions,
@@ -233,11 +235,9 @@ export function Block({
 									setBlock={setBlock}
 									streaming={streaming}
 									isLoading={isLoading && index === messages.length - 1}
-									vote={
-										votes
-											? votes.find((vote) => vote.messageId === message.id)
-											: undefined
-									}
+									vote={votes?.find((vote) => vote.messageId === message.id)}
+									append={append}
+									setMessages={setMessages}
 								/>
 							))}
 
@@ -261,6 +261,7 @@ export function Block({
 								append={append}
 								className=""
 								setMessages={setMessages}
+								state={state}
 							/>
 						</form>
 					</div>

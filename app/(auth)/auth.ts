@@ -1,13 +1,14 @@
 import NextAuth, { type DefaultSession } from 'next-auth';
 import Google from 'next-auth/providers/google';
-import { upsertUser, getUserIdByEmail, createUserProfile, } from '@/lib/db/queries';
+import { upsertUser, getUserIdByEmail, createUserProfile, getUserProfile } from '@/lib/db/queries';
 
 
 // Extend the built-in session type
 declare module 'next-auth' {
   interface Session {
     user: {
-      id: string
+      id: string;
+      selectedState?: string | null;
     } & DefaultSession['user']
   }
 }
@@ -51,8 +52,21 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user?.email) {
-        const existingId = await getUserIdByEmail(session.user.email);
-        session.user.id = existingId || token.sub || '';
+        const userId = await getUserIdByEmail(session.user.email);
+        if (userId) {
+          session.user.id = userId;
+          // Fetch the user profile to get the selected state
+          const profile = await getUserProfile(userId);
+          session.user.selectedState = profile?.selectedState || null;
+        } else {
+          // Fallback or handle case where user ID couldn't be found after sign-in
+          session.user.id = token.sub || '';
+          session.user.selectedState = null;
+        }
+      } else {
+        // Handle case where session email is missing (should not happen with Google provider)
+        session.user.id = token.sub || '';
+        session.user.selectedState = null;
       }
       return session;
     }

@@ -4,7 +4,7 @@ import { signIn, signOut } from './auth';
 
 export async function googleAuthenticate() {
   await signIn('google', {
-    callbackUrl: '/chat',
+    callbackUrl: '/chat-google',
     redirect: true
   });
 }

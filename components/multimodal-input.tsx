@@ -55,6 +55,7 @@ export function MultimodalInput({
   append,
   handleSubmit,
   className,
+  state,
 }: {
   chatId: string;
   input: string;
@@ -76,25 +77,11 @@ export function MultimodalInput({
     chatRequestOptions?: ChatRequestOptions,
   ) => void;
   className?: string;
+  state: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
 	const { trackEvent } = useGoogleAnalytics();
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      adjustHeight();
-    }
-  }, [input]);
-
-  const adjustHeight = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-			textareaRef.current.style.maxHeight = "100px";
-			textareaRef.current.style.overflowY = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight + 2}px`;
-    }
-  };
 
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     'input',
@@ -107,7 +94,6 @@ export function MultimodalInput({
       // Prefer DOM value over localStorage to handle hydration
       const finalValue = domValue || localStorageInput || '';
       setInput(finalValue);
-      adjustHeight();
     }
     // Only run once after hydration
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,14 +105,13 @@ export function MultimodalInput({
 
   const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(event.target.value);
-    adjustHeight();
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
-    window.history.replaceState({}, '', `/chat/${chatId}`);
+    window.history.replaceState({}, '', `/${state}/chat/${chatId}`);
 
     handleSubmit(undefined, {
       experimental_attachments: attachments,
@@ -145,6 +130,7 @@ export function MultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
+    state,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -219,7 +205,7 @@ export function MultimodalInput({
                   variant="ghost"
                   onClick={async () => {
 										trackEvent("chat", "click-suggestion", suggestedAction.action);
-                    window.history.replaceState({}, '', `/chat/${chatId}`);
+                    window.history.replaceState({}, '', `/${state}/chat/${chatId}`);
 
                     append({
                       role: 'user',

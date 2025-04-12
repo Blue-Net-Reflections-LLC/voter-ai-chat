@@ -51,15 +51,17 @@ const ChatItem = ({
   isActive,
   onDelete,
   setOpenMobile,
+  state,
 }: {
   chat: Chat;
   isActive: boolean;
   onDelete: (chatId: string) => void;
   setOpenMobile: (open: boolean) => void;
+  state: string | undefined;
 }) => (
   <SidebarMenuItem>
     <SidebarMenuButton asChild isActive={isActive}>
-      <TrackingLink category="chat"  action={`sidebar-open-${chat.id}`} href={`/chat/${chat.id}`} onClick={() => setOpenMobile(false)}>
+      <TrackingLink category="chat" action={`sidebar-open-${chat.id}`} href={`/${state}/chat/${chat.id}`} onClick={() => setOpenMobile(false)}>
         <span>{chat.title}</span>
       </TrackingLink>
     </SidebarMenuButton>
@@ -88,19 +90,26 @@ const ChatItem = ({
 
 export function SidebarHistory({ user }: { user: User | undefined }) {
   const { setOpenMobile } = useSidebar();
-  const { id } = useParams();
+  const params = useParams();
+  const state = params?.state as string | undefined;
+  const id = params?.id as string | undefined;
   const pathname = usePathname();
+  
+  const historyApiKey = user && state ? `/api/history?state=${state}` : null;
+
   const {
     data: history,
     isLoading,
     mutate,
-  } = useSWR<Array<Chat>>(user ? '/api/history' : null, fetcher, {
+  } = useSWR<Array<Chat>>(historyApiKey, fetcher, {
     fallbackData: [],
   });
 
   useEffect(() => {
-    mutate();
-  }, [pathname, mutate]);
+    if (historyApiKey) {
+        mutate();
+    }
+  }, [pathname, mutate, historyApiKey]);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -241,12 +250,13 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                           <ChatItem
                             key={chat.id}
                             chat={chat}
-                            isActive={chat.id === id}
+                            isActive={chat.id === id && pathname.startsWith(`/${state}/chat`)}
                             onDelete={(chatId) => {
                               setDeleteId(chatId);
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            state={state}
                           />
                         ))}
                       </>
@@ -261,12 +271,13 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                           <ChatItem
                             key={chat.id}
                             chat={chat}
-                            isActive={chat.id === id}
+                            isActive={chat.id === id && pathname.startsWith(`/${state}/chat`)}
                             onDelete={(chatId) => {
                               setDeleteId(chatId);
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            state={state}
                           />
                         ))}
                       </>
@@ -281,12 +292,13 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                           <ChatItem
                             key={chat.id}
                             chat={chat}
-                            isActive={chat.id === id}
+                            isActive={chat.id === id && pathname.startsWith(`/${state}/chat`)}
                             onDelete={(chatId) => {
                               setDeleteId(chatId);
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            state={state}
                           />
                         ))}
                       </>
@@ -301,12 +313,13 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                           <ChatItem
                             key={chat.id}
                             chat={chat}
-                            isActive={chat.id === id}
+                            isActive={chat.id === id && pathname.startsWith(`/${state}/chat`)}
                             onDelete={(chatId) => {
                               setDeleteId(chatId);
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            state={state}
                           />
                         ))}
                       </>
@@ -321,12 +334,13 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                           <ChatItem
                             key={chat.id}
                             chat={chat}
-                            isActive={chat.id === id}
+                            isActive={chat.id === id && pathname.startsWith(`/${state}/chat`)}
                             onDelete={(chatId) => {
                               setDeleteId(chatId);
                               setShowDeleteDialog(true);
                             }}
                             setOpenMobile={setOpenMobile}
+                            state={state}
                           />
                         ))}
                       </>
