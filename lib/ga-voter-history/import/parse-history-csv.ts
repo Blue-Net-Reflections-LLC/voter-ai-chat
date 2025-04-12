@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import CsvReadableStream from 'csv-reader';
 import postgres from 'postgres';
 import { config } from 'dotenv';
-import countyCodeMap from '@/lib/voter/query/voter-lookup-values/county_code';
+import { gaCountyCodeToNameMap } from '@/lib/data/ga_county_codes';
 import moment from 'moment';
 
 // Load environment variables
@@ -25,17 +25,15 @@ const DATA_DIRECTORY = path.join(__dirname, '../data');
 
 // --- County Code Lookup --- //
 const countyNameMap: { [key: string]: string } = {};
-for (const codeStr in countyCodeMap) {
-	// Parse the string key back to a number for indexing
-	const codeNum = parseInt(codeStr, 10);
-	if (!isNaN(codeNum)) {
-		// Use the numeric key to access the county name
-		const countyName = countyCodeMap[codeNum as keyof typeof countyCodeMap];
-		if (countyName) {
-			// Create the key by converting to uppercase AND removing spaces
-			const mapKey = countyName.toUpperCase().replace(/\s+/g, '');
-			countyNameMap[mapKey] = codeStr.padStart(3, '0');
-		}
+for (const code in gaCountyCodeToNameMap) {
+	// Convert string key 'code' to number for indexing
+	const numericCode = parseInt(code, 10); 
+	// Use numericCode for lookup, but keep the original string 'code' for padding
+	const countyName = gaCountyCodeToNameMap[numericCode as keyof typeof gaCountyCodeToNameMap]; 
+	if (countyName) {
+		const mapKey = countyName.toUpperCase().replace(/\s+/g, '');
+		// Use the original string 'code' for padding
+		countyNameMap[mapKey] = code.padStart(3, '0'); 
 	}
 }
 

@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import CsvReadableStream from 'csv-reader';
 import postgres from 'postgres';
 import { config } from 'dotenv';
-import countyCodeMap from '@/lib/voter/query/voter-lookup-values/county_code';
+import { gaCountyCodeToNameMap } from '@/lib/data/ga_county_codes';
 import moment from 'moment';
 
 // Load environment variables
@@ -27,10 +27,10 @@ const GA_STATE_FIPS = '13'; // FIPS code for Georgia
 
 // --- County Code Lookup (Handles spaces and case) --- //
 const countyNameMap: { [key: string]: string } = {};
-for (const codeStr in countyCodeMap) {
+for (const codeStr in gaCountyCodeToNameMap) {
 	const codeNum = parseInt(codeStr, 10);
 	if (!isNaN(codeNum)) {
-		const countyName = countyCodeMap[codeNum as keyof typeof countyCodeMap];
+		const countyName = gaCountyCodeToNameMap[codeNum as keyof typeof gaCountyCodeToNameMap];
 		if (countyName) {
 			const mapKey = countyName.toUpperCase().replace(/\s+/g, '');
 			countyNameMap[mapKey] = codeStr.padStart(3, '0');
