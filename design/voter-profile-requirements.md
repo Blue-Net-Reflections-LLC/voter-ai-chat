@@ -120,6 +120,44 @@ The Voter Profile tool should provide:
 
 **Note:** The UI for County, Congressional District, State Senate District (Upper), and State House District (Lower) uses an advanced multi-select: searchable, selected items appear at the top, checkboxes for each option, and a clear all button. This pattern is consistent across all major multi-select filters for clarity and usability.
 
+### Residence Address Filter (Georgia)
+
+- The residence address filter is composed of the following fields, each stored as a separate column in the database:
+  - Street Number (autocomplete)
+  - Pre Direction (autocomplete)
+  - Street Name (autocomplete)
+  - Street Type (autocomplete)
+  - Post Direction (autocomplete)
+  - Apt/Unit Number (autocomplete)
+  - Zipcode (autocomplete)
+  - City (select, not freeform)
+
+- **Dynamic Data Sourcing:**
+  - All autocomplete/select options are dynamically loaded from the live Georgia voter registration database via API endpoints **prefixed with `/ga`** (e.g., `/ga/api/voter-address/fields`).
+  - Each endpoint returns distinct values for a given field, filtered by the current selections in the other fields, and limited to 50 results.
+  - City options are always filtered by the other address fields and are never freeform.
+
+- **Smart Interdependent Filtering:**
+  - Selecting a value in any field (e.g., street name) narrows the autocomplete/select options for all other fields.
+  - If a field has only one possible value, it is auto-selected (auto-populated in the UI).
+  - If city is reduced to a single value, it is highlighted.
+  - User must select from the list of values in all autocomplete fields (no freeform input).
+  - All autocomplete lists are capped at 50 items for performance and usability.
+
+- **API/Backend Requirements:**
+  - Endpoints must be **/ga-prefixed** to support state-specific logic and data models.
+  - Each endpoint accepts the current filter state and returns the possible values for the requested field, filtered and limited as above.
+  - Example endpoint: `/ga/api/voter-address/fields?field=street_name&city=Atlanta&zipcode=30303` returns up to 50 street names in Atlanta, 30303.
+
+- **Frontend/UI Requirements:**
+  - Each field is an autocomplete/select, with options updated as the user types/selects in any field.
+  - If a field is auto-populated, the UI should update immediately and move focus to the next logical field.
+  - City is always a select, and if only one value remains, it is visually highlighted.
+  - All fields are required to be selected from the list (no freeform input allowed).
+
+- **Rationale:**
+  - This approach ensures accurate, user-friendly, and efficient filtering of voters by address, and supports the complexity of Georgia's address data model.
+
 ### Map Visualization Page
 
 **Objective:** Provide a geographic visualization of voters based on selected filters, using the ArcGIS Maps SDK for JavaScript.
