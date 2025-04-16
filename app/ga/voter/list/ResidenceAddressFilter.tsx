@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import type { VoterFilters } from './useVoterFilters';
 
 // Address fields to scaffold
@@ -17,6 +17,16 @@ const ADDRESS_FIELDS = [
 interface ResidenceAddressFilterProps {
   filters: VoterFilters;
   setFilter: (key: keyof VoterFilters, value: any) => void;
+  disableAutoSelect?: boolean;
+}
+
+// Debounce hook
+function useDebouncedEffect(effect: () => void, deps: any[], delay: number) {
+  useEffect(() => {
+    const handler = setTimeout(effect, delay);
+    return () => clearTimeout(handler);
+    // eslint-disable-next-line
+  }, [...deps, delay]);
 }
 
 // Helper to build query params for API
@@ -36,14 +46,18 @@ function buildQueryParams(filters: VoterFilters, excludeKey?: string) {
  * Renders one field for each address part, using current filter state.
  * TODO: Integrate with API for dynamic options and implement autocomplete/select logic.
  */
-export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({ filters, setFilter }) => {
+export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({ filters, setFilter, disableAutoSelect = false }) => {
   // State for options, loading, and error for each field
   const [options, setOptions] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, string | null>>({});
+  // Track which field should be auto-focused
+  const selectRefs = useRef<Record<string, HTMLSelectElement | null>>({});
+  // Track last changed field for dependent clearing
+  const lastChangedField = useRef<string | null>(null);
 
-  // Fetch options for all fields when filters change
-  useEffect(() => {
+  // Debounced fetch for all fields
+  useDebouncedEffect(() => {
     ADDRESS_FIELDS.forEach(async ({ key }) => {
       setLoading((prev) => ({ ...prev, [key]: true }));
       setError((prev) => ({ ...prev, [key]: null }));
@@ -61,11 +75,35 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({ 
         setLoading((prev) => ({ ...prev, [key]: false }));
       }
     });
-    // TODO: Add debouncing to avoid excessive API calls
-    // TODO: Add auto-select logic if only one option is available
-    // TODO: Add dependent field clearing/reset logic
     // eslint-disable-next-line
-  }, [filters]);
+  }, [filters], 300);
+
+  // Auto-select logic and focus management
+  useEffect(() => {
+    if (disableAutoSelect) return;
+    ADDRESS_FIELDS.forEach(({ key }, idx) => {
+      const opts = options[key] || [];
+      if (opts.length === 1 && filters[key] !== opts[0]) {
+        setFilter(key as keyof VoterFilters, opts[0]);
+        // Focus next field if exists
+        const next = ADDRESS_FIELDS[idx + 1];
+        if (next && selectRefs.current[next.key]) {
+          setTimeout(() => selectRefs.current[next.key]?.focus(), 0);
+        }
+      }
+    });
+    // eslint-disable-next-line
+  }, [options]);
+
+  // Dependent clearing: when a field changes, clear all fields after it
+  function handleSelectChange(key: string, value: string) {
+    console.log(`[Component] handleSelectChange called for key: ${key}. Received value:`, value);
+    const idx = ADDRESS_FIELDS.findIndex(f => f.key === key);
+    // Only clear fields after the changed field
+    ADDRESS_FIELDS.slice(idx + 1).forEach(({ key: depKey }) => setFilter(depKey as keyof VoterFilters, ''));
+    setFilter(key as keyof VoterFilters, value);
+    lastChangedField.current = key;
+  }
 
   return (
     <div className="space-y-2">
@@ -74,8 +112,9 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({ 
           <label className="text-sm font-medium" htmlFor={key}>{label}</label>
           <select
             id={key}
+            ref={el => { selectRefs.current[key] = el; }}
             value={filters[key] || ''}
-            onChange={e => setFilter(key as keyof VoterFilters, e.target.value)}
+            onChange={e => handleSelectChange(key, e.target.value)}
             disabled={loading[key]}
             className="w-full bg-muted"
             aria-label={label}

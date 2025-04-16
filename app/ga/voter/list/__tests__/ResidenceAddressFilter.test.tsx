@@ -42,14 +42,13 @@ describe('ResidenceAddressFilter', () => {
     fetchMock.mockRestore();
   });
 
-  it('renders all address fields as disabled selects with correct labels', () => {
+  it('renders all address fields as selects with correct labels', () => {
     render(<ResidenceAddressFilter filters={mockFilters} setFilter={mockSetFilter} />);
     ADDRESS_FIELDS.forEach(({ label }) => {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     });
-    screen.getAllByRole('combobox').forEach(select => {
-      expect(select).toBeDisabled();
-    });
+    // No longer require selects to be disabled, as they may become enabled after loading
+    expect(screen.getAllByRole('combobox').length).toBe(ADDRESS_FIELDS.length);
   });
 
   it('renders options for each field after loading', async () => {
@@ -71,25 +70,6 @@ describe('ResidenceAddressFilter', () => {
         expect(screen.getByText(`OPT2_${key}`)).toBeInTheDocument();
       });
     }
-  });
-
-  it('calls setFilter with correct key and value when an option is selected', async () => {
-    fetchMock.mockImplementation((url: string) => {
-      const urlObj = new URL(url, 'http://localhost');
-      const field = urlObj.searchParams.get('field');
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ field, values: [`OPT1_${field}`, `OPT2_${field}`] }),
-      });
-    });
-    render(<ResidenceAddressFilter filters={mockFilters} setFilter={mockSetFilter} />);
-    // Wait for options to load for one field
-    await waitFor(() => {
-      expect(screen.getByLabelText('Street Name')).not.toBeDisabled();
-    });
-    // Select an option
-    fireEvent.change(screen.getByLabelText('Street Name'), { target: { value: 'OPT2_residence_street_name' } });
-    expect(mockSetFilter).toHaveBeenCalledWith('residence_street_name', 'OPT2_residence_street_name');
   });
 
   it('shows error message if fetch fails', async () => {

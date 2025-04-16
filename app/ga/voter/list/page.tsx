@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, Filter, Printer, Download, ArrowUpDown } from "lucide-react";
+import { ResidenceAddressFilter } from "./ResidenceAddressFilter";
 
 // NOTE: The address filter API endpoint will be implemented at /ga/api/voter-address/fields
 // It will use the 'postgres' library and the POSTGRES_URL environment variable for database access.
@@ -217,6 +218,21 @@ export default function VoterListPage() {
   const [income, setIncome] = useState([]);
   const [education, setEducation] = useState([]);
   const [electionType, setElectionType] = useState([]);
+  const [residenceAddressFilters, setResidenceAddressFilters] = useState({
+    residence_street_number: '',
+    residence_pre_direction: '',
+    residence_street_name: '',
+    residence_street_type: '',
+    residence_post_direction: '',
+    residence_apt_unit_number: '',
+    residence_zipcode: '',
+    residence_city: '',
+  });
+
+  // Helper for address filter state
+  function setResidenceAddressFilter(key, value) {
+    setResidenceAddressFilters(f => ({ ...f, [key]: value }));
+  }
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-background p-4 gap-6">
@@ -254,10 +270,11 @@ export default function VoterListPage() {
                 value={stateHouseDistricts}
                 setValue={setStateHouseDistricts}
               />
-              <div>
-                <label className="text-sm font-medium">Street Address</label>
-                <Input placeholder="Enter address..." />
-              </div>
+              {/* Residence Address Filter */}
+              <ResidenceAddressFilter
+                filters={residenceAddressFilters}
+                setFilter={setResidenceAddressFilter}
+              />
               <MultiSelect
                 label="Zip Code"
                 options={["30303", "30309", "30310", "30318"]}
