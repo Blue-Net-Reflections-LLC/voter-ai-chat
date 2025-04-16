@@ -58,3 +58,13 @@ The Voter Profile tool should provide:
 - Allow users to manually add/edit contact information (email, phone) and social media links via the UI.
 - Expand rules and requirements as the project evolves.
 
+## Updates (2024-06)
+
+- The voter profile page is now located at `/ga/voter/profile/[voterId]` and uses the voter registration ID as a URL parameter for direct linking and navigation.
+- The "Household Voters" section displays other household members with their first and last names, age, gender, and links to their own profile pages (using the same voter registration ID URL pattern).
+- The "District Data" section now includes:
+    - Income levels (percentage by bracket)
+    - Redistricting information (whether the district was redrawn in the last 4 years, year, and source)
+    - A link to a full district details page
+- The project will use the [ArcGIS Maps SDK for JavaScript](https://developers.arcgis.com/javascript/latest/) for mapping and spatial features. (More mapping requirements to come.)
+
