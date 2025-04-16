@@ -83,8 +83,10 @@ The Voter Profile tool should provide:
 
         | Filter Category    | Filter Name              | Type                     | Notes                                                      |
         |--------------------|--------------------------|--------------------------|------------------------------------------------------------|
-        | **Geographic**     | County                   | Multi-select             |                                                            |
-        |                    | District (All Types)     | Multi-select             | State Senate, State House, Congressional                   |
+        | **Geographic**     | County                   | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
+        |                    | Congressional District   | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
+        |                    | State Senate District (Upper) | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
+        |                    | State House District (Lower) | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
         |                    | Street Address           | Autocomplete             |                                                            |
         |                    | Zip Code                 | Autocomplete / Multi-select | Accepts multiple zip codes                                 |
         |                    | City                     | Autocomplete / Multi-select | Accepts multiple city names                              |
@@ -115,6 +117,8 @@ The Voter Profile tool should provide:
     - Query filters/facets must be persisted in the URL parameters for shareable and bookmarkable links.
     - Printable view of the current list page.
     - Download selected results or the entire filtered list as a CSV file.
+
+**Note:** The UI for County, Congressional District, State Senate District (Upper), and State House District (Lower) uses an advanced multi-select: searchable, selected items appear at the top, checkboxes for each option, and a clear all button. This pattern is consistent across all major multi-select filters for clarity and usability.
 
 ### Map Visualization Page
 
