@@ -11,6 +11,7 @@
     "lint": "next lint && biome lint --write --unsafe",
     "lint:fix": "next lint --fix && biome lint --write --unsafe",
     "format": "biome format --write",
+    "test": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "npx tsx lib/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
@@ -66,16 +67,16 @@
     "lucide-react": "^0.446.0",
     "moment": "^2.30.1",
     "nanoid": "^5.0.9",
-    "next": "15.0.3",
+    "next": "^15.3.0",
     "next-auth": "5.0.0-beta.25",
-    "next-themes": "^0.3.0",
+    "next-themes": "^0.4.6",
     "onnxruntime-node": "^1.20.1",
     "openai": "^4.76.1",
     "orderedmap": "^2.1.1",
     "pg": "^8.11.3",
     "postgres": "^3.4.5",
-    "react": "19.0.0-rc-7670501b-20241124",
-    "react-dom": "19.0.0-rc-7670501b-20241124",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-ga4": "^2.1.0",
     "react-markdown": "^9.0.1",
     "remark-gfm": "^4.0.0",
@@ -91,6 +92,8 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@tailwindcss/typography": "^0.5.15",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
     "@types/d3-scale": "^4.0.8",
     "@types/lodash.get": "^4.4.9",
     "@types/lodash.set": "^4.3.9",
@@ -107,15 +110,18 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^3.7.0",
     "eslint-plugin-tailwindcss": "^3.17.5",
+    "jsdom": "^26.1.0",
     "postcss": "^8.4.49",
     "raw-loader": "^4.0.2",
     "tailwindcss": "^3.4.16",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.1.1"
   },
   "engines": {
     "node": "22.12.0",
-    "pnpm": ">=8.0.0"
+    "npm": ">=8.0.0"
   }
 }
