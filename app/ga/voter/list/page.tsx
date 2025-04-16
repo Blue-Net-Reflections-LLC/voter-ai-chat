@@ -16,12 +16,36 @@ const COUNTY_OPTIONS = [
 
 function CountyMultiSelect({ value, setValue }) {
   const [search, setSearch] = useState("");
-  // Filtered options: selected at top, then divider, then unselected filtered
+  // Filtered options: all counties matching search
   const filtered = COUNTY_OPTIONS.filter(
-    (c) => c.toLowerCase().includes(search.toLowerCase()) || value.includes(c)
+    (c) => c.toLowerCase().includes(search.toLowerCase())
   );
+  // For display: selected at top, then all filtered (with checked/unchecked)
   const selected = value.filter((c) => COUNTY_OPTIONS.includes(c));
-  const unselected = filtered.filter((c) => !selected.includes(c));
+
+  // Helper: render a county checkbox (checked if selected)
+  function renderCountyCheckbox(county, keyPrefix = "") {
+    const checked = value.includes(county);
+    return (
+      <label key={keyPrefix + county} className={`flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer ${checked ? 'bg-muted' : 'hover:bg-muted'}`}
+        style={{ marginBottom: '2px' }}
+      >
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={() => {
+            if (checked) {
+              setValue(value.filter((v) => v !== county));
+            } else {
+              setValue([...value, county]);
+            }
+          }}
+          className="form-checkbox h-3 w-3"
+        />
+        {county}
+      </label>
+    );
+  }
 
   return (
     <div>
@@ -36,32 +60,13 @@ function CountyMultiSelect({ value, setValue }) {
         <div className="max-h-48 overflow-y-auto border rounded bg-background shadow p-2">
           {selected.length > 0 && (
             <>
-              {selected.map((county) => (
-                <label key={county} className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded cursor-pointer mb-1">
-                  <input
-                    type="checkbox"
-                    checked
-                    onChange={() => setValue(value.filter((v) => v !== county))}
-                    className="form-checkbox h-3 w-3"
-                  />
-                  {county}
-                </label>
-              ))}
+              <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide px-1 pb-1">Selected</div>
+              {selected.map(county => renderCountyCheckbox(county, "top-"))}
               <div className="border-t my-2" />
             </>
           )}
-          {unselected.map((county) => (
-            <label key={county} className="flex items-center gap-1 text-xs hover:bg-muted px-2 py-1 rounded cursor-pointer">
-              <input
-                type="checkbox"
-                checked={false}
-                onChange={() => setValue([...value, county])}
-                className="form-checkbox h-3 w-3"
-              />
-              {county}
-            </label>
-          ))}
-          {filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No counties found</div>}
+          {filtered.map(county => renderCountyCheckbox(county, "list-"))}
+          {selected.length === 0 && filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No counties found</div>}
         </div>
         {selected.length > 0 && (
           <Button
