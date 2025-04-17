@@ -88,8 +88,6 @@ The Voter Profile tool should provide:
         |                    | State Senate District (Upper) | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
         |                    | State House District (Lower) | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
         |                    | Residence Address(es)    | Custom Multi-Filter      | See 'Residence Address Filter (Georgia)' section below     |
-        |                    | Zip Code                 | Autocomplete / Multi-select | Accepts multiple zip codes                                 |
-        |                    | City                     | Autocomplete / Multi-select | Accepts multiple city names                              |
         | **Voter Info**     | First Name               | Autocomplete             |                                                            |
         |                    | Last Name                | Autocomplete             |                                                            |
         |                    | Active / Inactive Status | Multi-select             | Options: Active, Inactive                                  |
@@ -120,48 +118,39 @@ The Voter Profile tool should provide:
 
 **Note:** The UI for County, Congressional District, State Senate District (Upper), and State House District (Lower) uses an advanced multi-select: searchable, selected items appear at the top, checkboxes for each option, and a clear all button. This pattern is consistent across all major multi-select filters for clarity and usability.
 
-### Residence Address Filter (Georgia)
+### Residence Address Filter (Georgia) - Implementation Complete
 
-- Users can add **multiple** residence address filters.
-- An "Add Address Filter" button triggers a popover to add a new filter instance.
-- Each filter instance contains the following fields, stored as separate columns in the database:
-  - Street Number (autocomplete)
-  - Pre Direction (autocomplete)
-  - Street Name (autocomplete)
-  - Street Type (autocomplete)
-  - Post Direction (autocomplete)
-  - Apt/Unit Number (autocomplete)
-  - Zipcode (autocomplete)
-  - City (select, not freeform)
+- Users can add **multiple** residence address filters via an "Add Address Filter" button.
+- Each filter instance has a dialog interface that contains the following field components:
+  - Street Number (`ReactSelectAutocomplete`)
+  - Pre Direction (`ReactSelectAutocomplete`)
+  - Street Name (`ReactSelectAutocomplete`)
+  - Street Type (`ReactSelectAutocomplete`)
+  - Post Direction (`ReactSelectAutocomplete`)
+  - Apt/Unit Number (`ReactSelectAutocomplete`)
+  - Zipcode (`ReactSelectAutocomplete`)
+  - City (`CitySelect` - special component for city selection)
+
+- **Implemented Features:**
+  - State management via `AddressDataProvider` context for each filter instance
+  - Smart interdependent filtering that updates options based on selections
+  - Individual field clearing via X icon in each field
+  - "Clear All Fields" button in the dialog footer to reset all fields at once
+  - Immediate feedback during loading and when no options are found
+  - Option to remove individual filter instances
+  - "Clear All Address Filters" button to remove all filter instances
 
 - **Dynamic Data Sourcing:**
-  - All autocomplete/select options are dynamically loaded from the live Georgia voter registration database via API endpoints **prefixed with `/ga`** (e.g., `/ga/api/voter-address/fields`).
-  - Each endpoint returns distinct values for a given field, filtered by the current selections in the *other fields within the same filter instance*, and limited to 50 results.
-  - City options are always filtered by the other address fields *within the same instance* and are never freeform.
+  - All address field options are loaded from the Georgia voter API endpoints via `/ga/api/voter-address/records` and `/ga/api/voter-address/fields` routes
+  - Results are limited to maintain performance
+  - Current selections influence available options in other fields
 
-- **Smart Interdependent Filtering (Per Instance):**
-  - Selecting a value in any field (e.g., street name) *within a specific filter instance* narrows the autocomplete/select options for all other fields *within that same instance*.
-  - If a field has only one possible value *within an instance*, it can be auto-selected (TBD based on UX testing).
-  - If city is reduced to a single value *within an instance*, it is highlighted.
-  - User must select from the list of values in all autocomplete fields (no freeform input).
-  - All autocomplete lists are capped at 50 items for performance and usability.
-
-- **API/Backend Requirements:**
-  - Endpoints must be **/ga-prefixed** to support state-specific logic and data models.
-  - Each endpoint accepts the current filter state *for the specific instance being edited* and returns the possible values for the requested field, filtered and limited as above.
-  - Example endpoint: `/ga/api/voter-address/fields?field=street_name&city=Atlanta&zipcode=30303` returns up to 50 street names matching the provided city and zipcode *for that specific filter instance*.
-
-- **Frontend/UI Requirements:**
-  - The filter UI displays a list of address filter instances.
-  - Each instance has its own set of autocomplete/select fields.
-  - Options within an instance are updated as the user types/selects in any field *of that instance*.
-  - City is always a select; if only one value remains *within an instance*, it is visually highlighted.
-  - All fields require selection from the list (no freeform input allowed).
-  - Each filter instance can be removed individually.
-  - A "Clear All Address Filters" button is available.
-
-- **Rationale:**
-  - This approach allows users to specify multiple, precise address criteria additively, ensuring accurate, user-friendly, and efficient filtering of voters by address.
+- **UX Improvements:**
+  - Debounced API calls to prevent excessive requests
+  - Loading indicators during API requests
+  - Clear error messages when options can't be loaded
+  - Responsive design for all screen sizes
+  - Single-record auto-filling (when only one matching record exists)
 
 ### Map Visualization Page
 
