@@ -40,7 +40,8 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
     searchField,
     searchQuery,
     options, 
-    isLoading 
+    isLoading,
+    clearAllFields
   } = useAddressData();
   
   const [open, setOpen] = useState(false);
@@ -100,16 +101,28 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
     setSearch(null, '');
   };
 
+  // Handle clearing all filters
+  const handleClearAll = () => {
+    clearAllFields();
+    setInputValue('');
+    setOpen(false);
+  };
+
   // Check if this field is currently being searched
   const isSearching = searchField === fieldKey && searchQuery !== '';
 
+  // Determine if any filters are active across all fields
+  const hasActiveFilters = Object.values(currentFilter).some(v => !!v);
+
   return (
     <div className={cn("w-full", compact ? "mb-0" : "mb-2")}>
-      {!hideLabel && (
-        <div className="text-xs font-medium block mb-1">
-          {label}
-        </div>
-      )}
+      <div className="flex justify-between items-center mb-1">
+        {!hideLabel ? (
+          <div className="text-xs font-medium">
+            {label}
+          </div>
+        ) : <div />}
+      </div>
       
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>

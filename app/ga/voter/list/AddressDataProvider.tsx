@@ -32,7 +32,10 @@ export const ADDRESS_FIELDS = [
   'residence_apt_unit_number',
   'residence_zipcode',
   'residence_city',
-];
+] as const;
+
+// Address field type - using 'as const' allows TypeScript to narrow the type
+export type AddressFieldKey = typeof ADDRESS_FIELDS[number];
 
 // Custom debounce function
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -164,16 +167,18 @@ export const AddressDataProvider: React.FC<{
           console.log('[AddressDataProvider] Found a single complete match - auto-filling fields');
           
           // Create a new filter with all available fields from the record
-          const newFilter = { ...currentFilter };
-          let changedFields = [];
+          const newFilter: Partial<AddressFilter> = { ...currentFilter };
+          const changedFields: AddressFieldKey[] = [];
           
           ADDRESS_FIELDS.forEach(field => {
             // Only update fields that:
             // 1. Have a value in the record
             // 2. Are not already set in the filter (or are different)
             if (singleRecord[field] && 
-                (!newFilter[field] || newFilter[field] !== String(singleRecord[field]))) {
-              newFilter[field] = String(singleRecord[field]);
+                (!newFilter[field as keyof AddressFilter] || 
+                 newFilter[field as keyof AddressFilter] !== String(singleRecord[field]))) {
+              // Use type assertion to tell TypeScript this is a valid field
+              (newFilter as any)[field] = String(singleRecord[field]);
               changedFields.push(field);
             }
           });

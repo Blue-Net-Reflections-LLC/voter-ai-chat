@@ -15,6 +15,7 @@ import { ReactSelectAutocomplete } from './ReactSelectAutocomplete';
 import { CitySelect } from './CitySelect';
 import { AddressDataProvider, useAddressData } from './AddressDataProvider';
 import { v4 as uuidv4 } from 'uuid';
+import { cn } from '@/lib/utils';
 
 // Type for a single address filter object
 export interface AddressFilter {
@@ -69,6 +70,14 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
     const addFilterElement = document.getElementById('add-filter-button');
     if (addFilterElement) {
       addFilterElement.click(); // Trigger the hidden button
+    }
+  };
+
+  // Callback to clear all fields in the dialog
+  const handleClearAllFields = () => {
+    const resetButton = document.getElementById('reset-filter-button');
+    if (resetButton) {
+      resetButton.click(); // Trigger the hidden reset button
     }
   };
 
@@ -215,17 +224,26 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
             
             {/* Hidden component to extract values when needed */}
             <AddressDataConsumer onConfirm={handleFilterConfirmed} />
-            
           </AddressDataProvider>
           
           <DialogFooter className="pt-2">
-            <Button 
-              size="sm" 
-              className="w-40 mx-auto" 
-              onClick={handleAddNewFilter}
-            >
-              Confirm Add
-            </Button>
+            <div className="flex justify-between w-full gap-3">
+              <Button 
+                variant="outline"
+                size="sm" 
+                className="flex-1 text-muted-foreground hover:text-destructive"
+                onClick={handleClearAllFields}
+              >
+                Clear All Fields
+              </Button>
+              <Button 
+                size="sm" 
+                className="flex-1" 
+                onClick={handleAddNewFilter}
+              >
+                Confirm Add
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
