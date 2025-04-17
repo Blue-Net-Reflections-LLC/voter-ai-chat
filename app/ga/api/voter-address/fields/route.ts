@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const field = url.searchParams.get('field');
+    const query = url.searchParams.get('query'); // Get the autocomplete query parameter
     if (!field || !ADDRESS_FIELDS.includes(field)) {
       return NextResponse.json({ error: 'Missing or invalid field parameter.' }, { status: 400 });
     }
@@ -34,13 +35,19 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // Add LIKE filter for the target field if a query is provided
+    if (query && query.trim()) {
+      filters.push(`${field} LIKE $${filters.length + 1}`);
+      values.push(`${query.toUpperCase()}%`); // Add wildcard for autocomplete
+    }
+
     // Build SQL query
     let sqlQuery = `SELECT DISTINCT ${field} FROM GA_VOTER_REGISTRATION_LIST`;
     if (filters.length > 0) {
       sqlQuery += ' WHERE ' + filters.join(' AND ');
     }
     sqlQuery += ` LIMIT 50`;
-
+    console.log(sqlQuery);
     // Connect to Postgres
     const connectionString = process.env.PG_VOTERDATA_URL;
     if (!connectionString) {
