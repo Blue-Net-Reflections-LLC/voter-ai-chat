@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
       sqlQuery += ' WHERE ' + filters.join(' AND ');
     }
     sqlQuery += ` LIMIT 50`;
-    console.log(sqlQuery);
+    console.log('Voter Address API SQL:', sqlQuery, values);
     // Connect to Postgres
     const connectionString = process.env.PG_VOTERDATA_URL;
     if (!connectionString) {

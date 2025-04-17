@@ -4,13 +4,14 @@ import React, { useCallback } from 'react';
 import AsyncSelect from 'react-select/async';
 import type { GroupBase, OptionsOrGroups } from 'react-select';
 import type { VoterFilters } from './useVoterFilters'; // Assuming this type exists
+import type { AddressFilter } from './ResidenceAddressFilter'; // Import AddressFilter
 
-interface ReactSelectAutocompleteProps {
+export interface ReactSelectAutocompleteProps {
   label: string;
-  fieldKey: keyof VoterFilters;
+  fieldKey: keyof Omit<AddressFilter, 'id'>; // Use specific address keys
   value: string | null; // react-select prefers null for empty value
-  filters: Omit<VoterFilters, keyof ReactSelectAutocompleteProps['fieldKey']>;
-  setFilter: (key: keyof VoterFilters, value: string) => void;
+  filters: Omit<AddressFilter, 'id' | keyof ReactSelectAutocompleteProps['fieldKey']>; // Adjust filters type based on new fieldKey
+  setFilter: (key: keyof Omit<AddressFilter, 'id'>, value: string) => void; // Use specific address keys
 }
 
 // Define the structure of the options react-select expects
@@ -73,11 +74,14 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
 
   // Handle selection change
   const handleChange = (selectedOption: SelectOption | null) => {
-    setFilter(fieldKey, selectedOption ? selectedOption.value : ''); // Update parent state, use empty string if cleared
+    setFilter(fieldKey, selectedOption ? selectedOption.value : ''); 
   };
 
   // Determine the current selected option object for react-select
   const selectedValue = value ? { value: value, label: value } : null;
+
+  // Generate a key based on fieldKey and filters to force remount on dependency change
+  const selectKey = `${fieldKey}-${JSON.stringify(filters)}`;
 
   return (
     <div>
@@ -85,10 +89,11 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
         {label}
       </label>
       <AsyncSelect
+        key={selectKey}
         aria-labelledby={`${String(fieldKey)}-label`}
         inputId={String(fieldKey)} // id for the internal input
         cacheOptions // Cache results for the same search term
-        defaultOptions // Load default options on mount (can be true or an array)
+        defaultOptions={true} // Load options on mount/focus
         loadOptions={loadOptions} // The function to fetch options
         value={selectedValue} // Controlled component value
         onChange={handleChange} // Handler for when an option is selected

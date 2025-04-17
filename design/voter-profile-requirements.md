@@ -87,7 +87,7 @@ The Voter Profile tool should provide:
         |                    | Congressional District   | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
         |                    | State Senate District (Upper) | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
         |                    | State House District (Lower) | Multi-select (advanced)  | Searchable, selected at top, checkboxes, clear all         |
-        |                    | Street Address           | Autocomplete             |                                                            |
+        |                    | Residence Address(es)    | Custom Multi-Filter      | See 'Residence Address Filter (Georgia)' section below     |
         |                    | Zip Code                 | Autocomplete / Multi-select | Accepts multiple zip codes                                 |
         |                    | City                     | Autocomplete / Multi-select | Accepts multiple city names                              |
         | **Voter Info**     | First Name               | Autocomplete             |                                                            |
@@ -122,7 +122,9 @@ The Voter Profile tool should provide:
 
 ### Residence Address Filter (Georgia)
 
-- The residence address filter is composed of the following fields, each stored as a separate column in the database:
+- Users can add **multiple** residence address filters.
+- An "Add Address Filter" button triggers a popover to add a new filter instance.
+- Each filter instance contains the following fields, stored as separate columns in the database:
   - Street Number (autocomplete)
   - Pre Direction (autocomplete)
   - Street Name (autocomplete)
@@ -134,29 +136,32 @@ The Voter Profile tool should provide:
 
 - **Dynamic Data Sourcing:**
   - All autocomplete/select options are dynamically loaded from the live Georgia voter registration database via API endpoints **prefixed with `/ga`** (e.g., `/ga/api/voter-address/fields`).
-  - Each endpoint returns distinct values for a given field, filtered by the current selections in the other fields, and limited to 50 results.
-  - City options are always filtered by the other address fields and are never freeform.
+  - Each endpoint returns distinct values for a given field, filtered by the current selections in the *other fields within the same filter instance*, and limited to 50 results.
+  - City options are always filtered by the other address fields *within the same instance* and are never freeform.
 
-- **Smart Interdependent Filtering:**
-  - Selecting a value in any field (e.g., street name) narrows the autocomplete/select options for all other fields.
-  - If a field has only one possible value, it is auto-selected (auto-populated in the UI).
-  - If city is reduced to a single value, it is highlighted.
+- **Smart Interdependent Filtering (Per Instance):**
+  - Selecting a value in any field (e.g., street name) *within a specific filter instance* narrows the autocomplete/select options for all other fields *within that same instance*.
+  - If a field has only one possible value *within an instance*, it can be auto-selected (TBD based on UX testing).
+  - If city is reduced to a single value *within an instance*, it is highlighted.
   - User must select from the list of values in all autocomplete fields (no freeform input).
   - All autocomplete lists are capped at 50 items for performance and usability.
 
 - **API/Backend Requirements:**
   - Endpoints must be **/ga-prefixed** to support state-specific logic and data models.
-  - Each endpoint accepts the current filter state and returns the possible values for the requested field, filtered and limited as above.
-  - Example endpoint: `/ga/api/voter-address/fields?field=street_name&city=Atlanta&zipcode=30303` returns up to 50 street names in Atlanta, 30303.
+  - Each endpoint accepts the current filter state *for the specific instance being edited* and returns the possible values for the requested field, filtered and limited as above.
+  - Example endpoint: `/ga/api/voter-address/fields?field=street_name&city=Atlanta&zipcode=30303` returns up to 50 street names matching the provided city and zipcode *for that specific filter instance*.
 
 - **Frontend/UI Requirements:**
-  - Each field is an autocomplete/select, with options updated as the user types/selects in any field.
-  - If a field is auto-populated, the UI should update immediately and move focus to the next logical field.
-  - City is always a select, and if only one value remains, it is visually highlighted.
-  - All fields are required to be selected from the list (no freeform input allowed).
+  - The filter UI displays a list of address filter instances.
+  - Each instance has its own set of autocomplete/select fields.
+  - Options within an instance are updated as the user types/selects in any field *of that instance*.
+  - City is always a select; if only one value remains *within an instance*, it is visually highlighted.
+  - All fields require selection from the list (no freeform input allowed).
+  - Each filter instance can be removed individually.
+  - A "Clear All Address Filters" button is available.
 
 - **Rationale:**
-  - This approach ensures accurate, user-friendly, and efficient filtering of voters by address, and supports the complexity of Georgia's address data model.
+  - This approach allows users to specify multiple, precise address criteria additively, ensuring accurate, user-friendly, and efficient filtering of voters by address.
 
 ### Map Visualization Page
 

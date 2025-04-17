@@ -2,7 +2,7 @@
 
 ## Overview and Goals
 
-The Georgia Residence Address Filter enables users to search for voters by address using a set of interdependent, smart autocomplete fields. All options are dynamically sourced from the live voter registration database. The filter is designed for accuracy, performance, and a user-friendly experience, and is extensible for other states.
+The Georgia Residence Address Filter enables users to search for voters by specifying **one or more** address criteria sets. Each set uses interdependent, smart autocomplete fields. All options are dynamically sourced from the live voter registration database. The filter is designed for accuracy, performance, and a user-friendly experience, and is extensible for other states.
 
 ## API Endpoint Design
 
@@ -11,24 +11,25 @@ The Georgia Residence Address Filter enables users to search for voters by addre
 - **Method:** `GET`
 - **Query Parameters:**
   - `field`: The address part to fetch options for (e.g., `street_name`, `street_number`, `pre_direction`, `street_type`, `post_direction`, `apt_unit_number`, `zipcode`, `city`)
-  - Other address fields as filters (e.g., `city=Atlanta&street_name=PEACHTREE`)
+  - Other address fields *from the specific address filter being edited* as filters (e.g., `city=Atlanta&street_name=PEACHTREE`)
 - **Response Shape:**
   ```json
   {
     "field": "street_name",
-    "values": ["PEACHTREE", "MARTIN LUTHER KING JR", ...] // up to 50 items
+    "values": ["PEACHTREE", "MARTIN LUTHER KING JR", ...] // up to 50 items, sorted alphabetically for city
   }
   ```
 - **Example:**
   - `/ga/api/voter-address/fields?field=street_name&city=Atlanta&zipcode=30303`
-  - Returns up to 50 street names in Atlanta, 30303.
+  - Returns up to 50 street names matching the provided city and zipcode in that specific filter.
 
 ## Database Query Strategy
 
 - Use the `GA_VOTER_REGISTRATION_LIST` table.
-- For each field, query `SELECT DISTINCT` for that column, applying `WHERE` filters for all other selected fields.
+- For each field within a *specific address filter*, query `SELECT DISTINCT` for that column, applying `WHERE` filters for all other fields *selected within that same filter instance*.
 - Always `LIMIT 50` for performance.
-- Example SQL:
+- Sort `city` results alphabetically.
+- Example SQL (fetching street names for a filter where city='ATLANTA' and zipcode='30303'):
   ```sql
   SELECT DISTINCT street_name
   FROM GA_VOTER_REGISTRATION_LIST
@@ -37,15 +38,24 @@ The Georgia Residence Address Filter enables users to search for voters by addre
   ```
 - All values should be uppercased for consistency.
 
-## Frontend Component Logic
+## Frontend Component Logic (`ResidenceAddressFilter.tsx`)
 
-- Each address part is an autocomplete/select field.
-- User must select from the list (no freeform input).
-- As the user selects a value in any field, the component fetches new options for all other fields, filtered by the current state.
-- If a field has only one possible value, it is auto-selected and focus moves to the next logical field.
-- City is always a select, and if only one value remains, it is visually highlighted.
-- All autocomplete lists are capped at 50 items.
-- If a user clears a field, dependent fields are reset as needed.
+- Manages a **list** of `AddressFilter` objects.
+- Provides an "Add Address Filter" button that triggers a popover (`components/ui/popover.tsx`) to confirm adding a new, empty filter object to the list.
+- Each `AddressFilter` object in the list is rendered as a separate UI block.
+- Within each block:
+    - Each address part is an autocomplete/select field (`ReactSelectAutocomplete`, `CitySelect`).
+    - User must select from the list (no freeform input).
+    - As the user selects a value in any field, the component fetches new options for *other fields within the same block*, filtered by the current state of *that specific block*.
+    - **City Field (`CitySelect`):**
+        - If no other fields *in that specific block* have values, list all available cities (sorted alphabetically).
+        - If other fields *in that block* have values, constrain the city list based on those values.
+    - If a field (excluding city) has only one possible value after filtering, it can optionally be auto-selected (TBD based on UX testing).
+    - If the city field has only one possible value after filtering, it should be visually highlighted but likely not auto-selected to avoid confusion.
+    - All autocomplete lists are capped at 50 items.
+    - If a user clears a field, dependent fields *within the same block* are cleared/reset.
+- Each filter block has a "Remove" button.
+- A "Clear All Address Filters" button removes all blocks.
 
 ## Error Handling and Performance
 
@@ -69,20 +79,26 @@ The Georgia Residence Address Filter enables users to search for voters by addre
 
 ## Filter State Management: Custom Hook & URL Synchronization
 
-- Use a custom React hook (e.g., `useVoterFilters`) to manage all filter state, including address fields.
+- Use a custom React hook (e.g., `useVoterFilters`) to manage all filter state.
+- This hook now manages an **array** of `AddressFilter` objects under a key like `residence_addresses`.
+- Each `AddressFilter` object in the array needs a unique client-side ID for React keys.
 - The hook:
-  - Reads initial filter state from the URL query params on page load (hydration).
-  - Updates the URL query params whenever filter state changes (using Next.js router or similar).
-  - Exposes `[filterState, setFilterState]` to the filter panel and child components.
-  - Ensures that the UI is always in sync with the URL, enabling shareable/bookmarkable links and back/forward navigation.
-  - Can be reused across pages (list, map, dashboard, etc.).
-- Example usage:
+  - Reads initial filter state from the URL query params on page load. This requires a serialization/deserialization strategy for the array of address filters (e.g., JSON stringification or multiple params like `addr1_city=Atlanta&addr1_zip=30303&addr2_city=...`).
+  - Updates the URL query params whenever filter state changes.
+  - Exposes state and functions to add, update, and remove specific `AddressFilter` objects from the array, and to clear all of them.
+  - Ensures that the UI is always in sync with the URL.
+- Example state structure:
   ```js
-  const [filters, setFilters] = useVoterFilters();
-  // filters = { residence_street_name: 'PEACHTREE', city: 'ATLANTA', ... }
+  {
+    county: ['COBB'],
+    // ... other filters
+    residence_addresses: [
+      { id: 'uid1', residence_street_name: 'PEACHTREE', residence_city: 'ATLANTA' },
+      { id: 'uid2', residence_zipcode: '30067' }
+    ]
+  }
   ```
-- When a filter is changed, the hook updates both the state and the URL, and triggers any necessary data fetching.
-- The backend API should accept the same query params for filtering.
+- When applying filters to the main voter list query, the backend needs to interpret the array of address filters as additive conditions (e.g., `(addr1_conditions) AND (addr2_conditions)`).
 
 ## Support for Residence and Mailing Address Filters
 
