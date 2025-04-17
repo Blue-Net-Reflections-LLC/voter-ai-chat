@@ -71,14 +71,8 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
   // Handler for updating fields in the new filter (in the dialog)
   const handleNewFilterChange = useCallback(
     (key: keyof Omit<AddressFilter, 'id'>, value: string) => {
-      // Clear dependent fields in the new filter
-      const currentIndex = ADDRESS_FIELDS_CONFIG.findIndex(f => f.key === key);
+      // Directly update the filter state without clearing other fields
       const updatedFilter = { ...newFilter, [key]: value };
-      ADDRESS_FIELDS_CONFIG.slice(currentIndex + 1).forEach(({ key: depKey }) => {
-        if (updatedFilter[depKey]) {
-          updatedFilter[depKey] = '';
-        }
-      });
       setNewFilter(updatedFilter);
     },
     [newFilter]
