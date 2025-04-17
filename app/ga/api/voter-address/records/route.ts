@@ -13,6 +13,15 @@ const ADDRESS_FIELDS = [
   'residence_city',
 ];
 
+// Fields that should always use wildcard searches
+const TEXT_FIELDS = [
+  'residence_street_name',
+  'residence_pre_direction',
+  'residence_post_direction',
+  'residence_street_type',
+  'residence_city'
+];
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -21,32 +30,19 @@ export async function GET(req: NextRequest) {
     // Build filters from query params
     const filters: string[] = [];
     const values: any[] = [];
-    let autocompleteField: string | null = null;
-    let autocompleteValue: string | null = null;
-
-    // Identify the field being autocompleted based on its presence as a query param
-    // This assumes the frontend sends the inputValue as the value for the specific fieldKey
-    for (const field of ADDRESS_FIELDS) {
-        const value = url.searchParams.get(field);
-        if (value !== null) { // If the param exists (even if empty string from typing)
-            autocompleteField = field;
-            autocompleteValue = value; 
-            break; // Assume only one field is actively being typed into
-        }
-    }
 
     // Build WHERE clause conditions
     url.searchParams.forEach((value, key) => {
       if (ADDRESS_FIELDS.includes(key)) {
           if (value !== null && value !== '') {
-              if (key === autocompleteField) {
-                  // Use ILIKE with wildcard for the field being typed into
+              // Always use wildcards for text fields for better partial matching
+              if (TEXT_FIELDS.includes(key) || key === 'residence_street_number') {
                   filters.push(`${key} ILIKE $${filters.length + 1}`);
-                  values.push(`${value}%`); // Append wildcard here
+                  values.push(`${value}%`); // Append wildcard for all text and number fields
               } else {
-                  // Use exact ILIKE (or =) for other filters that are already set
+                  // Use exact ILIKE for other fields (zipcode, etc)
                   filters.push(`${key} ILIKE $${filters.length + 1}`);
-                  values.push(value); // No wildcard for exact match filters
+                  values.push(value);
               }
           }
       } // Ignore other params like 'id' if present
