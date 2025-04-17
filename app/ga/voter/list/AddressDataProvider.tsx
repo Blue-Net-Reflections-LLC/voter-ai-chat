@@ -150,6 +150,41 @@ export const AddressDataProvider: React.FC<{
       });
       
       setOptions(newOptions);
+      
+      // Auto-fill remaining fields if we get exactly one record
+      if (fetchedRecords.length === 1) {
+        const singleRecord = fetchedRecords[0];
+        
+        // Check if this is a complete match (has data for most fields)
+        const hasEnoughFields = ADDRESS_FIELDS.filter(field => 
+          singleRecord[field] && String(singleRecord[field]).trim() !== ''
+        ).length >= 3; // Require at least 3 non-empty fields
+        
+        if (hasEnoughFields) {
+          console.log('[AddressDataProvider] Found a single complete match - auto-filling fields');
+          
+          // Create a new filter with all available fields from the record
+          const newFilter = { ...currentFilter };
+          let changedFields = [];
+          
+          ADDRESS_FIELDS.forEach(field => {
+            // Only update fields that:
+            // 1. Have a value in the record
+            // 2. Are not already set in the filter (or are different)
+            if (singleRecord[field] && 
+                (!newFilter[field] || newFilter[field] !== String(singleRecord[field]))) {
+              newFilter[field] = String(singleRecord[field]);
+              changedFields.push(field);
+            }
+          });
+          
+          if (changedFields.length > 0) {
+            console.log(`[AddressDataProvider] Auto-filled fields: ${changedFields.join(', ')}`);
+            setCurrentFilter(newFilter);
+          }
+        }
+      }
+      
       // Update timestamp to force re-renders if needed
       setLastUpdated(Date.now());
     } catch (error) {
@@ -159,7 +194,7 @@ export const AddressDataProvider: React.FC<{
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentFilter]);
   
   // Create stable debounced version
   const debouncedFetchRecords = useCallback(
