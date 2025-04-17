@@ -12,6 +12,8 @@ export interface ReactSelectAutocompleteProps {
   value: string | null; // react-select prefers null for empty value
   filters: Omit<AddressFilter, 'id' | keyof ReactSelectAutocompleteProps['fieldKey']>; // Adjust filters type based on new fieldKey
   setFilter: (key: keyof Omit<AddressFilter, 'id'>, value: string) => void; // Use specific address keys
+  compact?: boolean; // New prop for compact styling
+  hideLabel?: boolean; // New prop to hide the label (when using external label)
 }
 
 // Define the structure of the options react-select expects
@@ -26,6 +28,8 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
   value,
   filters,
   setFilter,
+  compact = false,
+  hideLabel = false,
 }) => {
 
   // Function that react-select calls to load options asynchronously
@@ -85,12 +89,14 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
 
   return (
     <div>
-      <label className="text-sm font-medium block mb-1" id={`${String(fieldKey)}-label`}>
-        {label}
-      </label>
+      {!hideLabel && (
+        <label className={`text-xs font-medium block mb-1 ${compact ? 'leading-tight' : ''}`} id={`${String(fieldKey)}-label`}>
+          {label}
+        </label>
+      )}
       <AsyncSelect
         key={selectKey}
-        aria-labelledby={`${String(fieldKey)}-label`}
+        aria-labelledby={hideLabel ? undefined : `${String(fieldKey)}-label`}
         inputId={String(fieldKey)} // id for the internal input
         cacheOptions // Cache results for the same search term
         defaultOptions={true} // Load options on mount/focus
@@ -98,22 +104,82 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
         value={selectedValue} // Controlled component value
         onChange={handleChange} // Handler for when an option is selected
         isClearable // Allow clearing the selection
-        placeholder={`Search ${label}...`}
-        // Basic styling (can be extensively customized)
+        placeholder={compact ? '' : `Search ${label}...`}
         styles={{
-          control: (base) => ({ ...base, backgroundColor: 'hsl(var(--input))' }),
-          input: (base) => ({ ...base, color: 'hsl(var(--foreground))'}),
-          menu: (base) => ({ ...base, backgroundColor: 'hsl(var(--popover))' }),
+          control: (base) => ({
+            ...base,
+            backgroundColor: 'hsl(var(--input))',
+            minHeight: '32px',
+            height: '32px',
+            fontSize: '0.85rem',
+            padding: 0,
+            borderColor: 'hsl(var(--border))',
+          }),
+          input: (base) => ({
+            ...base,
+            color: 'hsl(var(--foreground))',
+            fontSize: '0.85rem',
+            margin: 0,
+            padding: 0,
+          }),
+          valueContainer: (base) => ({
+            ...base,
+            padding: compact ? '0 6px' : '0 8px',
+            height: '32px',
+          }),
+          indicatorsContainer: (base) => ({
+            ...base,
+            height: '32px',
+          }),
+          menu: (base) => ({
+            ...base,
+            backgroundColor: 'hsl(var(--popover))',
+            fontSize: '0.85rem',
+          }),
           option: (base, state) => ({
             ...base,
             backgroundColor: state.isFocused ? 'hsl(var(--accent))' : 'hsl(var(--popover))',
             color: 'hsl(var(--popover-foreground))',
             cursor: 'pointer',
+            fontSize: '0.85rem',
+            padding: '6px 8px',
           }),
-          singleValue: (base) => ({ ...base, color: 'hsl(var(--foreground))' }),
-          // Add more styles as needed
+          singleValue: (base) => ({
+            ...base,
+            color: 'hsl(var(--foreground))',
+            fontSize: '0.85rem',
+          }),
+          dropdownIndicator: (base) => ({
+            ...base,
+            padding: compact ? '0 4px' : '0 6px',
+            width: compact ? '24px' : '30px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            '& svg': {
+              width: '16px',
+              height: '16px'
+            }
+          }),
+          clearIndicator: (base) => ({
+            ...base,
+            padding: compact ? '0 4px' : '0 6px',
+            width: compact ? '24px' : '30px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            '& svg': {
+              width: '14px',
+              height: '14px'
+            }
+          }),
+          indicatorSeparator: (base) => ({
+            ...base,
+            margin: '4px 0',
+          }),
         }}
-        // Ensure class names match Tailwind/Shadcn conventions if possible
         classNamePrefix="react-select"
       />
     </div>

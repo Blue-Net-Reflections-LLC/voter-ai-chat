@@ -2,7 +2,15 @@
 
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose
+} from '@/components/ui/dialog';
 import { XIcon, PlusIcon } from 'lucide-react'; // Import icons
 
 import { ReactSelectAutocomplete, ReactSelectAutocompleteProps } from './ReactSelectAutocomplete';
@@ -56,11 +64,11 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
   disableAutoSelect = false 
 }) => {
 
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  // Local state for the new filter being created in the popover
+  const [dialogOpen, setDialogOpen] = useState(false);
+  // Local state for the new filter being created in the dialog
   const [newFilter, setNewFilter] = useState<AddressFilter>({ id: uuidv4() });
 
-  // Handler for updating fields in the new filter (in the popover)
+  // Handler for updating fields in the new filter (in the dialog)
   const handleNewFilterChange = useCallback(
     (key: keyof Omit<AddressFilter, 'id'>, value: string) => {
       // Clear dependent fields in the new filter
@@ -83,7 +91,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
     if (hasValue) {
       addAddressFilter({ ...newFilter });
       setNewFilter({ id: uuidv4() }); // Reset for next add
-      setPopoverOpen(false);
+      setDialogOpen(false);
     }
   };
 
@@ -128,45 +136,123 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
         </div>
       ))}
 
-      {/* Add Filter Button and Popover */}
-      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-        <PopoverTrigger asChild>
-            <Button variant="outline" className="w-full">
-                 <PlusIcon className="mr-2 h-4 w-4" /> Add Address Filter
+      {/* Add Filter Button and Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="w-full">
+            <PlusIcon className="mr-2 h-4 w-4" /> Add Address Filter
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-[750px] w-full">
+          <DialogHeader className="pb-2">
+            <DialogTitle>Add Address Filter</DialogTitle>
+          </DialogHeader>
+          {/* Address fields grid */}
+          <div className="w-full grid grid-cols-12 gap-2 mb-3">
+            {/* Row 1: Street Number, Pre Direction, Street Name, Type, Post Direction */}
+            <div className="col-span-2 min-w-[80px]">
+              <div className="text-xs font-medium mb-1">Street #</div>
+              <ReactSelectAutocomplete
+                label="Street #"
+                fieldKey="residence_street_number"
+                value={newFilter['residence_street_number'] || null}
+                filters={newFilter}
+                setFilter={handleNewFilterChange}
+                compact
+                hideLabel
+              />
+            </div>
+            <div className="col-span-1 min-w-[50px]">
+              <div className="text-xs font-medium mb-1">Dir.</div>
+              <ReactSelectAutocomplete
+                label="Dir."
+                fieldKey="residence_pre_direction"
+                value={newFilter['residence_pre_direction'] || null}
+                filters={newFilter}
+                setFilter={handleNewFilterChange}
+                compact
+                hideLabel
+              />
+            </div>
+            <div className="col-span-6 min-w-[180px]">
+              <div className="text-xs font-medium mb-1">Street Name</div>
+              <ReactSelectAutocomplete
+                label="Street Name"
+                fieldKey="residence_street_name"
+                value={newFilter['residence_street_name'] || null}
+                filters={newFilter}
+                setFilter={handleNewFilterChange}
+                hideLabel
+              />
+            </div>
+            <div className="col-span-2 min-w-[80px]">
+              <div className="text-xs font-medium mb-1">Type</div>
+              <ReactSelectAutocomplete
+                label="Type"
+                fieldKey="residence_street_type"
+                value={newFilter['residence_street_type'] || null}
+                filters={newFilter}
+                setFilter={handleNewFilterChange}
+                compact
+                hideLabel
+              />
+            </div>
+            <div className="col-span-1 min-w-[60px]">
+              <div className="text-xs font-medium mb-1">Dir.</div>
+              <ReactSelectAutocomplete
+                label="Dir."
+                fieldKey="residence_post_direction"
+                value={newFilter['residence_post_direction'] || null}
+                filters={newFilter}
+                setFilter={handleNewFilterChange}
+                compact
+                hideLabel
+              />
+            </div>
+            {/* Row 2: Apt/Unit Number (full width) */}
+            <div className="col-span-12 mt-1">
+              <div className="text-xs font-medium mb-1">Apt/Unit Number</div>
+              <ReactSelectAutocomplete
+                label="Apt/Unit Number"
+                fieldKey="residence_apt_unit_number"
+                value={newFilter['residence_apt_unit_number'] || null}
+                filters={newFilter}
+                setFilter={handleNewFilterChange}
+                hideLabel
+              />
+            </div>
+            {/* Row 3: City (dropdown, flex), Zipcode (right portion) */}
+            <div className="col-span-8 mt-1">
+              <div className="text-xs font-medium mb-1">City</div>
+              <CitySelect
+                label="City"
+                value={newFilter['residence_city'] || ''}
+                currentFilterData={newFilter}
+                onChange={(valueUpdate) => handleNewFilterChange('residence_city', valueUpdate)}
+                disableAutoSelect={disableAutoSelect}
+                hideLabel
+              />
+            </div>
+            <div className="col-span-4 mt-1 min-w-[120px]">
+              <div className="text-xs font-medium mb-1">Zipcode</div>
+              <ReactSelectAutocomplete
+                label="Zipcode"
+                fieldKey="residence_zipcode"
+                value={newFilter['residence_zipcode'] || null}
+                filters={newFilter}
+                setFilter={handleNewFilterChange}
+                compact
+                hideLabel
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-2">
+            <Button size="sm" className="w-40 mx-auto" onClick={handleAddNewFilter} disabled={!ADDRESS_FIELDS_CONFIG.some(({ key }) => newFilter[key])}>
+              Confirm Add
             </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 min-w-[320px]">
-           <div className="p-4 text-sm">
-               <div className="mb-2 font-medium">Add Address Filter</div>
-               {ADDRESS_FIELDS_CONFIG.map(({ key, label, type }) => (
-                 <div key={key} className="mb-2">
-                   {type === 'autocomplete' ? (
-                     <ReactSelectAutocomplete
-                       label={label}
-                       fieldKey={key}
-                       value={newFilter[key] || null}
-                       filters={newFilter}
-                       setFilter={handleNewFilterChange}
-                     />
-                   ) : (
-                     <CitySelect
-                       label={label}
-                       value={newFilter[key] || ''}
-                       currentFilterData={newFilter}
-                       onChange={(valueUpdate) => handleNewFilterChange(key, valueUpdate)}
-                       disableAutoSelect={disableAutoSelect}
-                     />
-                   )}
-                 </div>
-               ))}
-           </div>
-           <div className="p-2 border-t">
-             <Button size="sm" className="w-full" onClick={handleAddNewFilter} disabled={!ADDRESS_FIELDS_CONFIG.some(({ key }) => newFilter[key])}>
-               Confirm Add
-             </Button>
-           </div>
-        </PopoverContent>
-      </Popover>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Clear All Button */}
       {addressFilters.length > 0 && (

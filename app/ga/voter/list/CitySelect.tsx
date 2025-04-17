@@ -36,6 +36,7 @@ interface CitySelectProps {
   currentFilterData: AddressFilter; // Pass the data for the specific filter this select belongs to
   onChange: (value: string) => void;
   disableAutoSelect?: boolean;
+  hideLabel?: boolean; // New prop to hide the label (when using external label)
 }
 
 export const CitySelect: React.FC<CitySelectProps> = ({
@@ -44,6 +45,7 @@ export const CitySelect: React.FC<CitySelectProps> = ({
   currentFilterData,
   onChange,
   disableAutoSelect = false,
+  hideLabel = false
 }) => {
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -91,14 +93,16 @@ export const CitySelect: React.FC<CitySelectProps> = ({
 
   return (
     <div>
-      <label className="text-sm font-medium block mb-1" htmlFor={`city-select-${currentFilterData.id}`}>{label}</label>
+      {!hideLabel && (
+        <label className="text-xs font-medium block mb-1" htmlFor={`city-select-${currentFilterData.id}`}>{label}</label>
+      )}
       <select
         id={`city-select-${currentFilterData.id}`}
         ref={selectRef}
         value={value || ''} // Controlled component
         onChange={e => onChange(e.target.value)}
         disabled={isLoading}
-        className={`w-full p-2 border rounded bg-[hsl(var(--input))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] disabled:opacity-50 ${cityOptions.length === 1 ? 'border-primary' : ''}`}
+        className={`w-full py-1 px-2 h-8 border rounded text-sm bg-[hsl(var(--input))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] disabled:opacity-50 ${cityOptions.length === 1 ? 'border-primary' : ''}`}
         aria-label={label}
       >
         <option value="">{isLoading ? 'Loading...' : `Select ${label}`}</option>
