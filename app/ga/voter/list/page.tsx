@@ -207,8 +207,6 @@ export default function VoterListPage() {
   const [congressionalDistricts, setCongressionalDistricts] = useState([]);
   const [stateSenateDistricts, setStateSenateDistricts] = useState([]);
   const [stateHouseDistricts, setStateHouseDistricts] = useState([]);
-  const [zip, setZip] = useState([]);
-  const [city, setCity] = useState([]);
   const [status, setStatus] = useState([]);
   const [party, setParty] = useState([]);
   const [historyParty, setHistoryParty] = useState([]);
@@ -274,18 +272,6 @@ export default function VoterListPage() {
               <ResidenceAddressFilter
                 filters={residenceAddressFilters}
                 setFilter={setResidenceAddressFilter}
-              />
-              <MultiSelect
-                label="Zip Code"
-                options={["30303", "30309", "30310", "30318"]}
-                value={zip}
-                setValue={setZip}
-              />
-              <MultiSelect
-                label="City"
-                options={["Atlanta", "Decatur", "Marietta", "Duluth"]}
-                value={city}
-                setValue={setCity}
               />
             </div>
           </div>
