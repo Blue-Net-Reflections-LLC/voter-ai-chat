@@ -50,10 +50,15 @@ function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (..
 }
 
 interface AddressDataContextType {
-  // Current filter being edited
+  // Current filter being edited (confirmed selections)
   currentFilter: Partial<AddressFilter>;
-  // Update a single field in the filter
+  // Update a single field in the confirmed filter
   updateField: (key: keyof Omit<AddressFilter, 'id'>, value: string) => void;
+  // Current search field and query (for typing in a field before selection)
+  searchField: keyof Omit<AddressFilter, 'id'> | null;
+  searchQuery: string;
+  // Set current search field and query
+  setSearch: (field: keyof Omit<AddressFilter, 'id'> | null, query: string) => void;
   // Clear all fields
   clearAllFields: () => void;
   // Raw records returned from API
@@ -78,7 +83,14 @@ export const AddressDataProvider: React.FC<{
   children: React.ReactNode;
   initialFilter?: Partial<AddressFilter>;
 }> = ({ children, initialFilter = {} }) => {
+  // Confirmed filter selections
   const [currentFilter, setCurrentFilter] = useState<Partial<AddressFilter>>(initialFilter);
+  
+  // Current search (typing before selection)
+  const [searchField, setSearchField] = useState<keyof Omit<AddressFilter, 'id'> | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  // Data state
   const [records, setRecords] = useState<AddressRecord[]>([]);
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -86,9 +98,13 @@ export const AddressDataProvider: React.FC<{
   const hasUserInteracted = useRef(false);
   
   // Single API call function - this is the ONLY function that calls the API
-  const fetchRecords = useCallback(async (filterData: Partial<AddressFilter>) => {
-    // Skip empty filters
-    if (Object.values(filterData).every(v => !v)) {
+  const fetchRecords = useCallback(async (
+    filterData: Partial<AddressFilter>, 
+    activeSearchField: keyof Omit<AddressFilter, 'id'> | null = null,
+    activeSearchQuery: string = ''
+  ) => {
+    // Skip if we have no filters and no search
+    if (Object.values(filterData).every(v => !v) && !activeSearchQuery) {
       setRecords([]);
       setOptions({});
       return;
@@ -97,9 +113,16 @@ export const AddressDataProvider: React.FC<{
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
+      
+      // Add confirmed filter parameters
       Object.entries(filterData).forEach(([key, value]) => {
         if (value && key !== 'id') params.set(key, value);
       });
+      
+      // Add search parameter if present
+      if (activeSearchField && activeSearchQuery) {
+        params.set(activeSearchField as string, activeSearchQuery);
+      }
       
       console.log("[AddressDataProvider] Fetching records with params:", params.toString());
       const response = await fetch(`/ga/api/voter-address/records?${params.toString()}`);
@@ -140,13 +163,27 @@ export const AddressDataProvider: React.FC<{
   
   // Create stable debounced version
   const debouncedFetchRecords = useCallback(
-    debounce((filterData: Partial<AddressFilter>) => {
-      fetchRecords(filterData);
+    debounce((
+      filterData: Partial<AddressFilter>, 
+      activeSearchField: keyof Omit<AddressFilter, 'id'> | null,
+      activeSearchQuery: string
+    ) => {
+      fetchRecords(filterData, activeSearchField, activeSearchQuery);
     }, 300),
     [fetchRecords]
   );
   
-  // Handle field updates
+  // Set current search field and query
+  const setSearch = useCallback((
+    field: keyof Omit<AddressFilter, 'id'> | null, 
+    query: string
+  ) => {
+    hasUserInteracted.current = true;
+    setSearchField(field);
+    setSearchQuery(query);
+  }, []);
+  
+  // Handle confirmed field selection
   const updateField = useCallback((key: keyof Omit<AddressFilter, 'id'>, value: string) => {
     // Mark that user has interacted with the form
     hasUserInteracted.current = true;
@@ -156,9 +193,13 @@ export const AddressDataProvider: React.FC<{
       if (prev[key] === value) return prev;
       
       const newFilter = { ...prev, [key]: value };
-      console.log(`[AddressDataProvider] Updated field ${String(key)} to "${value}"`);
+      console.log(`[AddressDataProvider] Updated confirmed filter ${String(key)} to "${value}"`);
       return newFilter;
     });
+    
+    // Clear current search when a field is confirmed
+    setSearchField(null);
+    setSearchQuery('');
   }, []);
   
   // Clear all fields
@@ -166,6 +207,8 @@ export const AddressDataProvider: React.FC<{
     console.log("[AddressDataProvider] Clearing all fields and canceling pending requests");
     // Reset all state
     setCurrentFilter({});
+    setSearchField(null);
+    setSearchQuery('');
     setRecords([]);
     setOptions({});
     setIsLoading(false);
@@ -175,20 +218,26 @@ export const AddressDataProvider: React.FC<{
     setLastUpdated(Date.now());
   }, []);
   
-  // Trigger API call when filter changes but ONLY if user has interacted
+  // Trigger API call when filter changes OR when search changes
   useEffect(() => {
     if (!hasUserInteracted.current) {
       console.log("[AddressDataProvider] Skipping initial API call - waiting for user interaction");
       return;
     }
     
-    console.log("[AddressDataProvider] Filter changed, triggering debounced fetch");
-    debouncedFetchRecords(currentFilter);
-  }, [currentFilter, debouncedFetchRecords]);
+    console.log("[AddressDataProvider] Filter or search changed, triggering debounced fetch");
+    console.log("[AddressDataProvider] Current filter:", currentFilter);
+    console.log("[AddressDataProvider] Search field:", searchField, "Search query:", searchQuery);
+    
+    debouncedFetchRecords(currentFilter, searchField, searchQuery);
+  }, [currentFilter, searchField, searchQuery, debouncedFetchRecords]);
   
   const value = {
     currentFilter,
     updateField,
+    searchField,
+    searchQuery,
+    setSearch,
     clearAllFields,
     records,
     options,
