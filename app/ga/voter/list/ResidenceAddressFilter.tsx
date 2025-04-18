@@ -254,16 +254,6 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Backward compatibility for new filters and setFilter props */}
-      {filters && setFilter && (
-        <div className="mt-2">
-          <div className="text-xs font-medium mb-1">Custom Filter (Legacy)</div>
-          <div className="p-2 border rounded-md text-xs">
-            Using legacy filter system
-          </div>
-        </div>
-      )}
     </div>
   );
 };
