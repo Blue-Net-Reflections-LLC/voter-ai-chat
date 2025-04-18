@@ -51,29 +51,27 @@ export function ResultsPanel({
             <Button variant="outline" size="sm"><Download size={16} className="mr-1"/> Download CSV</Button>
           </div>
         </CardTitle>
-        <div className="text-sm text-muted-foreground flex justify-between">
-          {totalItems > 0 ? (
-            <span>
-              Showing {startItem} to {endItem} of {totalItems} voters
-              {hasActiveFilters && (
-                <span className="ml-1 inline-flex items-center gap-1 text-blue-600 font-medium">
-                  (filtered)
-                  {onClearFilters && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 px-1 text-xs text-blue-600 hover:text-blue-800"
-                      onClick={onClearFilters}
-                    >
-                      <FilterX size={12} className="mr-1" />
-                      Clear
-                    </Button>
-                  )}
-                </span>
-              )}
-            </span>
-          ) : (
-            <span>{isLoading ? 'Loading voters...' : 'No voters found matching your criteria'}</span>
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-muted-foreground">
+            {totalItems > 0 ? (
+              <span>
+                Showing {startItem} to {endItem} of {totalItems} voters
+              </span>
+            ) : (
+              <span>{isLoading ? 'Loading voters...' : 'No voters found matching your criteria'}</span>
+            )}
+          </div>
+          
+          {hasActiveFilters && onClearFilters && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 flex items-center"
+              onClick={onClearFilters}
+            >
+              <FilterX size={14} className="mr-1" />
+              Clear Filters
+            </Button>
           )}
         </div>
       </CardHeader>
