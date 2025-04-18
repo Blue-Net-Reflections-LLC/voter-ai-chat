@@ -47,99 +47,68 @@ export function FilterPanel({
   } = useLookupData();
 
   // Add state for checkbox selections
-  const [selectedCounties, setSelectedCounties] = useState<number[]>([6]);
   const [neverVoted, setNeverVoted] = useState(false);
   const [contactedNoResponse, setContactedNoResponse] = useState(false);
   const [redistrictingAffected, setRedistrictingAffected] = useState(false);
-
-  // Handler for county checkbox changes
-  const handleCountyChange = (county: number) => {
-    setSelectedCounties(prev => 
-      prev.includes(county) 
-        ? prev.filter(c => c !== county) 
-        : [...prev, county]
-    );
-    // Here you would also update your filters state with the new selection
-    // updateFilter('county', [...selectedCounties]);
-  };
 
   return (
     <Card className="w-full h-full overflow-auto">
       <CardContent className="space-y-3 pt-2 px-3">
         {/* Geographic Filters */}
-        <div>
-          <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Geographic</div>
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold">Geographic Filters</h3>
+
+          {/* County Filter */}
           <div className="space-y-2">
-            <div>
-              <div className="text-xs font-medium mb-1">County</div>
-              <Input 
-                placeholder="Search..." 
-                className="h-8 text-xs mb-2" 
-              />
-              <div className="flex items-center mb-1">
-                <div className="text-xs ml-1 mr-2 text-muted-foreground">SELECT</div>
-                <div className="flex-1 flex justify-end space-x-1">
-                  <ChevronLeft className="h-4 w-4 text-gray-400" />
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    className="mr-2 h-4 w-4" 
-                    id="county-6" 
-                    checked={selectedCounties.includes(6)}
-                    onChange={() => handleCountyChange(6)}
-                  />
-                  <label htmlFor="county-6" className="text-xs">6</label>
-                </div>
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    className="mr-2 h-4 w-4" 
-                    id="county-11"
-                    checked={selectedCounties.includes(11)} 
-                    onChange={() => handleCountyChange(11)}
-                  />
-                  <label htmlFor="county-11" className="text-xs">11</label>
-                </div>
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    className="mr-2 h-4 w-4" 
-                    id="county-14"
-                    checked={selectedCounties.includes(14)} 
-                    onChange={() => handleCountyChange(14)}
-                  />
-                  <label htmlFor="county-14" className="text-xs">14</label>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-xs font-medium mb-1">Congressional District</div>
-              <Input 
-                placeholder="Search..." 
-                className="h-8 text-xs" 
-              />
-              <div className="flex items-center mt-1 mb-1">
-                <div className="text-xs ml-1 mr-2 text-muted-foreground">SELECT</div>
-                <div className="flex-1 flex justify-end space-x-1">
-                  <ChevronLeft className="h-4 w-4 text-gray-400" />
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                </div>
-              </div>
-            </div>
-            
-            {/* More geographic filters can be added here */}
-            
-            {/* Residence Address Filter */}
-            <ResidenceAddressFilter
-              filters={residenceAddressFilters}
-              setFilter={updateResidenceAddressFilter}
+            <CountyMultiSelect
+              value={filters.county}
+              setValue={(value) => updateFilter('county', value)}
+              isLoading={isLoading}
+              compact={true}
             />
           </div>
+
+          {/* Congressional District Filter */}
+          <div className="space-y-2">
+            <DistrictMultiSelect
+              label="Congressional District"
+              options={congressionalDistricts.length > 0 ? congressionalDistricts : []}
+              value={filters.congressionalDistricts}
+              setValue={(value) => updateFilter('congressionalDistricts', value)}
+              isLoading={isLoading}
+              compact={true}
+            />
+          </div>
+
+          {/* State Senate District Filter */}
+          <div className="space-y-2">
+            <DistrictMultiSelect
+              label="State Senate District"
+              options={stateSenateDistricts.length > 0 ? stateSenateDistricts : []}
+              value={filters.stateSenateDistricts}
+              setValue={(value) => updateFilter('stateSenateDistricts', value)}
+              isLoading={isLoading}
+              compact={true}
+            />
+          </div>
+
+          {/* State House District Filter */}
+          <div className="space-y-2">
+            <DistrictMultiSelect
+              label="State House District"
+              options={stateHouseDistricts.length > 0 ? stateHouseDistricts : []}
+              value={filters.stateHouseDistricts}
+              setValue={(value) => updateFilter('stateHouseDistricts', value)}
+              isLoading={isLoading}
+              compact={true}
+            />
+          </div>
+
+          {/* Residence Address Filter */}
+          <ResidenceAddressFilter
+            filters={residenceAddressFilters}
+            setFilter={updateResidenceAddressFilter}
+          />
         </div>
         <Separator />
         

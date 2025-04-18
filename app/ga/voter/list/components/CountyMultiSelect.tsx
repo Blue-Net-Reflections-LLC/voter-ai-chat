@@ -10,19 +10,24 @@ import { MultiSelectOption } from './MultiSelect';
 interface CountyMultiSelectProps {
   value: string[];
   setValue: (value: string[]) => void;
+  isLoading?: boolean;
+  compact?: boolean;
 }
 
-export function CountyMultiSelect({ value, setValue }: CountyMultiSelectProps) {
+export function CountyMultiSelect({ value, setValue, isLoading: propIsLoading, compact = false }: CountyMultiSelectProps) {
   const [search, setSearch] = useState("");
-  const { counties, isLoading, error } = useLookupData();
+  const { counties, isLoading: dataIsLoading, error } = useLookupData();
+  
+  // Use loader from props or from data hook
+  const loading = propIsLoading !== undefined ? propIsLoading : dataIsLoading;
   
   // Filtered options: all counties matching search
-  const filtered = counties.filter(
+  const filtered = counties?.filter(
     (c) => c.label.toLowerCase().includes(search.toLowerCase())
-  );
+  ) || [];
   
   // For display: selected at top, then all filtered (with checked/unchecked)
-  const selected = value.filter((v) => counties.some(c => c.value === v));
+  const selected = value.filter((v) => counties?.some(c => c.value === v) || false);
 
   // Helper: render a county checkbox (checked if selected)
   function renderCountyCheckbox(county: MultiSelectOption, keyPrefix = "") {
@@ -56,10 +61,10 @@ export function CountyMultiSelect({ value, setValue }: CountyMultiSelectProps) {
           placeholder="Search counties..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="mb-2 h-8 text-xs"
+          className={`mb-2 ${compact ? 'h-8 text-xs' : ''}`}
         />
         <div className="max-h-48 overflow-y-auto border rounded bg-background shadow p-2">
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center p-4">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
               <span className="text-xs">Loading counties...</span>
@@ -72,7 +77,7 @@ export function CountyMultiSelect({ value, setValue }: CountyMultiSelectProps) {
                 <>
                   <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide px-1 pb-1">Selected</div>
                   {counties
-                    .filter(county => value.includes(county.value))
+                    ?.filter(county => value.includes(county.value))
                     .map(county => renderCountyCheckbox(county, "top-"))}
                   <div className="border-t my-2" />
                 </>

@@ -13,6 +13,7 @@ interface DistrictMultiSelectProps {
   setValue: (value: string[]) => void;
   isLoading?: boolean;
   error?: string | null;
+  compact?: boolean;
 }
 
 export function DistrictMultiSelect({ 
@@ -21,7 +22,8 @@ export function DistrictMultiSelect({
   value, 
   setValue,
   isLoading = false,
-  error = null
+  error = null,
+  compact = false
 }: DistrictMultiSelectProps) {
   const [search, setSearch] = useState("");
   
@@ -75,7 +77,7 @@ export function DistrictMultiSelect({
           placeholder={`Search ${label.toLowerCase()}...`}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="mb-2 h-8 text-xs"
+          className={`mb-2 ${compact ? 'h-8 text-xs' : ''}`}
         />
         <div className="max-h-48 overflow-y-auto border rounded bg-background shadow p-2">
           {isLoading ? (
