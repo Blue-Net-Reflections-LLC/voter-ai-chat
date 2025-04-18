@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const congressionalDistricts = searchParams.getAll('congressionalDistricts');
     const stateSenateDistricts = searchParams.getAll('stateSenateDistricts');
     const stateHouseDistricts = searchParams.getAll('stateHouseDistricts');
-    const status = searchParams.get('status');
+    const statusValues = searchParams.getAll('status');
     const party = searchParams.get('party');
     
     // Voter details filters
@@ -86,12 +86,18 @@ export async function GET(request: NextRequest) {
     // For example, if filtering by both county and status, 
     // we can hint to use the composite index
     const hasCounty = !!county;
-    const hasStatus = !!status;
+    const hasStatus = statusValues.length > 0;
 
     // Check if we're filtering by both county and status
     if (hasCounty && hasStatus) {
       // For county + status, use a common pattern that optimizers recognize
-      conditions.push(`(UPPER(county_name) = UPPER('${county}') AND UPPER(status) = UPPER('${status}'))`);
+      if (statusValues.length === 1) {
+        conditions.push(`(UPPER(county_name) = UPPER('${county}') AND UPPER(status) = UPPER('${statusValues[0]}'))`);
+      } else {
+        // Handle multiple status values with county
+        const statusConditions = statusValues.map(s => `UPPER(status) = UPPER('${s}')`).join(' OR ');
+        conditions.push(`(UPPER(county_name) = UPPER('${county}') AND (${statusConditions}))`);
+      }
     } else {
       // Otherwise handle them individually
       if (hasCounty) {
@@ -99,7 +105,13 @@ export async function GET(request: NextRequest) {
       }
 
       if (hasStatus) {
-        conditions.push(`UPPER(status) = UPPER('${status}')`);
+        if (statusValues.length === 1) {
+          conditions.push(`UPPER(status) = UPPER('${statusValues[0]}')`);
+        } else {
+          // Handle multiple status values
+          const statusConditions = statusValues.map(s => `UPPER(status) = UPPER('${s}')`).join(' OR ');
+          conditions.push(`(${statusConditions})`);
+        }
       }
     }
 

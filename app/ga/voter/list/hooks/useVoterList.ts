@@ -199,7 +199,9 @@ export function useVoterList() {
     
     // Add status filter
     if (filters.status.length > 0) {
-      params.set('status', filters.status[0]); // API only supports one status at a time
+      filters.status.forEach(status => 
+        params.append('status', status)
+      );
     }
     
     // Add party filter
