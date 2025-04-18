@@ -72,13 +72,45 @@ export async function GET(request: NextRequest) {
     const raceValues = searchParams.getAll('race');
     
     // Residence address filters
-    const residenceStreetName = searchParams.get('residenceStreetName');
-    const residenceStreetNumber = searchParams.get('residenceStreetNumber');
-    const residenceCity = searchParams.get('residenceCity');
-    const residenceZipcode = searchParams.get('residenceZipcode');
-    const residencePreDirection = searchParams.get('residencePreDirection');
-    const residencePostDirection = searchParams.get('residencePostDirection');
-    const residenceStreetSuffix = searchParams.get('residenceStreetSuffix');
+    const residenceStreetNames = searchParams.getAll('residenceStreetName');
+    const residenceStreetNumbers = searchParams.getAll('residenceStreetNumber');
+    const residenceCities = searchParams.getAll('residenceCity');
+    const residenceZipcodes = searchParams.getAll('residenceZipcode');
+    const residencePreDirections = searchParams.getAll('residencePreDirection');
+    const residencePostDirections = searchParams.getAll('residencePostDirection');
+    const residenceStreetSuffixes = searchParams.getAll('residenceStreetSuffix');
+
+    // For backward compatibility
+    const singleResidenceStreetName = searchParams.get('residenceStreetName');
+    const singleResidenceStreetNumber = searchParams.get('residenceStreetNumber');
+    const singleResidenceCity = searchParams.get('residenceCity');
+    const singleResidenceZipcode = searchParams.get('residenceZipcode');
+    const singleResidencePreDirection = searchParams.get('residencePreDirection');
+    const singleResidencePostDirection = searchParams.get('residencePostDirection');
+    const singleResidenceStreetSuffix = searchParams.get('residenceStreetSuffix');
+
+    // Merge single values with arrays if they exist
+    if (singleResidenceStreetName && !residenceStreetNames.includes(singleResidenceStreetName)) {
+      residenceStreetNames.push(singleResidenceStreetName);
+    }
+    if (singleResidenceStreetNumber && !residenceStreetNumbers.includes(singleResidenceStreetNumber)) {
+      residenceStreetNumbers.push(singleResidenceStreetNumber);
+    }
+    if (singleResidenceCity && !residenceCities.includes(singleResidenceCity)) {
+      residenceCities.push(singleResidenceCity);
+    }
+    if (singleResidenceZipcode && !residenceZipcodes.includes(singleResidenceZipcode)) {
+      residenceZipcodes.push(singleResidenceZipcode);
+    }
+    if (singleResidencePreDirection && !residencePreDirections.includes(singleResidencePreDirection)) {
+      residencePreDirections.push(singleResidencePreDirection);
+    }
+    if (singleResidencePostDirection && !residencePostDirections.includes(singleResidencePostDirection)) {
+      residencePostDirections.push(singleResidencePostDirection);
+    }
+    if (singleResidenceStreetSuffix && !residenceStreetSuffixes.includes(singleResidenceStreetSuffix)) {
+      residenceStreetSuffixes.push(singleResidenceStreetSuffix);
+    }
 
     // Build SQL conditions
     const conditions = [];
@@ -225,38 +257,46 @@ export async function GET(request: NextRequest) {
     }
 
     // Address conditions - street_name and street_number can use a composite index
-    if (residenceStreetName && residenceStreetNumber) {
+    if (residenceStreetNames.length > 0 && residenceStreetNumbers.length > 0) {
       // Combined filter can use the composite index
-      conditions.push(`(UPPER(residence_street_name) LIKE UPPER('${residenceStreetName}%') AND residence_street_number = '${residenceStreetNumber}')`);
+      const placeholders = residenceStreetNames.map((name, index) => `(UPPER(residence_street_name) LIKE UPPER('${name}%') AND residence_street_number = '${residenceStreetNumbers[index]}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     } else {
       // Individual filters
-      if (residenceStreetName) {
-        conditions.push(`UPPER(residence_street_name) LIKE UPPER('${residenceStreetName}%')`);
+      if (residenceStreetNames.length > 0) {
+        const placeholders = residenceStreetNames.map(name => `UPPER(residence_street_name) LIKE UPPER('${name}%')`);
+        conditions.push(`(${placeholders.join(' OR ')})`);
       }
 
-      if (residenceStreetNumber) {
-        conditions.push(`residence_street_number = '${residenceStreetNumber}'`);
+      if (residenceStreetNumbers.length > 0) {
+        const placeholders = residenceStreetNumbers.map(number => `residence_street_number = '${number}'`);
+        conditions.push(`(${placeholders.join(' OR ')})`);
       }
     }
 
-    if (residenceCity) {
-      conditions.push(`UPPER(residence_city) = UPPER('${residenceCity}')`);
+    if (residenceCities.length > 0) {
+      const placeholders = residenceCities.map(city => `UPPER(residence_city) = UPPER('${city}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residenceZipcode) {
-      conditions.push(`residence_zipcode = '${residenceZipcode}'`);
+    if (residenceZipcodes.length > 0) {
+      const placeholders = residenceZipcodes.map(zipcode => `residence_zipcode = '${zipcode}'`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residencePreDirection) {
-      conditions.push(`UPPER(residence_pre_direction) = UPPER('${residencePreDirection}')`);
+    if (residencePreDirections.length > 0) {
+      const placeholders = residencePreDirections.map(direction => `UPPER(residence_pre_direction) = UPPER('${direction}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residencePostDirection) {
-      conditions.push(`UPPER(residence_post_direction) = UPPER('${residencePostDirection}')`);
+    if (residencePostDirections.length > 0) {
+      const placeholders = residencePostDirections.map(direction => `UPPER(residence_post_direction) = UPPER('${direction}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residenceStreetSuffix) {
-      conditions.push(`UPPER(residence_street_suffix) = UPPER('${residenceStreetSuffix}')`);
+    if (residenceStreetSuffixes.length > 0) {
+      const placeholders = residenceStreetSuffixes.map(suffix => `UPPER(residence_street_type) = UPPER('${suffix}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
     // Construct the WHERE clause

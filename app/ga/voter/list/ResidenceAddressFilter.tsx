@@ -91,11 +91,49 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
     }
   };
 
+  // Helper function to format address
+  const formatAddress = (filter: AddressFilter) => {
+    // Line 1: Street number, pre-direction, street name, street type, post-direction
+    const line1Parts = [
+      filter.residence_street_number,
+      filter.residence_pre_direction,
+      filter.residence_street_name,
+      filter.residence_street_type,
+      filter.residence_post_direction
+    ].filter(Boolean);
+    const line1 = line1Parts.join(' ');
+    
+    // Line 2: Apt/Unit if exists
+    let line2 = '';
+    if (filter.residence_apt_unit_number) {
+      line2 = `Apt: ${filter.residence_apt_unit_number}`;
+    }
+    
+    // Line 3: City, State, Zipcode
+    const line3Parts = [];
+    if (filter.residence_city) {
+      line3Parts.push(filter.residence_city);
+    }
+    
+    if (line3Parts.length > 0) {
+      line3Parts.push('GA'); // Always add state code for Georgia
+    }
+    
+    if (filter.residence_zipcode) {
+      line3Parts.push(filter.residence_zipcode);
+    }
+    
+    const line3 = line3Parts.join(', ');
+    
+    // Combine all lines that have content
+    return [line1, line2, line3].filter(line => line.trim() !== '').join('\n');
+  };
+
   return (
     <div className="space-y-4">
       {/* Display existing filters */}
       {addressFilters.map((filter, index) => (
-        <div key={filter.id} className="p-3 border rounded-md space-y-2 relative bg-background/50">
+        <div key={filter.id} className="p-3 border rounded-md relative bg-background/50">
            <Button 
              variant="ghost" 
              size="icon" 
@@ -105,14 +143,12 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
            >
              <XIcon size={16} />
            </Button>
-           <p className="text-xs font-medium text-muted-foreground mb-2">Address Filter #{index + 1}</p>
-           {ADDRESS_FIELDS_CONFIG.map(({ key, label }) => (
-            <div key={key}>
-              <div className="text-sm p-2 h-8 border rounded bg-muted/50 truncate">
-                {filter[key] || <span className="text-muted-foreground italic">Not set</span>}
-              </div>
-            </div>
-          ))}
+           <div className="pr-6"> {/* Add padding-right to avoid text overlapping with the X button */}
+             <p className="text-xs font-medium text-muted-foreground mb-2">Address Filter #{index + 1}</p>
+             <div className="whitespace-pre-line text-sm">
+               {formatAddress(filter)}
+             </div>
+           </div>
         </div>
       ))}
 
