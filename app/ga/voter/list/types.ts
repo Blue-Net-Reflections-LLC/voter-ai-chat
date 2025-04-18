@@ -60,6 +60,7 @@ export interface FilterState {
 }
 
 export interface ResidenceAddressFilterState {
+  id: string;
   residence_street_number: string;
   residence_pre_direction: string;
   residence_street_name: string;

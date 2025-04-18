@@ -34,6 +34,7 @@ const initialFilterState: FilterState = {
 
 // Initial address filter state
 const initialAddressFilterState: ResidenceAddressFilterState = {
+  id: crypto.randomUUID(),
   residence_street_number: '',
   residence_pre_direction: '',
   residence_street_name: '',
@@ -114,16 +115,66 @@ export function useVoterList() {
     return filterState;
   });
   
-  const [residenceAddressFilters, setResidenceAddressFilters] = useState<ResidenceAddressFilterState>(() => {
-    // Initialize from URL if available
-    const addressFilterState = { ...initialAddressFilterState };
-    
-    ADDRESS_FIELDS.forEach(field => {
-      const value = searchParams.get(field);
-      if (value) addressFilterState[field] = value;
-    });
-    
-    return addressFilterState;
+  const [residenceAddressFilters, setResidenceAddressFilters] = useState<ResidenceAddressFilterState[]>(() => {
+    // 1. Parse composite resident_address params (new format)
+    const compositeParams = searchParams.getAll('resident_address');
+    if (compositeParams.length > 0) {
+      const parsedFilters: ResidenceAddressFilterState[] = [];
+      compositeParams.forEach(param => {
+        const parts = param.split(',');
+        if (parts.length === 8) {
+          const [streetNumber, preDir, streetName, streetType, postDir, aptUnit, city, zipcode] = parts;
+          parsedFilters.push({
+            id: crypto.randomUUID(),
+            residence_street_number: streetNumber || '',
+            residence_pre_direction: preDir || '',
+            residence_street_name: streetName || '',
+            residence_street_type: streetType || '',
+            residence_post_direction: postDir || '',
+            residence_apt_unit_number: aptUnit || '',
+            residence_city: city || '',
+            residence_zipcode: zipcode || ''
+          });
+        }
+      });
+      if (parsedFilters.length > 0) return parsedFilters;
+    }
+
+    // 2. Fallback to legacy individual params (backward compatibility)
+    const addressFilterState: ResidenceAddressFilterState = {
+      id: crypto.randomUUID(),
+      residence_street_number: '',
+      residence_pre_direction: '',
+      residence_street_name: '',
+      residence_street_type: '',
+      residence_post_direction: '',
+      residence_apt_unit_number: '',
+      residence_zipcode: '',
+      residence_city: ''
+    };
+
+    const urlToStateFieldMap: Record<string, keyof ResidenceAddressFilterState> = {
+      'residenceStreetNumber': 'residence_street_number',
+      'residencePreDirection': 'residence_pre_direction',
+      'residenceStreetName': 'residence_street_name',
+      'residenceStreetSuffix': 'residence_street_type',
+      'residencePostDirection': 'residence_post_direction',
+      'residenceAptUnitNumber': 'residence_apt_unit_number',
+      'residenceZipcode': 'residence_zipcode',
+      'residenceCity': 'residence_city'
+    };
+
+    const hasLegacyParams = Object.keys(urlToStateFieldMap).some(p => searchParams.has(p));
+    if (hasLegacyParams) {
+      Object.entries(urlToStateFieldMap).forEach(([param, stateField]) => {
+        const val = searchParams.get(param);
+        if (val) addressFilterState[stateField] = val;
+      });
+      return [addressFilterState];
+    }
+
+    // 3. No address filters
+    return [];
   });
   
   const [pagination, setPagination] = useState<PaginationState>(() => {
@@ -171,7 +222,7 @@ export function useVoterList() {
   // Build query params for API call
   const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams();
-    
+    debugger
     // Add pagination params
     params.set('page', pagination.currentPage.toString());
     params.set('pageSize', pagination.pageSize.toString());
@@ -236,32 +287,20 @@ export function useVoterList() {
     }
     
     // Add address filters
-    if (residenceAddressFilters.residence_street_number) {
-      params.set('residenceStreetNumber', residenceAddressFilters.residence_street_number);
-    }
-    
-    if (residenceAddressFilters.residence_pre_direction) {
-      params.set('residencePreDirection', residenceAddressFilters.residence_pre_direction);
-    }
-    
-    if (residenceAddressFilters.residence_street_name) {
-      params.set('residenceStreetName', residenceAddressFilters.residence_street_name);
-    }
-    
-    if (residenceAddressFilters.residence_street_type) {
-      params.set('residenceStreetSuffix', residenceAddressFilters.residence_street_type);
-    }
-    
-    if (residenceAddressFilters.residence_post_direction) {
-      params.set('residencePostDirection', residenceAddressFilters.residence_post_direction);
-    }
-    
-    if (residenceAddressFilters.residence_zipcode) {
-      params.set('residenceZipcode', residenceAddressFilters.residence_zipcode);
-    }
-    
-    if (residenceAddressFilters.residence_city) {
-      params.set('residenceCity', residenceAddressFilters.residence_city);
+    if (residenceAddressFilters.length > 0) {
+      residenceAddressFilters.forEach(filter => {
+        const addressParts = [
+          filter.residence_street_number || '',
+          filter.residence_pre_direction || '',
+          filter.residence_street_name || '',
+          filter.residence_street_type || '',
+          filter.residence_post_direction || '',
+          filter.residence_apt_unit_number || '',
+          filter.residence_city || '',
+          filter.residence_zipcode || ''
+        ];
+        params.append('resident_address', addressParts.join(','));
+      });
     }
     
     return params;
@@ -319,10 +358,19 @@ export function useVoterList() {
       filters.race.forEach(value => params.append('race', value));
     }
     
-    // Add address filter params
-    ADDRESS_FIELDS.forEach(field => {
-      const value = residenceAddressFilters[field];
-      if (value) params.set(field, value);
+    // Add composite address filters
+    residenceAddressFilters.forEach(filter => {
+      const addressParts = [
+        filter.residence_street_number || '',
+        filter.residence_pre_direction || '',
+        filter.residence_street_name || '',
+        filter.residence_street_type || '',
+        filter.residence_post_direction || '',
+        filter.residence_apt_unit_number || '',
+        filter.residence_city || '',
+        filter.residence_zipcode || ''
+      ];
+      params.append('resident_address', addressParts.join(','));
     });
     
     // Get current URL params
@@ -332,6 +380,7 @@ export function useVoterList() {
     
     // Only update URL if params actually changed
     if (newParamsString !== currentParamsString) {
+      debugger
       router.replace(`${pathname}?${newParamsString}`, { scroll: false });
     }
     
@@ -419,15 +468,22 @@ export function useVoterList() {
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
   
-  const updateResidenceAddressFilter = (key: keyof ResidenceAddressFilterState, value: string) => {
-    setResidenceAddressFilters(prev => ({ ...prev, [key]: value }));
+  const updateResidenceAddressFilter = (
+    id: string,
+    key: keyof Omit<ResidenceAddressFilterState, 'id'>,
+    value: string
+  ) => {
+    debugger
+    setResidenceAddressFilters(prev =>
+      prev.map(f => (f.id === id ? { ...f, [key]: value } : f))
+    );
     // Reset to first page when filters change
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
   
   const clearAllFilters = () => {
     setFilters(initialFilterState);
-    setResidenceAddressFilters(initialAddressFilterState);
+    setResidenceAddressFilters([]);
     // Reset to first page when filters are cleared
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
@@ -456,9 +512,7 @@ export function useVoterList() {
       filter => Array.isArray(filter) && filter.length > 0
     );
     
-    const hasActiveAddressFilters = Object.values(residenceAddressFilters).some(
-      value => !!value
-    );
+    const hasActiveAddressFilters = residenceAddressFilters.length > 0;
     
     return hasActiveArrayFilters || hasActiveAddressFilters;
   };

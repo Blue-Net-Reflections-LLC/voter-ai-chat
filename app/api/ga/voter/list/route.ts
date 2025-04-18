@@ -79,6 +79,25 @@ export async function GET(request: NextRequest) {
     const residencePreDirections = searchParams.getAll('residencePreDirection');
     const residencePostDirections = searchParams.getAll('residencePostDirection');
     const residenceStreetSuffixes = searchParams.getAll('residenceStreetSuffix');
+    const residenceAptUnitNumbers = searchParams.getAll('residenceAptUnitNumber');
+
+    // Extract resident_address parameters (new composite format)
+    const residentAddresses = searchParams.getAll('resident_address');
+
+    residentAddresses.forEach(addr => {
+      const parts = addr.split(',');
+      if (parts.length === 8) {
+        const [num, pre, name, type, post, apt, city, zip] = parts;
+        if (num) residenceStreetNumbers.push(num);
+        if (pre) residencePreDirections.push(pre);
+        if (name) residenceStreetNames.push(name);
+        if (type) residenceStreetSuffixes.push(type);
+        if (post) residencePostDirections.push(post);
+        if (apt) residenceAptUnitNumbers.push(apt);
+        if (city) residenceCities.push(city);
+        if (zip) residenceZipcodes.push(zip);
+      }
+    });
 
     // For backward compatibility
     const singleResidenceStreetName = searchParams.get('residenceStreetName');
@@ -88,6 +107,7 @@ export async function GET(request: NextRequest) {
     const singleResidencePreDirection = searchParams.get('residencePreDirection');
     const singleResidencePostDirection = searchParams.get('residencePostDirection');
     const singleResidenceStreetSuffix = searchParams.get('residenceStreetSuffix');
+    const singleResidenceAptUnitNumber = searchParams.get('residenceAptUnitNumber');
 
     // Merge single values with arrays if they exist
     if (singleResidenceStreetName && !residenceStreetNames.includes(singleResidenceStreetName)) {
@@ -110,6 +130,9 @@ export async function GET(request: NextRequest) {
     }
     if (singleResidenceStreetSuffix && !residenceStreetSuffixes.includes(singleResidenceStreetSuffix)) {
       residenceStreetSuffixes.push(singleResidenceStreetSuffix);
+    }
+    if (singleResidenceAptUnitNumber && !residenceAptUnitNumbers.includes(singleResidenceAptUnitNumber)) {
+      residenceAptUnitNumbers.push(singleResidenceAptUnitNumber);
     }
 
     // Build SQL conditions
@@ -296,6 +319,11 @@ export async function GET(request: NextRequest) {
 
     if (residenceStreetSuffixes.length > 0) {
       const placeholders = residenceStreetSuffixes.map(suffix => `UPPER(residence_street_type) = UPPER('${suffix}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
+    }
+
+    if (residenceAptUnitNumbers.length > 0) {
+      const placeholders = residenceAptUnitNumbers.map(apt => `UPPER(residence_apt_unit_number) = UPPER('${apt}')`);
       conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
