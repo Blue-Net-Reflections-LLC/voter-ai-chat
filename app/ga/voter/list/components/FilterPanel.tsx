@@ -11,10 +11,8 @@ import { FilterState, ResidenceAddressFilterState } from '../types';
 import CountyMultiSelect from './CountyMultiSelect';
 import DistrictMultiSelect from './DistrictMultiSelect';
 import MultiSelect from './MultiSelect';
+import { useLookupData } from '../hooks/useLookupData';
 import {
-  CONGRESSIONAL_DISTRICTS,
-  STATE_SENATE_DISTRICTS,
-  STATE_HOUSE_DISTRICTS,
   VOTER_STATUS_OPTIONS,
   PARTY_OPTIONS,
   AGE_RANGE_OPTIONS,
@@ -40,6 +38,14 @@ export function FilterPanel({
   updateResidenceAddressFilter,
   clearAllFilters
 }: FilterPanelProps) {
+  const { 
+    isLoading, 
+    error, 
+    congressionalDistricts, 
+    stateSenateDistricts, 
+    stateHouseDistricts 
+  } = useLookupData();
+
   return (
     <Card className="w-full lg:w-1/4 lg:max-w-xs h-fit sticky top-4">
       <CardHeader>
@@ -60,21 +66,27 @@ export function FilterPanel({
             />
             <DistrictMultiSelect
               label="Congressional District"
-              options={CONGRESSIONAL_DISTRICTS}
+              options={congressionalDistricts}
               value={filters.congressionalDistricts}
               setValue={(value) => updateFilter('congressionalDistricts', value)}
+              isLoading={isLoading}
+              error={error}
             />
             <DistrictMultiSelect
               label="State Senate District (Upper)"
-              options={STATE_SENATE_DISTRICTS}
+              options={stateSenateDistricts}
               value={filters.stateSenateDistricts}
               setValue={(value) => updateFilter('stateSenateDistricts', value)}
+              isLoading={isLoading}
+              error={error}
             />
             <DistrictMultiSelect
               label="State House District (Lower)"
-              options={STATE_HOUSE_DISTRICTS}
+              options={stateHouseDistricts}
               value={filters.stateHouseDistricts}
               setValue={(value) => updateFilter('stateHouseDistricts', value)}
+              isLoading={isLoading}
+              error={error}
             />
             {/* Residence Address Filter */}
             <ResidenceAddressFilter

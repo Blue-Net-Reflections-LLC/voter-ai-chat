@@ -3,21 +3,39 @@
 import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from 'lucide-react';
 
 interface DistrictMultiSelectProps {
   label: string;
   options: string[];
   value: string[];
   setValue: (value: string[]) => void;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-export function DistrictMultiSelect({ label, options, value, setValue }: DistrictMultiSelectProps) {
+export function DistrictMultiSelect({ 
+  label, 
+  options, 
+  value, 
+  setValue,
+  isLoading = false,
+  error = null
+}: DistrictMultiSelectProps) {
   const [search, setSearch] = useState("");
   
+  // Format the district numbers for display (remove state prefix and leading zeros)
+  const formatDistrict = (code: string): string => {
+    if (code.length >= 2) {
+      return code.slice(2).replace(/^0+/, "") || "0";
+    }
+    return code;
+  };
+
   // Filtered options: all districts matching search (by display number)
   const filtered = options.filter(
     (code) => {
-      const display = code.slice(2).replace(/^0+/, "");
+      const display = formatDistrict(code);
       return display.includes(search.replace(/^0+/, ""));
     }
   );
@@ -26,7 +44,7 @@ export function DistrictMultiSelect({ label, options, value, setValue }: Distric
 
   function renderDistrictCheckbox(code: string, keyPrefix = "") {
     const checked = value.includes(code);
-    const display = code.slice(2).replace(/^0+/, "");
+    const display = formatDistrict(code);
     return (
       <label key={keyPrefix + code} className={`flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer ${checked ? 'bg-muted' : 'hover:bg-muted'}`}
         style={{ marginBottom: '2px' }}
@@ -59,15 +77,26 @@ export function DistrictMultiSelect({ label, options, value, setValue }: Distric
           className="mb-2"
         />
         <div className="max-h-48 overflow-y-auto border rounded bg-background shadow p-2">
-          {selected.length > 0 && (
+          {isLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-xs">Loading {label.toLowerCase()}...</span>
+            </div>
+          ) : error ? (
+            <div className="text-xs text-red-500 px-2 py-1">Error loading {label.toLowerCase()}</div>
+          ) : (
             <>
-              <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide px-1 pb-1">Selected</div>
-              {selected.map(code => renderDistrictCheckbox(code, "top-"))}
-              <div className="border-t my-2" />
+              {selected.length > 0 && (
+                <>
+                  <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide px-1 pb-1">Selected</div>
+                  {selected.map(code => renderDistrictCheckbox(code, "top-"))}
+                  <div className="border-t my-2" />
+                </>
+              )}
+              {filtered.map(code => renderDistrictCheckbox(code, "list-"))}
+              {selected.length === 0 && filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No districts found</div>}
             </>
           )}
-          {filtered.map(code => renderDistrictCheckbox(code, "list-"))}
-          {selected.length === 0 && filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No districts found</div>}
         </div>
         {selected.length > 0 && (
           <Button

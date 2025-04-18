@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { COUNTY_OPTIONS } from '../constants';
+import { useLookupData } from '../hooks/useLookupData';
+import { Loader2 } from 'lucide-react';
 
 interface CountyMultiSelectProps {
   value: string[];
@@ -12,14 +13,15 @@ interface CountyMultiSelectProps {
 
 export function CountyMultiSelect({ value, setValue }: CountyMultiSelectProps) {
   const [search, setSearch] = useState("");
+  const { counties, isLoading, error } = useLookupData();
   
   // Filtered options: all counties matching search
-  const filtered = COUNTY_OPTIONS.filter(
+  const filtered = counties.filter(
     (c) => c.toLowerCase().includes(search.toLowerCase())
   );
   
   // For display: selected at top, then all filtered (with checked/unchecked)
-  const selected = value.filter((c) => COUNTY_OPTIONS.includes(c));
+  const selected = value.filter((c) => counties.includes(c));
 
   // Helper: render a county checkbox (checked if selected)
   function renderCountyCheckbox(county: string, keyPrefix = "") {
@@ -56,15 +58,26 @@ export function CountyMultiSelect({ value, setValue }: CountyMultiSelectProps) {
           className="mb-2"
         />
         <div className="max-h-48 overflow-y-auto border rounded bg-background shadow p-2">
-          {selected.length > 0 && (
+          {isLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-xs">Loading counties...</span>
+            </div>
+          ) : error ? (
+            <div className="text-xs text-red-500 px-2 py-1">Error loading counties</div>
+          ) : (
             <>
-              <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide px-1 pb-1">Selected</div>
-              {selected.map(county => renderCountyCheckbox(county, "top-"))}
-              <div className="border-t my-2" />
+              {selected.length > 0 && (
+                <>
+                  <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide px-1 pb-1">Selected</div>
+                  {selected.map(county => renderCountyCheckbox(county, "top-"))}
+                  <div className="border-t my-2" />
+                </>
+              )}
+              {filtered.map(county => renderCountyCheckbox(county, "list-"))}
+              {selected.length === 0 && filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No counties found</div>}
             </>
           )}
-          {filtered.map(county => renderCountyCheckbox(county, "list-"))}
-          {selected.length === 0 && filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No counties found</div>}
         </div>
         {selected.length > 0 && (
           <Button
