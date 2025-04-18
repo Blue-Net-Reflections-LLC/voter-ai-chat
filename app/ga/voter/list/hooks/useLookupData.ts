@@ -42,15 +42,26 @@ export function useLookupData() {
       setError(null);
       
       try {
-        // Fetch district data from the lookup endpoint
-        const response = await fetch('/api/ga/voter/list/lookup?category=district');
+        // Fetch both district and registration data in parallel
+        const [districtResponse, registrationResponse] = await Promise.all([
+          fetch('/api/ga/voter/list/lookup?category=district'),
+          fetch('/api/ga/voter/list/lookup?category=registration')
+        ]);
         
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+        if (!districtResponse.ok || !registrationResponse.ok) {
+          throw new Error(`API error: ${!districtResponse.ok ? districtResponse.status : registrationResponse.status}`);
         }
         
-        const data = await response.json();
-        setLookupData(data);
+        const districtData = await districtResponse.json();
+        const registrationData = await registrationResponse.json();
+        
+        // Combine both data sets
+        const combinedData = {
+          fields: [...districtData.fields, ...registrationData.fields],
+          timestamp: new Date().toISOString()
+        };
+        
+        setLookupData(combinedData);
       } catch (err) {
         console.error('Error fetching lookup data:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');

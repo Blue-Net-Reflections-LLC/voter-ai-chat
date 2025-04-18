@@ -13,8 +13,6 @@ import DistrictMultiSelect from './DistrictMultiSelect';
 import MultiSelect from './MultiSelect';
 import { useLookupData } from '../hooks/useLookupData';
 import {
-  VOTER_STATUS_OPTIONS,
-  PARTY_OPTIONS,
   AGE_RANGE_OPTIONS,
   GENDER_OPTIONS,
   RACE_OPTIONS,
@@ -43,7 +41,9 @@ export function FilterPanel({
     error, 
     congressionalDistricts, 
     stateSenateDistricts, 
-    stateHouseDistricts 
+    stateHouseDistricts,
+    parties,
+    statuses
   } = useLookupData();
 
   return (
@@ -110,21 +110,24 @@ export function FilterPanel({
             </div>
             <MultiSelect
               label="Status"
-              options={VOTER_STATUS_OPTIONS}
+              options={statuses.length > 0 ? statuses : []}
               value={filters.status}
               setValue={(value) => updateFilter('status', value)}
+              isLoading={isLoading}
             />
             <MultiSelect
               label="Registered Voter Party"
-              options={PARTY_OPTIONS}
+              options={parties.length > 0 ? parties : []}
               value={filters.party}
               setValue={(value) => updateFilter('party', value)}
+              isLoading={isLoading}
             />
             <MultiSelect
               label="Voter History Party"
-              options={PARTY_OPTIONS}
+              options={parties.length > 0 ? parties : []}
               value={filters.historyParty}
               setValue={(value) => updateFilter('historyParty', value)}
+              isLoading={isLoading}
             />
             <MultiSelect
               label="Age Range"

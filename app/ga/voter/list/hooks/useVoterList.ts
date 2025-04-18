@@ -206,7 +206,9 @@ export function useVoterList() {
     
     // Add party filter
     if (filters.party.length > 0) {
-      params.set('party', filters.party[0]); // API only supports one party at a time
+      filters.party.forEach(partyValue => 
+        params.append('party', partyValue)
+      );
     }
     
     // Add address filters

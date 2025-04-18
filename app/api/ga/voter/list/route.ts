@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const stateSenateDistricts = searchParams.getAll('stateSenateDistricts');
     const stateHouseDistricts = searchParams.getAll('stateHouseDistricts');
     const statusValues = searchParams.getAll('status');
-    const party = searchParams.get('party');
+    const partyValues = searchParams.getAll('party');
     
     // Voter details filters
     const firstName = searchParams.get('firstName');
@@ -147,8 +147,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (party) {
-      conditions.push(`UPPER(last_party_voted) = UPPER('${party}')`);
+    if (partyValues.length > 0) {
+      if (partyValues.length === 1) {
+        conditions.push(`UPPER(last_party_voted) = UPPER('${partyValues[0]}')`);
+      } else {
+        // Handle multiple party values
+        const partyConditions = partyValues.map(p => `UPPER(last_party_voted) = UPPER('${p}')`).join(' OR ');
+        conditions.push(`(${partyConditions})`);
+      }
     }
 
     // Name searches - use LIKE for better searching
