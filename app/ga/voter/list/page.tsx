@@ -23,29 +23,30 @@ export default function VoterListPage() {
   } = useVoterList();
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-background px-4 py-2 gap-6">
-      {/* Filter Panel (Sidebar on larger screens) */}
-      <FilterPanel
-        filters={filters}
-        residenceAddressFilters={residenceAddressFilters}
-        updateFilter={updateFilter}
-        updateResidenceAddressFilter={updateResidenceAddressFilter}
-        clearAllFilters={clearAllFilters}
-      />
-
-      {/* Results Area */}
-      <div className="flex-1 flex flex-col gap-4">
-        <ResultsPanel
-          voters={voters}
-          pagination={pagination}
-          sort={sort}
-          hasActiveFilters={hasActiveFilters}
-          isLoading={isLoading}
-          onPageChange={updatePage}
-          onPageSizeChange={updatePageSize}
-          onSort={updateSort}
-          onClearFilters={clearAllFilters}
-        />
+    <div className="h-[calc(100vh-60px)] flex flex-col">
+      <div className="w-full flex flex-row space-x-4 py-2 h-full overflow-hidden">
+        <div className="w-1/4 h-full overflow-hidden">
+          <FilterPanel
+            filters={filters}
+            residenceAddressFilters={residenceAddressFilters}
+            updateFilter={updateFilter}
+            updateResidenceAddressFilter={updateResidenceAddressFilter}
+            clearAllFilters={clearAllFilters}
+          />
+        </div>
+        <div className="w-3/4 h-full overflow-hidden">
+          <ResultsPanel
+            voters={voters}
+            pagination={pagination}
+            sort={sort}
+            hasActiveFilters={hasActiveFilters}
+            isLoading={isLoading}
+            onPageChange={updatePage}
+            onPageSizeChange={updatePageSize}
+            onSort={updateSort}
+            onClearFilters={clearAllFilters}
+          />
+        </div>
       </div>
     </div>
   );

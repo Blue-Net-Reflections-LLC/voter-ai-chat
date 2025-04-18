@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Voter } from '../types';
 import { SortField, SortDirection } from '../hooks/useVoterList';
 import { cn } from "@/lib/utils";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 interface VoterTableProps {
   voters: Voter[];
@@ -24,23 +25,16 @@ interface VoterTableProps {
 // Skeleton for loading state
 const LoadingSkeleton = () => (
   <>
-    {Array(5).fill(0).map((_, i) => (
-      <TableRow key={`loading-${i}`}>
-        <TableCell>
-          <Skeleton className="h-4 w-20" />
-        </TableCell>
-        <TableCell>
-          <Skeleton className="h-4 w-28" />
-        </TableCell>
-        <TableCell>
-          <Skeleton className="h-4 w-16" />
-        </TableCell>
-        <TableCell>
-          <Skeleton className="h-4 w-14" />
-        </TableCell>
-        <TableCell className="text-right">
-          <Skeleton className="h-4 w-16 ml-auto" />
-        </TableCell>
+    {Array.from({ length: 8 }).map((_, i) => (
+      <TableRow key={i}>
+        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
       </TableRow>
     ))}
   </>
@@ -59,19 +53,24 @@ const SortButton = ({
   onSort?: (field: SortField) => void;
 }) => {
   const isActive = currentSort?.field === field;
-  const icon = isActive 
-    ? (currentSort.direction === 'asc' ? <ArrowUp size={12} className="ml-1 inline" /> : <ArrowDown size={12} className="ml-1 inline" />) 
-    : <ArrowUpDown size={12} className="ml-1 inline opacity-50" />;
+  const direction = isActive ? currentSort.direction : null;
   
   return (
-    <Button 
-      variant="ghost" 
-      size="sm" 
-      className={`font-semibold text-xs ${isActive ? 'text-primary' : ''}`}
+    <button
+      className="flex items-center space-x-1 hover:text-blue-600 focus:outline-none group"
       onClick={() => onSort?.(field)}
     >
-      {label} {icon}
-    </Button>
+      <span>{label}</span>
+      <span className="flex items-center">
+        {direction === 'asc' ? (
+          <ChevronUp className="h-4 w-4 text-blue-600" />
+        ) : direction === 'desc' ? (
+          <ChevronDown className="h-4 w-4 text-blue-600" />
+        ) : (
+          <ArrowUpDown className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100" />
+        )}
+      </span>
+    </button>
   );
 };
 
@@ -82,96 +81,73 @@ export function VoterTable({
   onSort 
 }: VoterTableProps) {
   return (
-    <div className="border rounded-md">
-      <Table>
-        <TableHeader>
-          <TableRow className="h-8">
-            <TableHead className="w-[120px]">
-              <SortButton 
-                field="id" 
-                label="ID" 
-                currentSort={sort}
-                onSort={onSort}
-              />
+    <div className="w-full h-full overflow-auto">
+      <Table className="relative">
+        <TableHeader className="bg-gray-50 sticky top-0 z-10">
+          <TableRow>
+            <TableHead className="w-[10%]">
+              <SortButton field="id" label="Voter ID" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead>
-              <SortButton 
-                field="name" 
-                label="Full Name" 
-                currentSort={sort}
-                onSort={onSort}
-              />
+            <TableHead className="w-[20%]">
+              <SortButton field="name" label="Name" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead>
-              <SortButton 
-                field="county" 
-                label="County" 
-                currentSort={sort}
-                onSort={onSort}
-              />
+            <TableHead className="w-[7%]">
+              <SortButton field="age" label="Age" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead>
-              <SortButton 
-                field="address" 
-                label="Address" 
-                currentSort={sort}
-                onSort={onSort}
-              />
+            <TableHead className="w-[7%]">
+              <SortButton field="gender" label="Gender" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead className="text-right">
-              <SortButton 
-                field="status" 
-                label="Status" 
-                currentSort={sort}
-                onSort={onSort}
-              />
+            <TableHead className="w-[14%]">
+              <SortButton field="race" label="Race" currentSort={sort} onSort={onSort} />
+            </TableHead>
+            <TableHead className="w-[14%]">
+              <SortButton field="status" label="Status" currentSort={sort} onSort={onSort} />
+            </TableHead>
+            <TableHead className="w-[15%]">
+              <SortButton field="address" label="Address" currentSort={sort} onSort={onSort} />
+            </TableHead>
+            <TableHead className="w-[13%]">
+              <SortButton field="votingHistory" label="Voting History" currentSort={sort} onSort={onSort} />
             </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody className="text-xs">
+        <TableBody>
           {isLoading ? (
             <LoadingSkeleton />
-          ) : voters.length > 0 ? (
-            voters.map((voter) => (
-              <TableRow key={voter.id} className="h-8">
-                <TableCell className="font-mono text-xs">
-                  <a href={`/ga/voter/profile/${voter.id}`} className="text-blue-600 hover:underline">
-                    {voter.id}
-                  </a>
-                </TableCell>
-                <TableCell className="font-medium">{voter.name}</TableCell>
-                <TableCell>{voter.county}</TableCell>
-                <TableCell className="max-w-[200px] truncate">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-help line-clamp-1">
-                          {voter.address?.fullAddress || "N/A"}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <div className="space-y-1 text-xs">
-                          <p><strong>Address:</strong> {voter.address?.fullAddress || "N/A"}</p>
-                          <p><strong>City:</strong> {voter.address?.city || "N/A"}</p>
-                          <p><strong>Zip:</strong> {voter.address?.zipcode || "N/A"}</p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge variant={voter.status === "Active" ? "solid" : "outline"} className="text-[10px] py-0 px-2">
-                    {voter.status}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
+          ) : voters.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-6 text-xs text-muted-foreground">
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                 No voters found matching your criteria
               </TableCell>
             </TableRow>
+          ) : (
+            voters.map((voter) => (
+              <TableRow key={voter.id}>
+                <TableCell className="font-medium">{voter.id}</TableCell>
+                <TableCell>{voter.firstName} {voter.lastName}</TableCell>
+                <TableCell>{voter.age}</TableCell>
+                <TableCell>{voter.gender}</TableCell>
+                <TableCell>{voter.race}</TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={voter.status === 'Active' ? 'default' : 
+                            voter.status === 'Inactive' ? 'secondary' : 
+                            'outline'}
+                  >
+                    {voter.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="truncate max-w-xs">
+                  {voter.address?.street}, {voter.address?.city}
+                </TableCell>
+                <TableCell>
+                  {voter.votingHistory?.reduce(
+                    (count, vote) => (vote.voted ? count + 1 : count), 
+                    0
+                  )} / {voter.votingHistory?.length || 0} elections
+                </TableCell>
+              </TableRow>
+            ))
           )}
         </TableBody>
       </Table>

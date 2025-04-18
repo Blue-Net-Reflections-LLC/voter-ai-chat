@@ -42,8 +42,8 @@ export function ResultsPanel({
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <Card>
-      <CardHeader className="px-4 py-3">
+    <Card className="flex flex-col h-full">
+      <CardHeader className="px-4 py-3 flex-shrink-0">
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
             {totalItems > 0 ? (
@@ -79,7 +79,7 @@ export function ResultsPanel({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 py-0">
+      <CardContent className="px-4 py-0 flex-grow overflow-auto">
         <VoterTable 
           voters={voters} 
           isLoading={isLoading} 
@@ -87,7 +87,7 @@ export function ResultsPanel({
           onSort={onSort}
         />
       </CardContent>
-      <CardFooter className="pt-3 pb-3 px-4">
+      <CardFooter className="py-2 px-4 flex-shrink-0 max-h-[50px] border-t">
         <PaginationControls
           currentPage={currentPage}
           pageSize={pageSize}

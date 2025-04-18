@@ -17,6 +17,7 @@ import {
   ELECTION_TYPE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FilterPanelProps {
   filters: FilterState;
@@ -46,40 +47,58 @@ export function FilterPanel({
   } = useLookupData();
 
   return (
-    <Card className="w-full lg:w-1/4 lg:max-w-xs h-fit sticky top-[61px]">
-      <CardContent className="space-y-4 pt-3 px-3">
+    <Card className="w-full h-full overflow-auto">
+      <CardContent className="space-y-3 pt-2 px-3">
         {/* Geographic Filters */}
         <div>
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Geographic</div>
           <div className="space-y-2">
-            <CountyMultiSelect 
-              value={filters.county} 
-              setValue={(value) => updateFilter('county', value)} 
-            />
-            <DistrictMultiSelect
-              label="Congressional District"
-              options={congressionalDistricts}
-              value={filters.congressionalDistricts}
-              setValue={(value) => updateFilter('congressionalDistricts', value)}
-              isLoading={isLoading}
-              error={error}
-            />
-            <DistrictMultiSelect
-              label="State Senate District (Upper)"
-              options={stateSenateDistricts}
-              value={filters.stateSenateDistricts}
-              setValue={(value) => updateFilter('stateSenateDistricts', value)}
-              isLoading={isLoading}
-              error={error}
-            />
-            <DistrictMultiSelect
-              label="State House District (Lower)"
-              options={stateHouseDistricts}
-              value={filters.stateHouseDistricts}
-              setValue={(value) => updateFilter('stateHouseDistricts', value)}
-              isLoading={isLoading}
-              error={error}
-            />
+            <div>
+              <div className="text-xs font-medium mb-1">County</div>
+              <Input 
+                placeholder="Search..." 
+                className="h-8 text-xs mb-2" 
+              />
+              <div className="flex items-center mb-1">
+                <div className="text-xs ml-1 mr-2 text-muted-foreground">SELECT</div>
+                <div className="flex-1 flex justify-end space-x-1">
+                  <ChevronLeft className="h-4 w-4 text-gray-400" />
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center">
+                  <input type="checkbox" className="mr-2 h-4 w-4" id="county-6" checked />
+                  <label htmlFor="county-6" className="text-xs">6</label>
+                </div>
+                <div className="flex items-center">
+                  <input type="checkbox" className="mr-2 h-4 w-4" id="county-11" />
+                  <label htmlFor="county-11" className="text-xs">11</label>
+                </div>
+                <div className="flex items-center">
+                  <input type="checkbox" className="mr-2 h-4 w-4" id="county-14" />
+                  <label htmlFor="county-14" className="text-xs">14</label>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <div className="text-xs font-medium mb-1">Congressional District</div>
+              <Input 
+                placeholder="Search..." 
+                className="h-8 text-xs" 
+              />
+              <div className="flex items-center mt-1 mb-1">
+                <div className="text-xs ml-1 mr-2 text-muted-foreground">SELECT</div>
+                <div className="flex-1 flex justify-end space-x-1">
+                  <ChevronLeft className="h-4 w-4 text-gray-400" />
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+            </div>
+            
+            {/* More geographic filters can be added here */}
+            
             {/* Residence Address Filter */}
             <ResidenceAddressFilter
               filters={residenceAddressFilters}
@@ -88,6 +107,7 @@ export function FilterPanel({
           </div>
         </div>
         <Separator />
+        
         {/* Voter Info Filters */}
         <div>
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voter Info</div>
@@ -170,6 +190,7 @@ export function FilterPanel({
           </div>
         </div>
         <Separator />
+        
         {/* Voting Behavior Filters */}
         <div>
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voting Behavior</div>

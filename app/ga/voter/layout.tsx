@@ -1,9 +1,10 @@
 import React from "react";
+import { Metadata } from 'next';
 import VoterHeader from "./VoterHeader";
 
-export const metadata = {
-  title: "Voter Registration and Management",
-  description: "Access and manage voter registration data",
+export const metadata: Metadata = {
+  title: 'Voter List | Georgia Voter Registry',
+  description: 'View and manage the list of registered voters in Georgia',
 };
 
 export default function VoterLayout({
@@ -12,9 +13,11 @@ export default function VoterLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="h-screen flex flex-col">
       <VoterHeader />
-      <main className="flex-1 bg-background pt-1">{children}</main>
+      <main className="pt-1 flex-grow overflow-auto">
+        {children}
+      </main>
     </div>
   );
 } 

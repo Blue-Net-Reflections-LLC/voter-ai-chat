@@ -54,7 +54,7 @@ export function PaginationControls({
   // Function to generate page number buttons
   const renderPageNumbers = () => {
     const pageNumbers = [];
-    const maxPageButtons = 5; // Max number of page buttons to show
+    const maxPageButtons = 3; // Reduced from 5 to 3 for more compact layout
     
     let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
     let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
@@ -71,7 +71,7 @@ export function PaginationControls({
           key="first" 
           variant="outline" 
           size="sm" 
-          className="h-8 w-8"
+          className="h-6 w-6 text-xs"
           onClick={() => goToPage(1)}
         >
           1
@@ -81,7 +81,7 @@ export function PaginationControls({
       // Ellipsis if needed
       if (startPage > 2) {
         pageNumbers.push(
-          <span key="ellipsis1" className="px-2">...</span>
+          <span key="ellipsis1" className="px-1 text-xs">...</span>
         );
       }
     }
@@ -93,7 +93,7 @@ export function PaginationControls({
           key={i} 
           variant={i === currentPage ? "default" : "outline"} 
           size="sm" 
-          className="h-8 w-8"
+          className="h-6 w-6 text-xs"
           onClick={() => goToPage(i)}
         >
           {i}
@@ -106,7 +106,7 @@ export function PaginationControls({
       // Ellipsis if needed
       if (endPage < totalPages - 1) {
         pageNumbers.push(
-          <span key="ellipsis2" className="px-2">...</span>
+          <span key="ellipsis2" className="px-1 text-xs">...</span>
         );
       }
       
@@ -115,7 +115,7 @@ export function PaginationControls({
           key="last" 
           variant="outline" 
           size="sm" 
-          className="h-8 w-8"
+          className="h-6 w-6 text-xs"
           onClick={() => goToPage(totalPages)}
         >
           {totalPages}
@@ -127,18 +127,18 @@ export function PaginationControls({
   };
 
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-muted-foreground">
+    <div className="flex items-center justify-between w-full h-full">
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
         {totalItems > 0 
-          ? `Showing ${startItem} to ${endItem} of ${totalItems} voters` 
-          : "No results found"}
+          ? `${startItem}-${endItem} of ${totalItems}` 
+          : "No results"}
       </span>
       <div className="flex items-center gap-1">
         <Select 
           value={pageSize.toString()} 
           onValueChange={handlePageSizeChange}
         >
-          <SelectTrigger className="w-[70px] h-8">
+          <SelectTrigger className="w-[60px] h-6 text-xs">
             <SelectValue placeholder="25" />
           </SelectTrigger>
           <SelectContent>
@@ -150,7 +150,7 @@ export function PaginationControls({
         </Select>
         
         {/* Page numbers */}
-        <div className="hidden md:flex items-center">
+        <div className="hidden md:flex items-center gap-1">
           {renderPageNumbers()}
         </div>
         
@@ -158,22 +158,22 @@ export function PaginationControls({
         <Button 
           variant="outline" 
           size="icon" 
-          className="h-8 w-8" 
+          className="h-6 w-6" 
           disabled={!hasPrevPage}
           onClick={goToPrevPage}
           aria-label="Previous page"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={12} />
         </Button>
         <Button 
           variant="outline" 
           size="icon" 
-          className="h-8 w-8" 
+          className="h-6 w-6" 
           disabled={!hasNextPage}
           onClick={goToNextPage}
           aria-label="Next page"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={12} />
         </Button>
       </div>
     </div>
