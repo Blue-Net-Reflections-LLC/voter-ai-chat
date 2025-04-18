@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,7 +16,6 @@ import { CitySelect } from './CitySelect';
 import { AddressDataProvider, useAddressData } from './AddressDataProvider';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/utils';
-import { ResidenceAddressFilterState } from './types';
 
 // Type for a single address filter object
 export interface AddressFilter {
@@ -45,28 +44,22 @@ const ADDRESS_FIELDS_CONFIG: { key: keyof Omit<AddressFilter, 'id'>; label: stri
 
 // Props for the main filter component
 interface ResidenceAddressFilterProps {
-  filters?: ResidenceAddressFilterState;
-  setFilter?: (key: keyof ResidenceAddressFilterState, value: string) => void;
-  addressFilters?: AddressFilter[]; // Expects an array of filters
-  addAddressFilter?: (filter?: AddressFilter) => void; // Function to add a new empty filter
-  updateAddressFilter?: (id: string, field: keyof Omit<AddressFilter, 'id'>, value: string) => void; // Function to update a field in a specific filter
-  removeAddressFilter?: (id: string) => void; // Function to remove a specific filter
-  clearAllAddressFilters?: () => void; // Function to clear all filters
-  compact?: boolean;
+  addressFilters: AddressFilter[]; // Expects an array of filters
+  addAddressFilter: (filter?: AddressFilter) => void; // Function to add a new empty filter
+  updateAddressFilter: (id: string, field: keyof Omit<AddressFilter, 'id'>, value: string) => void; // Function to update a field in a specific filter
+  removeAddressFilter: (id: string) => void; // Function to remove a specific filter
+  clearAllAddressFilters: () => void; // Function to clear all filters
 }
 
 /**
  * ResidenceAddressFilter component that manages multiple address filters.
  */
 export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({ 
-  filters,
-  setFilter,
   addressFilters = [],
   addAddressFilter,
   updateAddressFilter,
   removeAddressFilter,
   clearAllAddressFilters,
-  compact = false,
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newFilterId, setNewFilterId] = useState(() => uuidv4());
@@ -92,14 +85,14 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
   const handleFilterConfirmed = (filter: Partial<AddressFilter>) => {
     // Check if any values exist in the filter
     const hasValue = Object.values(filter).some(val => val);
-    if (hasValue && addAddressFilter) {
+    if (hasValue) {
       addAddressFilter({ ...filter, id: newFilterId });
       setDialogOpen(false);
     }
   };
 
   return (
-    <div className={cn("space-y-3", compact ? "space-y-2" : "space-y-4")}>
+    <div className="space-y-4">
       {/* Display existing filters */}
       {addressFilters.map((filter, index) => (
         <div key={filter.id} className="p-3 border rounded-md space-y-2 relative bg-background/50">
@@ -107,7 +100,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
              variant="ghost" 
              size="icon" 
              className="absolute top-1 right-1 h-6 w-6 text-muted-foreground hover:text-destructive" 
-             onClick={() => removeAddressFilter && removeAddressFilter(filter.id)}
+             onClick={() => removeAddressFilter(filter.id)}
              aria-label={`Remove address filter ${index + 1}`}
            >
              <XIcon size={16} />
@@ -141,7 +134,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
         setDialogOpen(open);
       }}>
         <DialogTrigger asChild>
-          <Button variant="outline" className={cn("w-full", compact ? "h-8 text-xs" : "")}>
+          <Button variant="outline" className="w-full">
             <PlusIcon className="mr-2 h-4 w-4" /> Add Address Filter
           </Button>
         </DialogTrigger>
@@ -254,31 +247,40 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Clear All Button */}
+      {addressFilters.length > 0 && (
+        <Button variant="secondary" size="sm" className="w-full mt-2" onClick={clearAllAddressFilters}>
+          Clear All Address Filters
+        </Button>
+      )}
     </div>
   );
 };
 
-// Helper component to extract filter values
+// Helper component to extract values from context
 const AddressDataConsumer: React.FC<{
   onConfirm: (filter: Partial<AddressFilter>) => void;
 }> = ({ onConfirm }) => {
   const { currentFilter, clearAllFields } = useAddressData();
-
-  // Use this component to wrap currentFilter access
+  
+  // Button to trigger extraction of values
   return (
     <>
-      <button 
-        id="add-filter-button" 
-        type="button" 
-        className="hidden" 
+      <Button 
+        id="add-filter-button"
+        className="hidden"
         onClick={() => onConfirm(currentFilter)}
-      />
-      <button 
-        id="reset-filter-button" 
-        type="button" 
-        className="hidden" 
-        onClick={clearAllFields}
-      />
+      >
+        Hidden Confirm
+      </Button>
+      <Button
+        id="reset-filter-button"
+        className="hidden"
+        onClick={() => clearAllFields()}
+      >
+        Hidden Reset
+      </Button>
     </>
   );
 }; 

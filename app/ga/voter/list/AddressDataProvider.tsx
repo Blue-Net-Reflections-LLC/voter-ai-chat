@@ -124,12 +124,10 @@ export const AddressDataProvider: React.FC<{
       
       // Add search parameter if present
       if (activeSearchField && activeSearchQuery) {
-        // Update parameter format for the search field to match API expectations
-        params.set(`${activeSearchField}_search`, activeSearchQuery);
+        params.set(activeSearchField as string, activeSearchQuery);
       }
       
       console.log("[AddressDataProvider] Fetching records with params:", params.toString());
-      // Keep using the appropriate endpoint for address records
       const response = await fetch(`/ga/api/voter-address/records?${params.toString()}`);
       
       if (!response.ok) throw new Error("API error");

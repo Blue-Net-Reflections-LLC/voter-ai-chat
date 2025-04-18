@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAddressData, SelectOption } from './AddressDataProvider';
 import type { AddressFilter } from './ResidenceAddressFilter';
 import { 
@@ -11,25 +11,14 @@ import {
   CommandItem,
   CommandList
 } from "@/components/ui/command";
-import { X } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Custom debounce function
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-  
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-  
-  return debouncedValue;
-}
+import { Button } from "@/components/ui/button";
 
 export interface ReactSelectAutocompleteProps {
   label: string;
@@ -44,14 +33,36 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
   compact = false,
   hideLabel = false,
 }) => {
-  const { currentFilter, updateField, options, isLoading } = useAddressData();
+  const { 
+    currentFilter, 
+    updateField, 
+    setSearch,
+    searchField,
+    searchQuery,
+    options, 
+    isLoading,
+    clearAllFields
+  } = useAddressData();
+  
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState<string>('');
-  const debouncedInputValue = useDebounce(inputValue, 400);
-  const inputRef = useRef<HTMLInputElement>(null);
   
-  // Get current value for this field
+  // Get current value for this field (the confirmed selection)
   const value = currentFilter[fieldKey] as string || '';
+  
+  // Sync input with filter value for initialization
+  useEffect(() => {
+    if (value && !open) {
+      setInputValue(value);
+    }
+  }, [value, open]);
+
+  // Update input value when this field is being searched
+  useEffect(() => {
+    if (searchField === fieldKey) {
+      setInputValue(searchQuery);
+    }
+  }, [searchField, searchQuery, fieldKey]);
   
   // Get options for this field
   const fieldOptions = options[fieldKey] || [];
@@ -61,103 +72,120 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
     !inputValue || option.label.toLowerCase().includes(inputValue.toLowerCase())
   );
   
-  // Effect to update the filter after debounce period
-  useEffect(() => {
-    if (debouncedInputValue !== '' && debouncedInputValue !== currentFilter[fieldKey]) {
-      updateField(fieldKey, debouncedInputValue);
-    }
-  }, [debouncedInputValue, fieldKey, updateField, currentFilter]);
+  // Handle search input change - only updates search, doesn't update filter
+  const handleInputChange = (search: string) => {
+    setInputValue(search);
+    
+    // Update search in context - this doesn't affect other fields
+    setSearch(fieldKey, search);
+  };
   
-  // Handle selection
+  // Handle selection - THIS confirms the value and updates the filter
   const handleSelect = (selectedValue: string) => {
-    updateField(fieldKey, selectedValue);
-    setInputValue(selectedValue);
+    // If selecting the same value, clear it
+    if (selectedValue === value) {
+      updateField(fieldKey, '');
+      setInputValue('');
+    } else {
+      updateField(fieldKey, selectedValue);
+      setInputValue(selectedValue);
+    }
     setOpen(false);
   };
   
-  // Handle input change
-  const handleInputChange = (newValue: string) => {
-    setInputValue(newValue);
-    
-    // Open dropdown when typing
-    if (newValue.length > 0) {
-      setOpen(true);
-    }
-  };
-  
-  // Handle clearing the input
-  const handleClear = () => {
+  // Handle clearing
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
     updateField(fieldKey, '');
     setInputValue('');
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
+    setSearch(null, '');
   };
 
+  // Handle clearing all filters
+  const handleClearAll = () => {
+    clearAllFields();
+    setInputValue('');
+    setOpen(false);
+  };
+
+  // Check if this field is currently being searched
+  const isSearching = searchField === fieldKey && searchQuery !== '';
+
+  // Determine if any filters are active across all fields
+  const hasActiveFilters = Object.values(currentFilter).some(v => !!v);
+
   return (
-    <div className={compact ? "mb-0" : "mb-2"}>
-      {!hideLabel && (
-        <label htmlFor={`command-input-${String(fieldKey)}`} className="text-xs font-medium block mb-1">
-          {label}
-        </label>
-      )}
+    <div className={cn("w-full", compact ? "mb-0" : "mb-2")}>
+      <div className="flex justify-between items-center mb-1">
+        {!hideLabel ? (
+          <div className="text-xs font-medium">
+            {label}
+          </div>
+        ) : <div />}
+      </div>
       
-      <div className="relative">
-        <Command 
-          className="rounded-md border border-input bg-transparent overflow-visible" 
-          shouldFilter={false}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn(
+              "w-full justify-between",
+              compact ? "h-8 text-xs" : "h-9"
+            )}
+          >
+            <span className="truncate">
+              {value || `Search ${label}...`}
+            </span>
+            <div className="flex items-center">
+              {value && (
+                <X 
+                  className="mr-1 h-4 w-4 shrink-0 opacity-50 hover:opacity-100" 
+                  onClick={handleClear} 
+                />
+              )}
+              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+            </div>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="p-0 w-full" 
+          style={{ width: "var(--radix-popover-trigger-width)" }} // Match trigger width
+          align="start"
         >
-          <div className="flex items-center border-b px-3">
-            <CommandInput
-              ref={inputRef}
-              id={`command-input-${String(fieldKey)}`}
+          <Command shouldFilter={false}>
+            <CommandInput 
+              placeholder={`Search ${label}...`} 
               value={inputValue}
               onValueChange={handleInputChange}
-              onFocus={() => setOpen(true)}
-              onBlur={() => setTimeout(() => setOpen(false), 200)}
-              placeholder={isLoading ? 'Loading...' : `Search ${label}...`}
-              className={cn(
-                "flex h-9 w-full rounded-md bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
-                compact ? "h-8 py-1 text-xs" : ""
-              )}
+              className={compact ? "h-8 text-xs" : ""}
             />
-            {inputValue && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="h-4 w-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Clear</span>
-              </button>
-            )}
-          </div>
-          {open && (
-            <div className="relative z-50">
-              <CommandList className="absolute w-full top-0 max-h-[200px] overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
-                <CommandEmpty>{isLoading ? "Loading..." : "No results found."}</CommandEmpty>
-                <CommandGroup>
-                  {filteredOptions.map((option) => (
-                    <CommandItem
-                      key={option.value}
-                      onSelect={() => handleSelect(option.value)}
-                      className="cursor-pointer data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
-                    >
-                      {option.label}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </div>
-          )}
-        </Command>
-        
-        {value && !open && (
-          <div className="absolute top-0 left-0 flex items-center h-9 px-3 pointer-events-none">
-            <span className="text-sm truncate">{value}</span>
-          </div>
-        )}
-      </div>
+            <CommandList>
+              <CommandEmpty>
+                {isLoading ? "Loading..." : (filteredOptions.length === 0 ? "No matches found" : "Type to search")}
+              </CommandEmpty>
+              <CommandGroup>
+                {filteredOptions.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.value}
+                    onSelect={handleSelect}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
       
       {isLoading && (
         <div className="text-xs mt-1 text-muted-foreground">Loading options...</div>
