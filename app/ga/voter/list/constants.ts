@@ -14,7 +14,7 @@ export const STATE_HOUSE_DISTRICTS = ["13001", "13002", "13003", "13004", "13005
 // Other constants
 export const VOTER_STATUS_OPTIONS = ["Active", "Inactive"];
 export const PARTY_OPTIONS = ["Democrat", "Republican", "Independent"];
-export const AGE_RANGE_OPTIONS = ["18-21", "22-30", "31-40", "41-50", "51-65", "65+"];
+export const AGE_RANGE_OPTIONS = ["18-23", "25-44", "45-64", "65-74", "75+"];
 export const GENDER_OPTIONS = ["Male", "Female", "Other"];
 export const RACE_OPTIONS = ["White", "Black", "Hispanic", "Asian", "Other"];
 export const INCOME_LEVEL_OPTIONS = ["< $25k", "$25k-$50k", "$50k-$100k", "> $100k"];

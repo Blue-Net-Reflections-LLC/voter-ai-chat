@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     const lastName = searchParams.get('lastName');
     const ageMin = searchParams.get('ageMin');
     const ageMax = searchParams.get('ageMax');
+    const ageRanges = searchParams.getAll('ageRange');
     const gender = searchParams.get('gender');
     const race = searchParams.get('race');
     
@@ -169,14 +170,38 @@ export async function GET(request: NextRequest) {
     // Age range - we use birth_year for this which is indexed
     const currentYear = new Date().getFullYear();
     
-    if (ageMin) {
-      const birthYearMax = currentYear - parseInt(ageMin);
-      conditions.push(`birth_year <= '${birthYearMax.toString()}'`);
-    }
+    if (ageRanges && ageRanges.length > 0) {
+      const ageConditions: string[] = [];
+      
+      ageRanges.forEach(range => {
+        if (range === '18-23') {
+          ageConditions.push(`(birth_year <= '${(currentYear - 18).toString()}' AND birth_year >= '${(currentYear - 23).toString()}')`);
+        } else if (range === '25-44') {
+          ageConditions.push(`(birth_year <= '${(currentYear - 25).toString()}' AND birth_year >= '${(currentYear - 44).toString()}')`);
+        } else if (range === '45-64') {
+          ageConditions.push(`(birth_year <= '${(currentYear - 45).toString()}' AND birth_year >= '${(currentYear - 64).toString()}')`);
+        } else if (range === '65-74') {
+          ageConditions.push(`(birth_year <= '${(currentYear - 65).toString()}' AND birth_year >= '${(currentYear - 74).toString()}')`);
+        } else if (range === '75+') {
+          // 75 and over (no upper bound)
+          ageConditions.push(`birth_year <= '${(currentYear - 75).toString()}'`);
+        }
+      });
+      
+      if (ageConditions.length > 0) {
+        conditions.push(`(${ageConditions.join(' OR ')})`);
+      }
+    } else {
+      // Use the explicit min/max age filters if provided
+      if (ageMin) {
+        const birthYearMax = currentYear - parseInt(ageMin);
+        conditions.push(`birth_year <= '${birthYearMax.toString()}'`);
+      }
 
-    if (ageMax) {
-      const birthYearMin = currentYear - parseInt(ageMax);
-      conditions.push(`birth_year >= '${birthYearMin.toString()}'`);
+      if (ageMax) {
+        const birthYearMin = currentYear - parseInt(ageMax);
+        conditions.push(`birth_year >= '${birthYearMin.toString()}'`);
+      }
     }
 
     if (gender) {

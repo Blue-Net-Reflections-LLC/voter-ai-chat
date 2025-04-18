@@ -102,6 +102,9 @@ export function useVoterList() {
     const partyParams = searchParams.getAll('party');
     if (partyParams.length > 0) filterState.party = partyParams;
     
+    const ageParams = searchParams.getAll('ageRange');
+    if (ageParams.length > 0) filterState.age = ageParams;
+    
     return filterState;
   });
   
@@ -211,6 +214,11 @@ export function useVoterList() {
       );
     }
     
+    // Add age filter
+    if (filters.age.length > 0) {
+      filters.age.forEach(value => params.append('ageRange', value));
+    }
+    
     // Add address filters
     if (residenceAddressFilters.residence_street_number) {
       params.set('residenceStreetNumber', residenceAddressFilters.residence_street_number);
@@ -281,6 +289,10 @@ export function useVoterList() {
     
     if (filters.party.length > 0) {
       filters.party.forEach(value => params.append('party', value));
+    }
+    
+    if (filters.age.length > 0) {
+      filters.age.forEach(value => params.append('ageRange', value));
     }
     
     // Add address filter params
