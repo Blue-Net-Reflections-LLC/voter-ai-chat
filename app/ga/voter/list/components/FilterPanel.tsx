@@ -16,6 +16,7 @@ import {
   EDUCATION_LEVEL_OPTIONS,
   ELECTION_TYPE_OPTIONS
 } from '../constants';
+import { cn } from "@/lib/utils";
 
 interface FilterPanelProps {
   filters: FilterState;
@@ -46,11 +47,11 @@ export function FilterPanel({
 
   return (
     <Card className="w-full lg:w-1/4 lg:max-w-xs h-fit sticky top-[61px]">
-      <CardContent className="space-y-5 pt-4">
+      <CardContent className="space-y-4 pt-3 px-3">
         {/* Geographic Filters */}
         <div>
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Geographic</div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <CountyMultiSelect 
               value={filters.county} 
               setValue={(value) => updateFilter('county', value)} 
@@ -90,14 +91,20 @@ export function FilterPanel({
         {/* Voter Info Filters */}
         <div>
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voter Info</div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div>
               <label className="text-xs font-medium">First Name</label>
-              <Input placeholder="Enter first name..." />
+              <Input 
+                placeholder="Enter first name..." 
+                className="h-8 text-xs" 
+              />
             </div>
             <div>
               <label className="text-xs font-medium">Last Name</label>
-              <Input placeholder="Enter last name..." />
+              <Input 
+                placeholder="Enter last name..." 
+                className="h-8 text-xs" 
+              />
             </div>
             <MultiSelect
               label="Status"
@@ -105,6 +112,7 @@ export function FilterPanel({
               value={filters.status}
               setValue={(value) => updateFilter('status', value)}
               isLoading={isLoading}
+              compact={true}
             />
             <MultiSelect
               label="Registered Voter Party"
@@ -112,6 +120,7 @@ export function FilterPanel({
               value={filters.party}
               setValue={(value) => updateFilter('party', value)}
               isLoading={isLoading}
+              compact={true}
             />
             <MultiSelect
               label="Voter History Party"
@@ -119,12 +128,14 @@ export function FilterPanel({
               value={filters.historyParty}
               setValue={(value) => updateFilter('historyParty', value)}
               isLoading={isLoading}
+              compact={true}
             />
             <MultiSelect
               label="Age Range"
               options={AGE_RANGE_OPTIONS}
               value={filters.age}
               setValue={(value) => updateFilter('age', value)}
+              compact={true}
             />
             <MultiSelect
               label="Gender"
@@ -132,6 +143,7 @@ export function FilterPanel({
               value={filters.gender}
               setValue={(value) => updateFilter('gender', value)}
               isLoading={isLoading}
+              compact={true}
             />
             <MultiSelect
               label="Race"
@@ -139,18 +151,21 @@ export function FilterPanel({
               value={filters.race}
               setValue={(value) => updateFilter('race', value)}
               isLoading={isLoading}
+              compact={true}
             />
             <MultiSelect
               label="Income Level"
               options={INCOME_LEVEL_OPTIONS}
               value={filters.income}
               setValue={(value) => updateFilter('income', value)}
+              compact={true}
             />
             <MultiSelect
               label="Education Level"
               options={EDUCATION_LEVEL_OPTIONS}
               value={filters.education}
               setValue={(value) => updateFilter('education', value)}
+              compact={true}
             />
           </div>
         </div>
@@ -158,28 +173,35 @@ export function FilterPanel({
         {/* Voting Behavior Filters */}
         <div>
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voting Behavior</div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium">Registered But Never Voted</label>
-              <input type="checkbox" className="form-checkbox h-4 w-4" />
+              <input type="checkbox" className="form-checkbox h-3 w-3" />
             </div>
             <div>
               <label className="text-xs font-medium">Has Not Voted Since Year</label>
-              <Input placeholder="e.g. 2020" type="number" min="1900" max="2100" />
+              <Input 
+                placeholder="e.g. 2020" 
+                type="number" 
+                min="1900" 
+                max="2100" 
+                className="h-8 text-xs"
+              />
             </div>
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium">Contacted (No Response)</label>
-              <input type="checkbox" className="form-checkbox h-4 w-4" />
+              <input type="checkbox" className="form-checkbox h-3 w-3" />
             </div>
             <MultiSelect
               label="Voted by Election Type"
               options={ELECTION_TYPE_OPTIONS}
               value={filters.electionType}
               setValue={(value) => updateFilter('electionType', value)}
+              compact={true}
             />
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium">Redistricting Affected</label>
-              <input type="checkbox" className="form-checkbox h-4 w-4" />
+              <input type="checkbox" className="form-checkbox h-3 w-3" />
             </div>
           </div>
         </div>
