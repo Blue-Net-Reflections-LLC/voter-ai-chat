@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-// Initialize PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.PG_VOTERDATA_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 10, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-});
+import { sql } from '@/lib/voter/db';
 
 // List of all address fields we might filter by or return
 const ADDRESS_FIELDS = [
   'residence_street_number',
   'residence_pre_direction',
   'residence_street_name',
-  'residence_street_suffix', // Changed from 'residence_street_type' to match db column name
+  'residence_street_type', // Changed back to original column name that exists in the database
   'residence_post_direction',
-  'residence_unit_number', // Changed from 'residence_apt_unit_number' to match db column name
+  'residence_apt_unit_number', // Changed back to original column name that exists in the database
   'residence_zipcode',
   'residence_city',
 ];
@@ -26,7 +18,7 @@ const TEXT_FIELDS = [
   'residence_street_name',
   'residence_pre_direction',
   'residence_post_direction',
-  'residence_street_suffix', // Updated to match db column name
+  'residence_street_type', // Updated to match correct column name
   'residence_city'
 ];
 
@@ -44,10 +36,10 @@ const SEARCH_FIELD_MAPPING: Record<string, string> = {
   'residence_street_number_search': 'residence_street_number',
   'residence_pre_direction_search': 'residence_pre_direction',
   'residence_post_direction_search': 'residence_post_direction',
-  'residence_street_suffix_search': 'residence_street_suffix',
+  'residence_street_suffix_search': 'residence_street_type', // Updated the mapping to correct column
   'residence_city_search': 'residence_city',
   'residence_zipcode_search': 'residence_zipcode',
-  'residence_unit_number_search': 'residence_unit_number',
+  'residence_unit_number_search': 'residence_apt_unit_number', // Updated the mapping to correct column
 };
 
 export async function GET(req: NextRequest) {
@@ -133,27 +125,20 @@ export async function GET(req: NextRequest) {
 
     console.log('Voter Address Records API SQL:', sqlQuery, values);
 
-    // Use the pool to get a client
-    const client = await pool.connect();
-    try {
-      // Execute the query with prepared statement
-      const result = await client.query(sqlQuery, values);
-      
-      // Process the records - uppercase all values for consistency
-      const processedRecords = result.rows.map(record => {
-        const processed: Record<string, string | null> = {};
-        ADDRESS_FIELDS.forEach(field => {
-          processed[field] = record[field] ? String(record[field]).toUpperCase() : null;
-        });
-        return processed;
+    // Use the postgres client from the imported sql module
+    const result = await sql.unsafe(sqlQuery, values);
+    
+    // Process the records - uppercase all values for consistency
+    const processedRecords = result.map(record => {
+      const processed: Record<string, string | null> = {};
+      ADDRESS_FIELDS.forEach(field => {
+        processed[field] = record[field] ? String(record[field]).toUpperCase() : null;
       });
-      
-      console.log("[/ga/api/voter-address/records] Returning records:", processedRecords.length);
-      return NextResponse.json({ records: processedRecords });
-    } finally {
-      // Always release the client back to the pool
-      client.release();
-    }
+      return processed;
+    });
+    
+    console.log("[/ga/api/voter-address/records] Returning records:", processedRecords.length);
+    return NextResponse.json({ records: processedRecords });
   } catch (error) {
     console.error('Error in /ga/api/voter-address/records:', error);
     return NextResponse.json(
