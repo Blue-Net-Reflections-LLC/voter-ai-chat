@@ -44,6 +44,7 @@ export function useLookupData() {
   const statuses = getValuesForField('status');
   const parties = getValuesForField('last_party_voted');
   const genders = getValuesForField('gender');
+  const races = getValuesForField('race');
 
   // Fetch lookup data on component mount
   useEffect(() => {
@@ -98,6 +99,7 @@ export function useLookupData() {
     statuses,
     parties,
     genders,
+    races,
     getValuesForField
   };
 } 

@@ -14,7 +14,6 @@ import MultiSelect from './MultiSelect';
 import { useLookupData } from '../hooks/useLookupData';
 import {
   AGE_RANGE_OPTIONS,
-  RACE_OPTIONS,
   INCOME_LEVEL_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
   ELECTION_TYPE_OPTIONS
@@ -43,7 +42,8 @@ export function FilterPanel({
     stateHouseDistricts,
     parties,
     statuses,
-    genders
+    genders,
+    races
   } = useLookupData();
 
   return (
@@ -144,9 +144,10 @@ export function FilterPanel({
             />
             <MultiSelect
               label="Race"
-              options={RACE_OPTIONS}
+              options={races.length > 0 ? races : []}
               value={filters.race}
               setValue={(value) => updateFilter('race', value)}
+              isLoading={isLoading}
             />
             <MultiSelect
               label="Income Level"

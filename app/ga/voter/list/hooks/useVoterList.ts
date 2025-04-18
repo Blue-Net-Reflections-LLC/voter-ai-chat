@@ -108,6 +108,9 @@ export function useVoterList() {
     const genderParams = searchParams.getAll('gender');
     if (genderParams.length > 0) filterState.gender = genderParams;
     
+    const raceParams = searchParams.getAll('race');
+    if (raceParams.length > 0) filterState.race = raceParams;
+    
     return filterState;
   });
   
@@ -227,6 +230,11 @@ export function useVoterList() {
       filters.gender.forEach(value => params.append('gender', value));
     }
     
+    // Add race filter
+    if (filters.race.length > 0) {
+      filters.race.forEach(value => params.append('race', value));
+    }
+    
     // Add address filters
     if (residenceAddressFilters.residence_street_number) {
       params.set('residenceStreetNumber', residenceAddressFilters.residence_street_number);
@@ -305,6 +313,10 @@ export function useVoterList() {
     
     if (filters.gender.length > 0) {
       filters.gender.forEach(value => params.append('gender', value));
+    }
+    
+    if (filters.race.length > 0) {
+      filters.race.forEach(value => params.append('race', value));
     }
     
     // Add address filter params

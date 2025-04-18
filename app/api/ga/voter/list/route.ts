@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     const ageMax = searchParams.get('ageMax');
     const ageRanges = searchParams.getAll('ageRange');
     const genderValues = searchParams.getAll('gender');
-    const race = searchParams.get('race');
+    const raceValues = searchParams.getAll('race');
     
     // Residence address filters
     const residenceStreetName = searchParams.get('residenceStreetName');
@@ -214,8 +214,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (race) {
-      conditions.push(`UPPER(race) = UPPER('${race}')`);
+    if (raceValues.length > 0) {
+      if (raceValues.length === 1) {
+        conditions.push(`UPPER(race) = UPPER('${raceValues[0]}')`);
+      } else {
+        // Handle multiple race values
+        const raceConditions = raceValues.map(r => `UPPER(race) = UPPER('${r}')`).join(' OR ');
+        conditions.push(`(${raceConditions})`);
+      }
     }
 
     // Address conditions - street_name and street_number can use a composite index
