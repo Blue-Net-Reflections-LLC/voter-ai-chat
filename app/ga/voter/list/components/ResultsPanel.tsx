@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Printer, Download, FilterX } from "lucide-react";
 import { Voter, PaginationState } from '../types';
@@ -43,14 +43,7 @@ export function ResultsPanel({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Voter List Results</span>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm"><Printer size={16} className="mr-1"/> Print</Button>
-            <Button variant="outline" size="sm"><Download size={16} className="mr-1"/> Download CSV</Button>
-          </div>
-        </CardTitle>
+      <CardHeader className="px-4 py-3">
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
             {totalItems > 0 ? (
@@ -62,20 +55,31 @@ export function ResultsPanel({
             )}
           </div>
           
-          {hasActiveFilters && onClearFilters && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 flex items-center"
-              onClick={onClearFilters}
-            >
-              <FilterX size={14} className="mr-1" />
-              Clear Filters
-            </Button>
-          )}
+          <div className="flex items-center gap-4">
+            {hasActiveFilters && onClearFilters && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                onClick={onClearFilters}
+              >
+                <FilterX size={14} className="mr-1" />
+                Clear Filters
+              </Button>
+            )}
+            
+            <div className="flex gap-3">
+              <Button variant="link" size="sm" className="text-xs h-6 px-1">
+                <Printer size={14} className="mr-1"/> Print
+              </Button>
+              <Button variant="link" size="sm" className="text-xs h-6 px-1">
+                <Download size={14} className="mr-1"/> Download CSV
+              </Button>
+            </div>
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 py-0">
         <VoterTable 
           voters={voters} 
           isLoading={isLoading} 
@@ -83,7 +87,7 @@ export function ResultsPanel({
           onSort={onSort}
         />
       </CardContent>
-      <CardFooter className="pt-4">
+      <CardFooter className="pt-3 pb-3 px-4">
         <PaginationControls
           currentPage={currentPage}
           pageSize={pageSize}

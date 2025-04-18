@@ -1,11 +1,9 @@
 "use client";
 
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Filter } from "lucide-react";
 import { ResidenceAddressFilter } from '../ResidenceAddressFilter';
 import { FilterState, ResidenceAddressFilterState } from '../types';
 import CountyMultiSelect from './CountyMultiSelect';
@@ -47,18 +45,11 @@ export function FilterPanel({
   } = useLookupData();
 
   return (
-    <Card className="w-full lg:w-1/4 lg:max-w-xs h-fit sticky top-4">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Filter size={20} />
-          Filters
-        </CardTitle>
-        <CardDescription>Refine voter list results.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <Card className="w-full lg:w-1/4 lg:max-w-xs h-fit sticky top-[61px]">
+      <CardContent className="space-y-5 pt-4">
         {/* Geographic Filters */}
         <div>
-          <div className="font-semibold text-xs text-muted-foreground mb-2">Geographic</div>
+          <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Geographic</div>
           <div className="space-y-3">
             <CountyMultiSelect 
               value={filters.county} 
@@ -98,14 +89,14 @@ export function FilterPanel({
         <Separator />
         {/* Voter Info Filters */}
         <div>
-          <div className="font-semibold text-xs text-muted-foreground mb-2">Voter Info</div>
+          <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voter Info</div>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">First Name</label>
+              <label className="text-xs font-medium">First Name</label>
               <Input placeholder="Enter first name..." />
             </div>
             <div>
-              <label className="text-sm font-medium">Last Name</label>
+              <label className="text-xs font-medium">Last Name</label>
               <Input placeholder="Enter last name..." />
             </div>
             <MultiSelect
@@ -166,18 +157,18 @@ export function FilterPanel({
         <Separator />
         {/* Voting Behavior Filters */}
         <div>
-          <div className="font-semibold text-xs text-muted-foreground mb-2">Voting Behavior</div>
+          <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voting Behavior</div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Registered But Never Voted</label>
+              <label className="text-xs font-medium">Registered But Never Voted</label>
               <input type="checkbox" className="form-checkbox h-4 w-4" />
             </div>
             <div>
-              <label className="text-sm font-medium">Has Not Voted Since Year</label>
+              <label className="text-xs font-medium">Has Not Voted Since Year</label>
               <Input placeholder="e.g. 2020" type="number" min="1900" max="2100" />
             </div>
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Contacted (No Response)</label>
+              <label className="text-xs font-medium">Contacted (No Response)</label>
               <input type="checkbox" className="form-checkbox h-4 w-4" />
             </div>
             <MultiSelect
@@ -187,15 +178,12 @@ export function FilterPanel({
               setValue={(value) => updateFilter('electionType', value)}
             />
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Redistricting Affected</label>
+              <label className="text-xs font-medium">Redistricting Affected</label>
               <input type="checkbox" className="form-checkbox h-4 w-4" />
             </div>
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={clearAllFilters}>Clear Filters</Button>
-      </CardFooter>
     </Card>
   );
 }
