@@ -15,6 +15,15 @@ export type LookupData = {
   timestamp: string;
 };
 
+// Helper function to convert text to Title Case
+const toTitleCase = (text: string): string => {
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export function useLookupData() {
   const [lookupData, setLookupData] = useState<LookupData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -24,7 +33,7 @@ export function useLookupData() {
   const getValuesForField = (fieldName: string): string[] => {
     if (!lookupData) return [];
     const field = lookupData.fields.find(f => f.name === fieldName);
-    return field?.values || [];
+    return field?.values.map(toTitleCase) || [];
   };
 
   // Cached values for commonly used fields
@@ -34,6 +43,7 @@ export function useLookupData() {
   const stateHouseDistricts = getValuesForField('state_house_district');
   const statuses = getValuesForField('status');
   const parties = getValuesForField('last_party_voted');
+  const genders = getValuesForField('gender');
 
   // Fetch lookup data on component mount
   useEffect(() => {
@@ -42,22 +52,26 @@ export function useLookupData() {
       setError(null);
       
       try {
-        // Fetch both district and registration data in parallel
-        const [districtResponse, registrationResponse] = await Promise.all([
+        // Fetch district, registration, and demographic data in parallel
+        const [districtResponse, registrationResponse, demographicResponse] = await Promise.all([
           fetch('/api/ga/voter/list/lookup?category=district'),
-          fetch('/api/ga/voter/list/lookup?category=registration')
+          fetch('/api/ga/voter/list/lookup?category=registration'),
+          fetch('/api/ga/voter/list/lookup?category=demographic')
         ]);
         
-        if (!districtResponse.ok || !registrationResponse.ok) {
-          throw new Error(`API error: ${!districtResponse.ok ? districtResponse.status : registrationResponse.status}`);
+        if (!districtResponse.ok || !registrationResponse.ok || !demographicResponse.ok) {
+          throw new Error(`API error: ${!districtResponse.ok ? districtResponse.status : 
+                                      !registrationResponse.ok ? registrationResponse.status : 
+                                      demographicResponse.status}`);
         }
         
         const districtData = await districtResponse.json();
         const registrationData = await registrationResponse.json();
+        const demographicData = await demographicResponse.json();
         
-        // Combine both data sets
+        // Combine all data sets
         const combinedData = {
-          fields: [...districtData.fields, ...registrationData.fields],
+          fields: [...districtData.fields, ...registrationData.fields, ...demographicData.fields],
           timestamp: new Date().toISOString()
         };
         
@@ -83,6 +97,7 @@ export function useLookupData() {
     stateHouseDistricts,
     statuses,
     parties,
+    genders,
     getValuesForField
   };
 } 

@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     const ageMin = searchParams.get('ageMin');
     const ageMax = searchParams.get('ageMax');
     const ageRanges = searchParams.getAll('ageRange');
-    const gender = searchParams.get('gender');
+    const genderValues = searchParams.getAll('gender');
     const race = searchParams.get('race');
     
     // Residence address filters
@@ -204,8 +204,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (gender) {
-      conditions.push(`UPPER(gender) = UPPER('${gender}')`);
+    if (genderValues.length > 0) {
+      if (genderValues.length === 1) {
+        conditions.push(`UPPER(gender) = UPPER('${genderValues[0]}')`);
+      } else {
+        // Handle multiple gender values
+        const genderConditions = genderValues.map(g => `UPPER(gender) = UPPER('${g}')`).join(' OR ');
+        conditions.push(`(${genderConditions})`);
+      }
     }
 
     if (race) {

@@ -105,6 +105,9 @@ export function useVoterList() {
     const ageParams = searchParams.getAll('ageRange');
     if (ageParams.length > 0) filterState.age = ageParams;
     
+    const genderParams = searchParams.getAll('gender');
+    if (genderParams.length > 0) filterState.gender = genderParams;
+    
     return filterState;
   });
   
@@ -219,6 +222,11 @@ export function useVoterList() {
       filters.age.forEach(value => params.append('ageRange', value));
     }
     
+    // Add gender filter
+    if (filters.gender.length > 0) {
+      filters.gender.forEach(value => params.append('gender', value));
+    }
+    
     // Add address filters
     if (residenceAddressFilters.residence_street_number) {
       params.set('residenceStreetNumber', residenceAddressFilters.residence_street_number);
@@ -293,6 +301,10 @@ export function useVoterList() {
     
     if (filters.age.length > 0) {
       filters.age.forEach(value => params.append('ageRange', value));
+    }
+    
+    if (filters.gender.length > 0) {
+      filters.gender.forEach(value => params.append('gender', value));
     }
     
     // Add address filter params
