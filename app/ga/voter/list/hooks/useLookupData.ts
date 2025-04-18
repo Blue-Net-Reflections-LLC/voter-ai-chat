@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { MultiSelectOption } from '../components/MultiSelect';
 
 export type LookupField = {
   name: string;
@@ -24,6 +25,14 @@ const toTitleCase = (text: string): string => {
     .join(' ');
 };
 
+// Helper function to convert string array to MultiSelectOption array
+const toOptions = (values: string[]): MultiSelectOption[] => {
+  return values.map(value => ({
+    value: value,
+    label: value
+  }));
+};
+
 export function useLookupData() {
   const [lookupData, setLookupData] = useState<LookupData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -36,15 +45,20 @@ export function useLookupData() {
     return field?.values.map(toTitleCase) || [];
   };
 
+  // Helper function to get options for a specific field
+  const getOptionsForField = (fieldName: string): MultiSelectOption[] => {
+    return toOptions(getValuesForField(fieldName));
+  };
+
   // Cached values for commonly used fields
-  const counties = getValuesForField('county_name');
-  const congressionalDistricts = getValuesForField('congressional_district');
-  const stateSenateDistricts = getValuesForField('state_senate_district');
-  const stateHouseDistricts = getValuesForField('state_house_district');
-  const statuses = getValuesForField('status');
-  const parties = getValuesForField('last_party_voted');
-  const genders = getValuesForField('gender');
-  const races = getValuesForField('race');
+  const counties = getOptionsForField('county_name');
+  const congressionalDistricts = getOptionsForField('congressional_district');
+  const stateSenateDistricts = getOptionsForField('state_senate_district');
+  const stateHouseDistricts = getOptionsForField('state_house_district');
+  const statuses = getOptionsForField('status');
+  const parties = getOptionsForField('last_party_voted');
+  const genders = getOptionsForField('gender');
+  const races = getOptionsForField('race');
 
   // Fetch lookup data on component mount
   useEffect(() => {
@@ -100,6 +114,7 @@ export function useLookupData() {
     parties,
     genders,
     races,
-    getValuesForField
+    getValuesForField,
+    getOptionsForField
   };
 } 
