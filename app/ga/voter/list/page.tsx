@@ -10,6 +10,7 @@ export default function VoterListPage() {
     filters,
     residenceAddressFilters,
     pagination,
+    sort,
     voters,
     isLoading,
     updateFilter,
@@ -17,6 +18,7 @@ export default function VoterListPage() {
     clearAllFilters,
     updatePage,
     updatePageSize,
+    updateSort,
     hasActiveFilters
   } = useVoterList();
 
@@ -36,10 +38,13 @@ export default function VoterListPage() {
         <ResultsPanel
           voters={voters}
           pagination={pagination}
+          sort={sort}
           hasActiveFilters={hasActiveFilters}
           isLoading={isLoading}
           onPageChange={updatePage}
           onPageSizeChange={updatePageSize}
+          onSort={updateSort}
+          onClearFilters={clearAllFilters}
         />
       </div>
     </div>

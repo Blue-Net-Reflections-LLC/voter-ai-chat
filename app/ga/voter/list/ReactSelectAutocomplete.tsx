@@ -77,6 +77,7 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
     setInputValue(search);
     
     // Update search in context - this doesn't affect other fields
+    // The AddressDataProvider will append _search to the field name when making API requests
     setSearch(fieldKey, search);
   };
   

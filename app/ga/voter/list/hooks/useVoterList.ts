@@ -1,27 +1,19 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { FilterState, ResidenceAddressFilterState, PaginationState, Voter } from '../types';
 
-// Mock voter data - will be replaced with actual API call
-const MOCK_VOTERS: Voter[] = [
-  { id: "VOT-12345", name: "Jane Doe", county: "Fulton", status: "Active" },
-  { id: "VOT-67890", name: "John Doe", county: "Fulton", status: "Active" },
-  { id: "VOT-54321", name: "Emily Doe", county: "Fulton", status: "Inactive" },
-  { id: "VOT-98765", name: "Michael Smith", county: "DeKalb", status: "Active" },
-  { id: "VOT-34567", name: "Sarah Johnson", county: "Cobb", status: "Active" },
-  { id: "VOT-76543", name: "David Williams", county: "Gwinnett", status: "Inactive" },
-  { id: "VOT-23456", name: "Jennifer Brown", county: "Fulton", status: "Active" },
-  { id: "VOT-87654", name: "Robert Jones", county: "DeKalb", status: "Active" },
-  { id: "VOT-45678", name: "Jessica Garcia", county: "Cobb", status: "Active" },
-  { id: "VOT-65432", name: "Thomas Martinez", county: "Gwinnett", status: "Inactive" },
-  { id: "VOT-34521", name: "Lisa Wilson", county: "Fulton", status: "Active" },
-  { id: "VOT-89765", name: "James Anderson", county: "DeKalb", status: "Active" },
-  { id: "VOT-56789", name: "Michelle Taylor", county: "Cobb", status: "Active" },
-  { id: "VOT-54323", name: "Daniel Thomas", county: "Gwinnett", status: "Inactive" },
-  { id: "VOT-12344", name: "Patricia Harris", county: "Fulton", status: "Active" }
-];
+// Debounce utility
+function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  return function (...args: Parameters<T>) {
+    if (timeout) clearTimeout(timeout);
+    
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
 
 // Initial filter state
 const initialFilterState: FilterState = {
@@ -59,95 +51,326 @@ const initialPaginationState: PaginationState = {
   totalItems: 0
 };
 
+// Available sort fields
+export type SortField = 'name' | 'id' | 'county' | 'status' | 'address';
+export type SortDirection = 'asc' | 'desc';
+
+// Initial sort state
+const initialSortState = {
+  field: 'name' as SortField,
+  direction: 'asc' as SortDirection
+};
+
+// List of address fields for URL params
+const ADDRESS_FIELDS = [
+  'residence_street_number',
+  'residence_pre_direction',
+  'residence_street_name',
+  'residence_street_type',
+  'residence_post_direction',
+  'residence_apt_unit_number',
+  'residence_zipcode',
+  'residence_city'
+] as const;
+
 export function useVoterList() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  // State initialization from URL if available
-  const initStateFromURL = () => {
-    // Pagination state from URL
+  // State
+  const [filters, setFilters] = useState<FilterState>(() => {
+    // Initialize from URL if available
+    const filterState = { ...initialFilterState };
+    
+    // Handle array filter params
+    const countyParams = searchParams.getAll('county');
+    if (countyParams.length > 0) filterState.county = countyParams;
+    
+    const congressionalParams = searchParams.getAll('congressionalDistricts');
+    if (congressionalParams.length > 0) filterState.congressionalDistricts = congressionalParams;
+    
+    const senateParams = searchParams.getAll('stateSenateDistricts');
+    if (senateParams.length > 0) filterState.stateSenateDistricts = senateParams;
+    
+    const houseParams = searchParams.getAll('stateHouseDistricts');
+    if (houseParams.length > 0) filterState.stateHouseDistricts = houseParams;
+    
+    const statusParams = searchParams.getAll('status');
+    if (statusParams.length > 0) filterState.status = statusParams;
+    
+    const partyParams = searchParams.getAll('party');
+    if (partyParams.length > 0) filterState.party = partyParams;
+    
+    return filterState;
+  });
+  
+  const [residenceAddressFilters, setResidenceAddressFilters] = useState<ResidenceAddressFilterState>(() => {
+    // Initialize from URL if available
+    const addressFilterState = { ...initialAddressFilterState };
+    
+    ADDRESS_FIELDS.forEach(field => {
+      const value = searchParams.get(field);
+      if (value) addressFilterState[field] = value;
+    });
+    
+    return addressFilterState;
+  });
+  
+  const [pagination, setPagination] = useState<PaginationState>(() => {
+    // Initialize from URL if available
     const pageParam = searchParams.get('page');
     const pageSizeParam = searchParams.get('pageSize');
     
-    const paginationState = {
+    return {
       currentPage: pageParam ? parseInt(pageParam, 10) : initialPaginationState.currentPage,
       pageSize: pageSizeParam ? parseInt(pageSizeParam, 10) : initialPaginationState.pageSize,
       totalItems: initialPaginationState.totalItems
     };
-    
-    // TODO: Initialize filter state from URL params
+  });
+  
+  const [sort, setSort] = useState(() => {
+    // Initialize from URL if available
+    const sortField = searchParams.get('sortField') as SortField;
+    const sortDirection = searchParams.get('sortDirection') as SortDirection;
     
     return {
-      paginationState
-      // Add other state initialization as needed
+      field: sortField || initialSortState.field,
+      direction: sortDirection || initialSortState.direction
     };
-  };
+  });
   
-  // State
-  const [filters, setFilters] = useState<FilterState>(initialFilterState);
-  const [residenceAddressFilters, setResidenceAddressFilters] = useState<ResidenceAddressFilterState>(initialAddressFilterState);
-  const [pagination, setPagination] = useState<PaginationState>(() => initStateFromURL().paginationState);
   const [voters, setVoters] = useState<Voter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Update URL when state changes
+  // Refs for request lock and URL updates
+  const isUpdatingUrl = useRef(false);
+  const isRequestInProgress = useRef(false);
+  const requestParams = useRef('');
+  const initialRenderRef = useRef(true);
+  
+  // Track if component is mounted
+  const isMountedRef = useRef(true);
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
+    isMountedRef.current = true;
+    
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  
+  // Build query params for API call
+  const buildQueryParams = useCallback(() => {
+    const params = new URLSearchParams();
     
     // Add pagination params
     params.set('page', pagination.currentPage.toString());
     params.set('pageSize', pagination.pageSize.toString());
     
-    // TODO: Add other significant state params to URL
+    // Add sort params
+    params.set('sortField', sort.field);
+    params.set('sortDirection', sort.direction);
     
-    // Update URL without refreshing the page
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pagination, router, pathname, searchParams]);
+    // Add county filter
+    if (filters.county.length > 0) {
+      params.set('county', filters.county[0]); // API only supports one county at a time
+    }
+    
+    // Add congressional districts
+    if (filters.congressionalDistricts.length > 0) {
+      filters.congressionalDistricts.forEach(district => 
+        params.append('congressionalDistricts', district)
+      );
+    }
+    
+    // Add state senate districts
+    if (filters.stateSenateDistricts.length > 0) {
+      filters.stateSenateDistricts.forEach(district => 
+        params.append('stateSenateDistricts', district)
+      );
+    }
+    
+    // Add state house districts
+    if (filters.stateHouseDistricts.length > 0) {
+      filters.stateHouseDistricts.forEach(district => 
+        params.append('stateHouseDistricts', district)
+      );
+    }
+    
+    // Add status filter
+    if (filters.status.length > 0) {
+      params.set('status', filters.status[0]); // API only supports one status at a time
+    }
+    
+    // Add party filter
+    if (filters.party.length > 0) {
+      params.set('party', filters.party[0]); // API only supports one party at a time
+    }
+    
+    // Add address filters
+    if (residenceAddressFilters.residence_street_number) {
+      params.set('residenceStreetNumber', residenceAddressFilters.residence_street_number);
+    }
+    
+    if (residenceAddressFilters.residence_pre_direction) {
+      params.set('residencePreDirection', residenceAddressFilters.residence_pre_direction);
+    }
+    
+    if (residenceAddressFilters.residence_street_name) {
+      params.set('residenceStreetName', residenceAddressFilters.residence_street_name);
+    }
+    
+    if (residenceAddressFilters.residence_street_type) {
+      params.set('residenceStreetSuffix', residenceAddressFilters.residence_street_type);
+    }
+    
+    if (residenceAddressFilters.residence_post_direction) {
+      params.set('residencePostDirection', residenceAddressFilters.residence_post_direction);
+    }
+    
+    if (residenceAddressFilters.residence_zipcode) {
+      params.set('residenceZipcode', residenceAddressFilters.residence_zipcode);
+    }
+    
+    if (residenceAddressFilters.residence_city) {
+      params.set('residenceCity', residenceAddressFilters.residence_city);
+    }
+    
+    return params;
+  }, [filters, residenceAddressFilters, pagination, sort]);
   
-  // Fetch data when filters or pagination changes
-  useEffect(() => {
-    fetchVoters();
-  }, [filters, residenceAddressFilters, pagination.currentPage, pagination.pageSize]);
+  // Update URL with current state
+  const updateUrl = useCallback(debounce(() => {
+    if (isUpdatingUrl.current) return;
+    isUpdatingUrl.current = true;
+    
+    const params = new URLSearchParams();
+    
+    // Add pagination params
+    params.set('page', pagination.currentPage.toString());
+    params.set('pageSize', pagination.pageSize.toString());
+    
+    // Add sort params
+    params.set('sortField', sort.field);
+    params.set('sortDirection', sort.direction);
+    
+    // Add array filter params
+    if (filters.county.length > 0) {
+      filters.county.forEach(value => params.append('county', value));
+    }
+    
+    if (filters.congressionalDistricts.length > 0) {
+      filters.congressionalDistricts.forEach(value => params.append('congressionalDistricts', value));
+    }
+    
+    if (filters.stateSenateDistricts.length > 0) {
+      filters.stateSenateDistricts.forEach(value => params.append('stateSenateDistricts', value));
+    }
+    
+    if (filters.stateHouseDistricts.length > 0) {
+      filters.stateHouseDistricts.forEach(value => params.append('stateHouseDistricts', value));
+    }
+    
+    if (filters.status.length > 0) {
+      filters.status.forEach(value => params.append('status', value));
+    }
+    
+    if (filters.party.length > 0) {
+      filters.party.forEach(value => params.append('party', value));
+    }
+    
+    // Add address filter params
+    ADDRESS_FIELDS.forEach(field => {
+      const value = residenceAddressFilters[field];
+      if (value) params.set(field, value);
+    });
+    
+    // Get current URL params
+    const currentParams = new URLSearchParams(searchParams.toString());
+    const newParamsString = params.toString();
+    const currentParamsString = currentParams.toString();
+    
+    // Only update URL if params actually changed
+    if (newParamsString !== currentParamsString) {
+      router.replace(`${pathname}?${newParamsString}`, { scroll: false });
+    }
+    
+    setTimeout(() => {
+      isUpdatingUrl.current = false;
+    }, 100);
+  }, 300), [filters, residenceAddressFilters, pagination, sort, router, pathname, searchParams]);
   
-  // Fetch voters (mock implementation)
-  const fetchVoters = async () => {
+  // Fetch voters from API with debounce
+  const fetchVotersDebounced = useCallback(debounce(async () => {
+    if (!isMountedRef.current) return;
+    if (isRequestInProgress.current) return;
+    
+    const params = buildQueryParams();
+    const paramsString = params.toString();
+    
+    // Skip if same request is in progress or params haven't changed
+    if (paramsString === requestParams.current) return;
+    
+    isRequestInProgress.current = true;
+    requestParams.current = paramsString;
     setIsLoading(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('Fetching voters with params:', paramsString);
+      const response = await fetch(`/api/ga/voter/list?${paramsString}`);
       
-      // Filter voters based on criteria
-      let filteredData = MOCK_VOTERS;
+      if (!isMountedRef.current) return;
       
-      // Apply county filter
-      if (filters.county.length > 0) {
-        filteredData = filteredData.filter(voter => filters.county.includes(voter.county));
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
       }
       
-      // Apply status filter
-      if (filters.status.length > 0) {
-        filteredData = filteredData.filter(voter => filters.status.includes(voter.status));
-      }
+      const data = await response.json();
       
-      // Apply other filters...
+      if (!isMountedRef.current) return;
       
-      // Update total items count
-      setPagination(prev => ({ ...prev, totalItems: filteredData.length }));
+      // Update voters and pagination state
+      setVoters(data.voters || []);
+      setPagination(prev => ({
+        ...prev,
+        totalItems: data.pagination?.totalItems || 0
+      }));
       
-      // Apply pagination
-      const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
-      const paginatedData = filteredData.slice(startIndex, startIndex + pagination.pageSize);
-      
-      setVoters(paginatedData);
+      console.log(`Fetched ${data.voters?.length || 0} voters out of ${data.pagination?.totalItems || 0} total`);
     } catch (error) {
       console.error('Error fetching voters:', error);
-      setVoters([]);
+      if (isMountedRef.current) {
+        setVoters([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+      setTimeout(() => {
+        isRequestInProgress.current = false;
+      }, 300); // Add a small delay before allowing new requests
     }
-  };
+  }, 300), [buildQueryParams]);
+  
+  // Trigger URL update when state changes
+  useEffect(() => {
+    updateUrl();
+  }, [filters, residenceAddressFilters, pagination, sort, updateUrl]);
+  
+  // Trigger data fetch on mount and when state changes
+  useEffect(() => {
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false;
+      
+      // If URL has params, fetch on mount
+      const hasParams = searchParams.toString().length > 0;
+      if (hasParams) {
+        fetchVotersDebounced();
+      }
+    } else {
+      fetchVotersDebounced();
+    }
+  }, [filters, residenceAddressFilters, pagination.currentPage, pagination.pageSize, sort.field, sort.direction, fetchVotersDebounced, searchParams]);
   
   // Helper functions for state updates
   const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
@@ -177,6 +400,16 @@ export function useVoterList() {
     setPagination(prev => ({ ...prev, pageSize: size, currentPage: 1 }));
   };
   
+  // Update sort state - toggles direction if clicking on current sort field
+  const updateSort = (field: SortField) => {
+    setSort(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+    // Reset to first page when sort changes
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+  
   // Check if any filters are active
   const hasActiveFilters = () => {
     const hasActiveArrayFilters = Object.values(filters).some(
@@ -195,6 +428,7 @@ export function useVoterList() {
     filters,
     residenceAddressFilters,
     pagination,
+    sort,
     voters,
     isLoading,
     
@@ -204,6 +438,7 @@ export function useVoterList() {
     clearAllFilters,
     updatePage,
     updatePageSize,
+    updateSort,
     
     // Helpers
     hasActiveFilters: hasActiveFilters()

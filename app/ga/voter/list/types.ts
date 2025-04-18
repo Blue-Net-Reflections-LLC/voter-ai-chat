@@ -1,9 +1,45 @@
 export interface Voter {
   id: string;
   name: string;
-  county: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  nameSuffix?: string;
   status: string;
-  // Add more fields as needed for actual data model
+  gender?: string;
+  race?: string;
+  birthYear?: string;
+  age?: number;
+  registrationDate?: string;
+  lastVoteDate?: string;
+  county: string;
+  address?: {
+    streetNumber?: string;
+    streetName?: string;
+    streetSuffix?: string;
+    preDirection?: string;
+    postDirection?: string;
+    unitType?: string;
+    unitNumber?: string;
+    city?: string;
+    zipcode?: string;
+    fullAddress?: string;
+  };
+  mailingAddress?: {
+    line1?: string;
+    line2?: string;
+    line3?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    country?: string;
+  };
+  districts?: {
+    congressional?: string;
+    stateSenate?: string;
+    stateHouse?: string;
+  };
+  lastContactDate?: string;
 }
 
 export interface FilterState {
