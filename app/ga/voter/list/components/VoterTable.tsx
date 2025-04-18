@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Voter } from '../types';
 import { SortField, SortDirection } from '../hooks/useVoterList';
+import { cn } from "@/lib/utils";
 
 interface VoterTableProps {
   voters: Voter[];
@@ -26,19 +27,19 @@ const LoadingSkeleton = () => (
     {Array(5).fill(0).map((_, i) => (
       <TableRow key={`loading-${i}`}>
         <TableCell>
-          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-4 w-20" />
         </TableCell>
         <TableCell>
-          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-28" />
         </TableCell>
         <TableCell>
-          <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-4 w-16" />
         </TableCell>
         <TableCell>
-          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-4 w-14" />
         </TableCell>
         <TableCell className="text-right">
-          <Skeleton className="h-5 w-20 ml-auto" />
+          <Skeleton className="h-4 w-16 ml-auto" />
         </TableCell>
       </TableRow>
     ))}
@@ -84,7 +85,7 @@ export function VoterTable({
     <div className="border rounded-md">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="h-8">
             <TableHead className="w-[120px]">
               <SortButton 
                 field="id" 
@@ -127,12 +128,12 @@ export function VoterTable({
             </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody className="text-xs">
           {isLoading ? (
             <LoadingSkeleton />
           ) : voters.length > 0 ? (
             voters.map((voter) => (
-              <TableRow key={voter.id}>
+              <TableRow key={voter.id} className="h-8">
                 <TableCell className="font-mono text-xs">
                   <a href={`/ga/voter/profile/${voter.id}`} className="text-blue-600 hover:underline">
                     {voter.id}
@@ -149,7 +150,7 @@ export function VoterTable({
                         </span>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-xs">
                           <p><strong>Address:</strong> {voter.address?.fullAddress || "N/A"}</p>
                           <p><strong>City:</strong> {voter.address?.city || "N/A"}</p>
                           <p><strong>Zip:</strong> {voter.address?.zipcode || "N/A"}</p>
@@ -159,7 +160,7 @@ export function VoterTable({
                   </TooltipProvider>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Badge variant={voter.status === "Active" ? "solid" : "outline"}>
+                  <Badge variant={voter.status === "Active" ? "solid" : "outline"} className="text-[10px] py-0 px-2">
                     {voter.status}
                   </Badge>
                 </TableCell>
@@ -167,7 +168,7 @@ export function VoterTable({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+              <TableCell colSpan={5} className="text-center py-6 text-xs text-muted-foreground">
                 No voters found matching your criteria
               </TableCell>
             </TableRow>
