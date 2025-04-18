@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -46,6 +46,23 @@ export function FilterPanel({
     races
   } = useLookupData();
 
+  // Add state for checkbox selections
+  const [selectedCounties, setSelectedCounties] = useState<number[]>([6]);
+  const [neverVoted, setNeverVoted] = useState(false);
+  const [contactedNoResponse, setContactedNoResponse] = useState(false);
+  const [redistrictingAffected, setRedistrictingAffected] = useState(false);
+
+  // Handler for county checkbox changes
+  const handleCountyChange = (county: number) => {
+    setSelectedCounties(prev => 
+      prev.includes(county) 
+        ? prev.filter(c => c !== county) 
+        : [...prev, county]
+    );
+    // Here you would also update your filters state with the new selection
+    // updateFilter('county', [...selectedCounties]);
+  };
+
   return (
     <Card className="w-full h-full overflow-auto">
       <CardContent className="space-y-3 pt-2 px-3">
@@ -68,15 +85,33 @@ export function FilterPanel({
               </div>
               <div className="space-y-1">
                 <div className="flex items-center">
-                  <input type="checkbox" className="mr-2 h-4 w-4" id="county-6" checked />
+                  <input 
+                    type="checkbox" 
+                    className="mr-2 h-4 w-4" 
+                    id="county-6" 
+                    checked={selectedCounties.includes(6)}
+                    onChange={() => handleCountyChange(6)}
+                  />
                   <label htmlFor="county-6" className="text-xs">6</label>
                 </div>
                 <div className="flex items-center">
-                  <input type="checkbox" className="mr-2 h-4 w-4" id="county-11" />
+                  <input 
+                    type="checkbox" 
+                    className="mr-2 h-4 w-4" 
+                    id="county-11"
+                    checked={selectedCounties.includes(11)} 
+                    onChange={() => handleCountyChange(11)}
+                  />
                   <label htmlFor="county-11" className="text-xs">11</label>
                 </div>
                 <div className="flex items-center">
-                  <input type="checkbox" className="mr-2 h-4 w-4" id="county-14" />
+                  <input 
+                    type="checkbox" 
+                    className="mr-2 h-4 w-4" 
+                    id="county-14"
+                    checked={selectedCounties.includes(14)} 
+                    onChange={() => handleCountyChange(14)}
+                  />
                   <label htmlFor="county-14" className="text-xs">14</label>
                 </div>
               </div>
@@ -196,8 +231,14 @@ export function FilterPanel({
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voting Behavior</div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium">Registered But Never Voted</label>
-              <input type="checkbox" className="form-checkbox h-3 w-3" />
+              <label htmlFor="never-voted" className="text-xs font-medium">Registered But Never Voted</label>
+              <input 
+                id="never-voted"
+                type="checkbox" 
+                className="form-checkbox h-3 w-3"
+                checked={neverVoted}
+                onChange={() => setNeverVoted(!neverVoted)}
+              />
             </div>
             <div>
               <label className="text-xs font-medium">Has Not Voted Since Year</label>
@@ -210,8 +251,14 @@ export function FilterPanel({
               />
             </div>
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium">Contacted (No Response)</label>
-              <input type="checkbox" className="form-checkbox h-3 w-3" />
+              <label htmlFor="contacted-no-response" className="text-xs font-medium">Contacted (No Response)</label>
+              <input 
+                id="contacted-no-response"
+                type="checkbox" 
+                className="form-checkbox h-3 w-3"
+                checked={contactedNoResponse}
+                onChange={() => setContactedNoResponse(!contactedNoResponse)}
+              />
             </div>
             <MultiSelect
               label="Voted by Election Type"
@@ -221,8 +268,14 @@ export function FilterPanel({
               compact={true}
             />
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium">Redistricting Affected</label>
-              <input type="checkbox" className="form-checkbox h-3 w-3" />
+              <label htmlFor="redistricting-affected" className="text-xs font-medium">Redistricting Affected</label>
+              <input 
+                id="redistricting-affected"
+                type="checkbox" 
+                className="form-checkbox h-3 w-3"
+                checked={redistrictingAffected}
+                onChange={() => setRedistrictingAffected(!redistrictingAffected)}
+              />
             </div>
           </div>
         </div>

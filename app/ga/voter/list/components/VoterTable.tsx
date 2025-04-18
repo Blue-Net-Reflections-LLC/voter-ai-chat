@@ -3,14 +3,12 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, ArrowUp, ArrowDown, Info } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Voter } from '../types';
 import { SortField, SortDirection } from '../hooks/useVoterList';
 import { cn } from "@/lib/utils";
-import { ChevronUp, ChevronDown } from "lucide-react";
 
 interface VoterTableProps {
   voters: Voter[];
@@ -22,19 +20,26 @@ interface VoterTableProps {
   onSort?: (field: SortField) => void;
 }
 
+// Debug helper
+const getStatusClass = (status: any) => {
+  console.log("Status value:", status, "Type:", typeof status);
+  
+  // Handle any possible status format
+  if (status === 'Active' || status === 'ACTIVE' || status === true || status === 1) {
+    return "bg-blue-500/10 border border-blue-600/30 text-blue-500";
+  }
+  return "bg-gray-700/20 border border-gray-600/30 text-gray-400";
+};
+
 // Skeleton for loading state
 const LoadingSkeleton = () => (
   <>
-    {Array.from({ length: 8 }).map((_, i) => (
-      <TableRow key={i}>
-        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+    {Array.from({ length: 10 }).map((_, i) => (
+      <TableRow key={i} className="h-8 border-b border-gray-800">
+        <TableCell className="py-1"><Skeleton className="h-4 w-24" /></TableCell>
+        <TableCell className="py-1"><Skeleton className="h-4 w-40" /></TableCell>
+        <TableCell className="py-1"><Skeleton className="h-4 w-28" /></TableCell>
+        <TableCell className="py-1"><Skeleton className="h-4 w-20" /></TableCell>
       </TableRow>
     ))}
   </>
@@ -57,19 +62,17 @@ const SortButton = ({
   
   return (
     <button
-      className="flex items-center space-x-1 hover:text-blue-600 focus:outline-none group"
+      className="flex items-center text-white text-xs gap-1 hover:text-blue-300 focus:outline-none"
       onClick={() => onSort?.(field)}
     >
       <span>{label}</span>
-      <span className="flex items-center">
-        {direction === 'asc' ? (
-          <ChevronUp className="h-4 w-4 text-blue-600" />
-        ) : direction === 'desc' ? (
-          <ChevronDown className="h-4 w-4 text-blue-600" />
-        ) : (
-          <ArrowUpDown className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100" />
-        )}
-      </span>
+      {direction === 'asc' ? (
+        <ArrowUp className="h-3.5 w-3.5 text-blue-300" />
+      ) : direction === 'desc' ? (
+        <ArrowDown className="h-3.5 w-3.5 text-blue-300" />
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-60" />
+      )}
     </button>
   );
 };
@@ -82,32 +85,20 @@ export function VoterTable({
 }: VoterTableProps) {
   return (
     <div className="w-full h-full overflow-auto">
-      <Table className="relative">
-        <TableHeader className="bg-gray-50 sticky top-0 z-10">
-          <TableRow>
-            <TableHead className="w-[10%]">
-              <SortButton field="id" label="Voter ID" currentSort={sort} onSort={onSort} />
+      <Table className="relative border-separate border-spacing-0">
+        <TableHeader className="bg-gray-900 sticky top-0 z-10">
+          <TableRow className="h-7 border-b-0">
+            <TableHead className="w-[25%] py-1.5 px-3 text-white font-normal">
+              <SortButton field="id" label="Registration ID" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead className="w-[20%]">
-              <SortButton field="name" label="Name" currentSort={sort} onSort={onSort} />
+            <TableHead className="w-[35%] py-1.5 px-3 text-white font-normal">
+              <SortButton field="name" label="Full Name" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead className="w-[7%]">
-              <SortButton field="age" label="Age" currentSort={sort} onSort={onSort} />
+            <TableHead className="w-[20%] py-1.5 px-3 text-white font-normal">
+              <SortButton field="county" label="County" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead className="w-[7%]">
-              <SortButton field="gender" label="Gender" currentSort={sort} onSort={onSort} />
-            </TableHead>
-            <TableHead className="w-[14%]">
-              <SortButton field="race" label="Race" currentSort={sort} onSort={onSort} />
-            </TableHead>
-            <TableHead className="w-[14%]">
+            <TableHead className="w-[20%] py-1.5 px-3 text-white font-normal">
               <SortButton field="status" label="Status" currentSort={sort} onSort={onSort} />
-            </TableHead>
-            <TableHead className="w-[15%]">
-              <SortButton field="address" label="Address" currentSort={sort} onSort={onSort} />
-            </TableHead>
-            <TableHead className="w-[13%]">
-              <SortButton field="votingHistory" label="Voting History" currentSort={sort} onSort={onSort} />
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -116,35 +107,20 @@ export function VoterTable({
             <LoadingSkeleton />
           ) : voters.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
                 No voters found matching your criteria
               </TableCell>
             </TableRow>
           ) : (
             voters.map((voter) => (
-              <TableRow key={voter.id}>
-                <TableCell className="font-medium">{voter.id}</TableCell>
-                <TableCell>{voter.firstName} {voter.lastName}</TableCell>
-                <TableCell>{voter.age}</TableCell>
-                <TableCell>{voter.gender}</TableCell>
-                <TableCell>{voter.race}</TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={voter.status === 'Active' ? 'default' : 
-                            voter.status === 'Inactive' ? 'secondary' : 
-                            'outline'}
-                  >
-                    {voter.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="truncate max-w-xs">
-                  {voter.address?.street}, {voter.address?.city}
-                </TableCell>
-                <TableCell>
-                  {voter.votingHistory?.reduce(
-                    (count, vote) => (vote.voted ? count + 1 : count), 
-                    0
-                  )} / {voter.votingHistory?.length || 0} elections
+              <TableRow key={voter.id} className="h-8 border-b border-gray-800 hover:bg-gray-900/20">
+                <TableCell className="py-1 px-3 text-xs">{voter.id}</TableCell>
+                <TableCell className="py-1 px-3 text-xs">{voter.firstName} {voter.lastName}</TableCell>
+                <TableCell className="py-1 px-3 text-xs">{voter.county || (voter.address?.city && `${voter.address.city}`)}</TableCell>
+                <TableCell className="py-1 px-3">
+                  <span className="inline-flex items-center justify-center text-[10px] font-semibold rounded px-2 py-0.5 bg-blue-500/10 border border-blue-600/30 text-blue-500">
+                    ACTIVE
+                  </span>
                 </TableCell>
               </TableRow>
             ))
