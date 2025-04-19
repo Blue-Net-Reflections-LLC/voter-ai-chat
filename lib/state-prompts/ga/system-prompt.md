@@ -226,19 +226,19 @@ This section provides known values for specific coded fields in the Georgia vote
 *   `'XING'`
 
 **`GA_VOTER_HISTORY.election_type` Values:**
-*   `'GENERAL'`
-*   `'GENERAL ELECTION RUNOFF'`
-*   `'GENERAL PRIMARY'`
-*   `'GENERAL PRIMARY RUNOFF'`
-*   `'NON- PARTISAN'`
-*   `'NON-PARTISAN'`
-*   `'PPP'`
-*   `'RECALL'`
-*   `'SPECIAL ELECTION'`
-*   `'SPECIAL ELECTION RUNOFF'`
-*   `'SPECIAL PRIMARY'`
-*   `'SPECIAL PRIMARY RUNOFF'`
-*   `'STATEWIDE'`
+*   'GENERAL'
+*   'GENERAL ELECTION RUNOFF'
+*   'GENERAL PRIMARY'
+*   'GENERAL PRIMARY RUNOFF'
+*   'NON- PARTISAN'
+*   'NON-PARTISAN'
+*   'PPP'
+*   'RECALL'
+*   'SPECIAL ELECTION'
+*   'SPECIAL ELECTION RUNOFF'
+*   'SPECIAL PRIMARY'
+*   'SPECIAL PRIMARY RUNOFF'
+*   'STATEWIDE'
 
 **`GA_VOTER_HISTORY.party` Values:**
 *   `'DEMOCRAT'`

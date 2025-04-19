@@ -231,7 +231,8 @@ export async function readStreamToConsole(readable: any) {
 
 export const isUUID = (str: string): boolean => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 
-function debounce<F extends (...args: any[]) => void>(
+function debounce
+<F extends (...args: any[]) => void>(
 	func: F,
 	wait: number
 ): (...args: Parameters<F>) => void {
