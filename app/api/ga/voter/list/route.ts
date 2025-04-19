@@ -243,6 +243,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const neverVoted = searchParams.get('neverVoted') === 'true';
+
+    // Never voted filter
+    if (neverVoted) {
+      conditions.push(`NOT EXISTS (SELECT 1 FROM GA_VOTER_HISTORY h WHERE h.registration_number = GA_VOTER_REGISTRATION_LIST.voter_registration_number)`);
+    }
+
     const hasCompositeAddressFilters = residentAddresses.length > 0;
 
     // Address conditions from individual params (legacy) – only if no composite filters present

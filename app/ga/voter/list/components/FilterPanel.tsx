@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +18,7 @@ import {
 } from '../constants';
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from '@/components/ui/button';
 
 interface FilterPanelProps {
   filters: FilterState;
@@ -48,10 +49,20 @@ export function FilterPanel({
     races
   } = useLookupData();
 
+  // Local state for name inputs (for Apply button)
+  const [firstNameInput, setFirstNameInput] = useState(filters.firstName || '');
+  const [lastNameInput, setLastNameInput] = useState(filters.lastName || '');
+
   // Add state for checkbox selections
   const [neverVoted, setNeverVoted] = useState(false);
   const [contactedNoResponse, setContactedNoResponse] = useState(false);
   const [redistrictingAffected, setRedistrictingAffected] = useState(false);
+
+  // When filters prop changes (e.g., Clear All), sync local inputs
+  useEffect(() => {
+    setFirstNameInput(filters.firstName || '');
+    setLastNameInput(filters.lastName || '');
+  }, [filters.firstName, filters.lastName]);
 
   // Add address filter handler (from ResidenceAddressFilter component)
   const addAddressFilter = (filter?: AddressFilter) => {
@@ -139,17 +150,34 @@ export function FilterPanel({
           <div className="space-y-2">
             <div>
               <label className="text-xs font-medium">First Name</label>
-              <Input 
-                placeholder="Enter first name..." 
-                className="h-8 text-xs" 
+              <Input
+                placeholder="Enter first name..."
+                className="h-8 text-xs"
+                value={firstNameInput}
+                onChange={(e)=>setFirstNameInput(e.target.value)}
+                onBlur={() => updateFilter('firstName', firstNameInput.trim())}
               />
             </div>
             <div>
               <label className="text-xs font-medium">Last Name</label>
-              <Input 
-                placeholder="Enter last name..." 
-                className="h-8 text-xs" 
+              <Input
+                placeholder="Enter last name..."
+                className="h-8 text-xs"
+                value={lastNameInput}
+                onChange={(e)=>setLastNameInput(e.target.value)}
+                onBlur={() => updateFilter('lastName', lastNameInput.trim())}
               />
+              {/* Apply button visible on mobile or always */}
+              <Button
+                size="sm"
+                className="mt-2"
+                onClick={() => {
+                  updateFilter('firstName', firstNameInput.trim());
+                  updateFilter('lastName', lastNameInput.trim());
+                }}
+              >
+                Apply Name Filter
+              </Button>
             </div>
             <MultiSelect
               label="Status"
@@ -220,15 +248,21 @@ export function FilterPanel({
         <div>
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voting Behavior</div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="never-voted" className="text-xs font-medium">Registered But Never Voted</label>
-              <input 
-                id="never-voted"
-                type="checkbox" 
-                className="form-checkbox h-3 w-3"
-                checked={neverVoted}
-                onChange={() => setNeverVoted(!neverVoted)}
-              />
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center justify-between">
+                <label htmlFor="never-voted" className="text-xs font-medium">Registered But Never Voted</label>
+                <input
+                  id="never-voted"
+                  type="checkbox"
+                  className="form-checkbox h-3 w-3"
+                  checked={neverVoted}
+                  onChange={() => {
+                    setNeverVoted(!neverVoted);
+                    updateFilter('neverVoted', !neverVoted);
+                  }}
+                />
+              </div>
+              <span className="text-[10px] text-muted-foreground italic">Note: this filter is resource‑intensive and may take several seconds to load.</span>
             </div>
             <div>
               <label className="text-xs font-medium">Has Not Voted Since Year</label>

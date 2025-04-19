@@ -29,7 +29,10 @@ const initialFilterState: FilterState = {
   race: [],
   income: [],
   education: [],
-  electionType: []
+  electionType: [],
+  firstName: '',
+  lastName: '',
+  neverVoted: false
 };
 
 // Initial address filter state
@@ -110,7 +113,15 @@ export function useVoterList() {
     if (genderParams.length > 0) filterState.gender = genderParams;
     
     const raceParams = searchParams.getAll('race');
+    const firstNameParam = searchParams.get('firstName');
+    const lastNameParam = searchParams.get('lastName');
     if (raceParams.length > 0) filterState.race = raceParams;
+    
+    if (firstNameParam) filterState.firstName = firstNameParam;
+    if (lastNameParam)  filterState.lastName = lastNameParam;
+    
+    const neverVotedParam = searchParams.get('neverVoted');
+    if (neverVotedParam === 'true') filterState.neverVoted = true;
     
     return filterState;
   });
@@ -286,6 +297,12 @@ export function useVoterList() {
       filters.race.forEach(value => params.append('race', value));
     }
     
+    // Add name filters
+    if (filters.firstName) params.set('firstName', filters.firstName);
+    if (filters.lastName)  params.set('lastName',  filters.lastName);
+    
+    if (filters.neverVoted) params.set('neverVoted', 'true');
+    
     // Add address filters
     if (residenceAddressFilters.length > 0) {
       residenceAddressFilters.forEach(filter => {
@@ -357,6 +374,12 @@ export function useVoterList() {
     if (filters.race.length > 0) {
       filters.race.forEach(value => params.append('race', value));
     }
+    
+    // Add name filters
+    if (filters.firstName) params.set('firstName', filters.firstName);
+    if (filters.lastName)  params.set('lastName',  filters.lastName);
+    
+    if (filters.neverVoted) params.set('neverVoted', 'true');
     
     // Add composite address filters
     residenceAddressFilters.forEach(filter => {
@@ -508,13 +531,22 @@ export function useVoterList() {
   
   // Check if any filters are active
   const hasActiveFilters = () => {
+    // Arrays like counties, age ranges, etc.
     const hasActiveArrayFilters = Object.values(filters).some(
-      filter => Array.isArray(filter) && filter.length > 0
+      value => Array.isArray(value) && value.length > 0
     );
-    
+
+    // Primitive (string) filters: firstName / lastName
+    const hasActiveNameFilters =
+      (filters.firstName && filters.firstName.trim().length > 0) ||
+      (filters.lastName && filters.lastName.trim().length > 0);
+
+    const hasNeverVoted = filters.neverVoted;
+
+    // Composite address filters
     const hasActiveAddressFilters = residenceAddressFilters.length > 0;
-    
-    return hasActiveArrayFilters || hasActiveAddressFilters;
+
+    return hasActiveArrayFilters || hasActiveNameFilters || hasNeverVoted || hasActiveAddressFilters;
   };
   
   return {
