@@ -72,13 +72,32 @@ export async function GET(request: NextRequest) {
     const raceValues = searchParams.getAll('race');
     
     // Residence address filters
-    const residenceStreetName = searchParams.get('residenceStreetName');
-    const residenceStreetNumber = searchParams.get('residenceStreetNumber');
-    const residenceCity = searchParams.get('residenceCity');
-    const residenceZipcode = searchParams.get('residenceZipcode');
-    const residencePreDirection = searchParams.get('residencePreDirection');
-    const residencePostDirection = searchParams.get('residencePostDirection');
-    const residenceStreetSuffix = searchParams.get('residenceStreetSuffix');
+    const residenceStreetNames = searchParams.getAll('residenceStreetName');
+    const residenceStreetNumbers = searchParams.getAll('residenceStreetNumber');
+    const residenceCities = searchParams.getAll('residenceCity');
+    const residenceZipcodes = searchParams.getAll('residenceZipcode');
+    const residencePreDirections = searchParams.getAll('residencePreDirection');
+    const residencePostDirections = searchParams.getAll('residencePostDirection');
+    const residenceStreetSuffixes = searchParams.getAll('residenceStreetSuffix');
+    const residenceAptUnitNumbers = searchParams.getAll('residenceAptUnitNumber');
+
+    // Extract resident_address parameters (new composite format)
+    const residentAddresses = searchParams.getAll('resident_address');
+
+    residentAddresses.forEach(addr => {
+      const parts = addr.split(',');
+      if (parts.length === 8) {
+        const [num, pre, name, type, post, apt, city, zip] = parts;
+        if (num) residenceStreetNumbers.push(num);
+        if (pre) residencePreDirections.push(pre);
+        if (name) residenceStreetNames.push(name);
+        if (type) residenceStreetSuffixes.push(type);
+        if (post) residencePostDirections.push(post);
+        if (apt) residenceAptUnitNumbers.push(apt);
+        if (city) residenceCities.push(city);
+        if (zip) residenceZipcodes.push(zip);
+      }
+    });
 
     // Build SQL conditions
     const conditions = [];
@@ -224,39 +243,76 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Address conditions - street_name and street_number can use a composite index
-    if (residenceStreetName && residenceStreetNumber) {
+    const hasCompositeAddressFilters = residentAddresses.length > 0;
+
+    // Address conditions from individual params (legacy) – only if no composite filters present
+    if (!hasCompositeAddressFilters && residenceStreetNames.length > 0 && residenceStreetNumbers.length > 0) {
       // Combined filter can use the composite index
-      conditions.push(`(UPPER(residence_street_name) LIKE UPPER('${residenceStreetName}%') AND residence_street_number = '${residenceStreetNumber}')`);
-    } else {
+      const placeholders = residenceStreetNames.map((name, index) => `(UPPER(residence_street_name) LIKE UPPER('${name}%') AND residence_street_number = '${residenceStreetNumbers[index]}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
+    } else if (!hasCompositeAddressFilters) {
       // Individual filters
-      if (residenceStreetName) {
-        conditions.push(`UPPER(residence_street_name) LIKE UPPER('${residenceStreetName}%')`);
+      if (residenceStreetNames.length > 0) {
+        const placeholders = residenceStreetNames.map(name => `UPPER(residence_street_name) LIKE UPPER('${name}%')`);
+        conditions.push(`(${placeholders.join(' OR ')})`);
       }
 
-      if (residenceStreetNumber) {
-        conditions.push(`residence_street_number = '${residenceStreetNumber}'`);
+      if (residenceStreetNumbers.length > 0) {
+        const placeholders = residenceStreetNumbers.map(number => `residence_street_number = '${number}'`);
+        conditions.push(`(${placeholders.join(' OR ')})`);
       }
     }
 
-    if (residenceCity) {
-      conditions.push(`UPPER(residence_city) = UPPER('${residenceCity}')`);
+    if (!hasCompositeAddressFilters && residenceCities.length > 0) {
+      const placeholders = residenceCities.map(city => `UPPER(residence_city) = UPPER('${city}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residenceZipcode) {
-      conditions.push(`residence_zipcode = '${residenceZipcode}'`);
+    if (!hasCompositeAddressFilters && residenceZipcodes.length > 0) {
+      const placeholders = residenceZipcodes.map(zipcode => `residence_zipcode = '${zipcode}'`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residencePreDirection) {
-      conditions.push(`UPPER(residence_pre_direction) = UPPER('${residencePreDirection}')`);
+    if (!hasCompositeAddressFilters && residencePreDirections.length > 0) {
+      const placeholders = residencePreDirections.map(direction => `UPPER(residence_pre_direction) = UPPER('${direction}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residencePostDirection) {
-      conditions.push(`UPPER(residence_post_direction) = UPPER('${residencePostDirection}')`);
+    if (!hasCompositeAddressFilters && residencePostDirections.length > 0) {
+      const placeholders = residencePostDirections.map(direction => `UPPER(residence_post_direction) = UPPER('${direction}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residenceStreetSuffix) {
-      conditions.push(`UPPER(residence_street_suffix) = UPPER('${residenceStreetSuffix}')`);
+    if (!hasCompositeAddressFilters && residenceStreetSuffixes.length > 0) {
+      const placeholders = residenceStreetSuffixes.map(suffix => `UPPER(residence_street_type) = UPPER('${suffix}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
+    }
+
+    if (!hasCompositeAddressFilters && residenceAptUnitNumbers.length > 0) {
+      const placeholders = residenceAptUnitNumbers.map(apt => `UPPER(residence_apt_unit_number) = UPPER('${apt}')`);
+      conditions.push(`(${placeholders.join(' OR ')})`);
+    }
+
+    // Composite address OR block (after conditions declared)
+    if (residentAddresses.length > 0) {
+      const compositeClauses: string[] = [];
+      residentAddresses.forEach(addr => {
+        const parts = addr.split(',');
+        if (parts.length === 8) {
+          const [num, pre, name, type, post, apt, city, zip] = parts;
+          const sub: string[] = [];
+          if (num) sub.push(`residence_street_number = '${num}'`);
+          if (pre) sub.push(`UPPER(residence_pre_direction) = UPPER('${pre}')`);
+          if (name) sub.push(`UPPER(residence_street_name) LIKE UPPER('${name}%')`);
+          if (type) sub.push(`UPPER(residence_street_type) = UPPER('${type}')`);
+          if (post) sub.push(`UPPER(residence_post_direction) = UPPER('${post}')`);
+          if (apt) sub.push(`UPPER(residence_apt_unit_number) = UPPER('${apt}')`);
+          if (city) sub.push(`UPPER(residence_city) = UPPER('${city}')`);
+          if (zip) sub.push(`residence_zipcode = '${zip}'`);
+          if (sub.length > 0) compositeClauses.push(`(${sub.join(' AND ')})`);
+        }
+      });
+      if (compositeClauses.length > 0) conditions.push(`(${compositeClauses.join(' OR ')})`);
     }
 
     // Construct the WHERE clause

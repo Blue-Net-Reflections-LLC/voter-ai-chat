@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { ResidenceAddressFilter } from '../ResidenceAddressFilter';
+import { ResidenceAddressFilter, AddressFilter } from '../ResidenceAddressFilter';
 import { FilterState, ResidenceAddressFilterState } from '../types';
 import CountyMultiSelect from './CountyMultiSelect';
 import DistrictMultiSelect from './DistrictMultiSelect';
@@ -21,9 +21,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FilterPanelProps {
   filters: FilterState;
-  residenceAddressFilters: ResidenceAddressFilterState;
+  residenceAddressFilters: ResidenceAddressFilterState[];
   updateFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
-  updateResidenceAddressFilter: (key: keyof ResidenceAddressFilterState, value: string) => void;
+  updateResidenceAddressFilter: (id: string, key: keyof ResidenceAddressFilterState, value: string) => void;
+  setResidenceAddressFilters: React.Dispatch<React.SetStateAction<ResidenceAddressFilterState[]>>;
   clearAllFilters: () => void;
 }
 
@@ -32,6 +33,7 @@ export function FilterPanel({
   residenceAddressFilters,
   updateFilter,
   updateResidenceAddressFilter,
+  setResidenceAddressFilters,
   clearAllFilters
 }: FilterPanelProps) {
   const { 
@@ -50,6 +52,20 @@ export function FilterPanel({
   const [neverVoted, setNeverVoted] = useState(false);
   const [contactedNoResponse, setContactedNoResponse] = useState(false);
   const [redistrictingAffected, setRedistrictingAffected] = useState(false);
+
+  // Add address filter handler (from ResidenceAddressFilter component)
+  const addAddressFilter = (filter?: AddressFilter) => {
+    if (!filter) return;
+    setResidenceAddressFilters(prev => [...prev, filter as ResidenceAddressFilterState]);
+  };
+
+  const removeAddressFilter = (id: string) => {
+    setResidenceAddressFilters(prev => prev.filter(f => f.id !== id));
+  };
+
+  const clearAllAddressFilters = () => {
+    setResidenceAddressFilters([]);
+  };
 
   return (
     <Card className="w-full h-full overflow-auto">
@@ -106,8 +122,13 @@ export function FilterPanel({
 
           {/* Residence Address Filter */}
           <ResidenceAddressFilter
-            filters={residenceAddressFilters}
-            setFilter={updateResidenceAddressFilter}
+            addressFilters={residenceAddressFilters}
+            addAddressFilter={addAddressFilter}
+            removeAddressFilter={removeAddressFilter}
+            clearAllAddressFilters={clearAllAddressFilters}
+            updateAddressFilter={(id, field, value) => {
+              updateResidenceAddressFilter(id, field as keyof ResidenceAddressFilterState, value);
+            }}
           />
         </div>
         <Separator />

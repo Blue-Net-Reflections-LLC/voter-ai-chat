@@ -60,6 +60,7 @@ export interface FilterState {
 }
 
 export interface ResidenceAddressFilterState {
+  id: string;
   residence_street_number: string;
   residence_pre_direction: string;
   residence_street_name: string;
@@ -78,7 +79,7 @@ export interface PaginationState {
 
 export interface VoterListState {
   filters: FilterState;
-  residenceAddressFilters: ResidenceAddressFilterState;
+  residenceAddressFilters: ResidenceAddressFilterState[];
   pagination: PaginationState;
   isLoading: boolean;
 } 

@@ -15,6 +15,7 @@ export default function VoterListPage() {
     isLoading,
     updateFilter,
     updateResidenceAddressFilter,
+    setResidenceAddressFilters,
     clearAllFilters,
     updatePage,
     updatePageSize,
@@ -31,6 +32,7 @@ export default function VoterListPage() {
             residenceAddressFilters={residenceAddressFilters}
             updateFilter={updateFilter}
             updateResidenceAddressFilter={updateResidenceAddressFilter}
+            setResidenceAddressFilters={setResidenceAddressFilters}
             clearAllFilters={clearAllFilters}
           />
         </div>
