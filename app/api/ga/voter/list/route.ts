@@ -99,42 +99,6 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // For backward compatibility
-    const singleResidenceStreetName = searchParams.get('residenceStreetName');
-    const singleResidenceStreetNumber = searchParams.get('residenceStreetNumber');
-    const singleResidenceCity = searchParams.get('residenceCity');
-    const singleResidenceZipcode = searchParams.get('residenceZipcode');
-    const singleResidencePreDirection = searchParams.get('residencePreDirection');
-    const singleResidencePostDirection = searchParams.get('residencePostDirection');
-    const singleResidenceStreetSuffix = searchParams.get('residenceStreetSuffix');
-    const singleResidenceAptUnitNumber = searchParams.get('residenceAptUnitNumber');
-
-    // Merge single values with arrays if they exist
-    if (singleResidenceStreetName && !residenceStreetNames.includes(singleResidenceStreetName)) {
-      residenceStreetNames.push(singleResidenceStreetName);
-    }
-    if (singleResidenceStreetNumber && !residenceStreetNumbers.includes(singleResidenceStreetNumber)) {
-      residenceStreetNumbers.push(singleResidenceStreetNumber);
-    }
-    if (singleResidenceCity && !residenceCities.includes(singleResidenceCity)) {
-      residenceCities.push(singleResidenceCity);
-    }
-    if (singleResidenceZipcode && !residenceZipcodes.includes(singleResidenceZipcode)) {
-      residenceZipcodes.push(singleResidenceZipcode);
-    }
-    if (singleResidencePreDirection && !residencePreDirections.includes(singleResidencePreDirection)) {
-      residencePreDirections.push(singleResidencePreDirection);
-    }
-    if (singleResidencePostDirection && !residencePostDirections.includes(singleResidencePostDirection)) {
-      residencePostDirections.push(singleResidencePostDirection);
-    }
-    if (singleResidenceStreetSuffix && !residenceStreetSuffixes.includes(singleResidenceStreetSuffix)) {
-      residenceStreetSuffixes.push(singleResidenceStreetSuffix);
-    }
-    if (singleResidenceAptUnitNumber && !residenceAptUnitNumbers.includes(singleResidenceAptUnitNumber)) {
-      residenceAptUnitNumbers.push(singleResidenceAptUnitNumber);
-    }
-
     // Build SQL conditions
     const conditions = [];
     
@@ -279,12 +243,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Address conditions - street_name and street_number can use a composite index
-    if (residenceStreetNames.length > 0 && residenceStreetNumbers.length > 0) {
+    const hasCompositeAddressFilters = residentAddresses.length > 0;
+
+    // Address conditions from individual params (legacy) – only if no composite filters present
+    if (!hasCompositeAddressFilters && residenceStreetNames.length > 0 && residenceStreetNumbers.length > 0) {
       // Combined filter can use the composite index
       const placeholders = residenceStreetNames.map((name, index) => `(UPPER(residence_street_name) LIKE UPPER('${name}%') AND residence_street_number = '${residenceStreetNumbers[index]}')`);
       conditions.push(`(${placeholders.join(' OR ')})`);
-    } else {
+    } else if (!hasCompositeAddressFilters) {
       // Individual filters
       if (residenceStreetNames.length > 0) {
         const placeholders = residenceStreetNames.map(name => `UPPER(residence_street_name) LIKE UPPER('${name}%')`);
@@ -297,34 +263,56 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (residenceCities.length > 0) {
+    if (!hasCompositeAddressFilters && residenceCities.length > 0) {
       const placeholders = residenceCities.map(city => `UPPER(residence_city) = UPPER('${city}')`);
       conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residenceZipcodes.length > 0) {
+    if (!hasCompositeAddressFilters && residenceZipcodes.length > 0) {
       const placeholders = residenceZipcodes.map(zipcode => `residence_zipcode = '${zipcode}'`);
       conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residencePreDirections.length > 0) {
+    if (!hasCompositeAddressFilters && residencePreDirections.length > 0) {
       const placeholders = residencePreDirections.map(direction => `UPPER(residence_pre_direction) = UPPER('${direction}')`);
       conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residencePostDirections.length > 0) {
+    if (!hasCompositeAddressFilters && residencePostDirections.length > 0) {
       const placeholders = residencePostDirections.map(direction => `UPPER(residence_post_direction) = UPPER('${direction}')`);
       conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residenceStreetSuffixes.length > 0) {
+    if (!hasCompositeAddressFilters && residenceStreetSuffixes.length > 0) {
       const placeholders = residenceStreetSuffixes.map(suffix => `UPPER(residence_street_type) = UPPER('${suffix}')`);
       conditions.push(`(${placeholders.join(' OR ')})`);
     }
 
-    if (residenceAptUnitNumbers.length > 0) {
+    if (!hasCompositeAddressFilters && residenceAptUnitNumbers.length > 0) {
       const placeholders = residenceAptUnitNumbers.map(apt => `UPPER(residence_apt_unit_number) = UPPER('${apt}')`);
       conditions.push(`(${placeholders.join(' OR ')})`);
+    }
+
+    // Composite address OR block (after conditions declared)
+    if (residentAddresses.length > 0) {
+      const compositeClauses: string[] = [];
+      residentAddresses.forEach(addr => {
+        const parts = addr.split(',');
+        if (parts.length === 8) {
+          const [num, pre, name, type, post, apt, city, zip] = parts;
+          const sub: string[] = [];
+          if (num) sub.push(`residence_street_number = '${num}'`);
+          if (pre) sub.push(`UPPER(residence_pre_direction) = UPPER('${pre}')`);
+          if (name) sub.push(`UPPER(residence_street_name) LIKE UPPER('${name}%')`);
+          if (type) sub.push(`UPPER(residence_street_type) = UPPER('${type}')`);
+          if (post) sub.push(`UPPER(residence_post_direction) = UPPER('${post}')`);
+          if (apt) sub.push(`UPPER(residence_apt_unit_number) = UPPER('${apt}')`);
+          if (city) sub.push(`UPPER(residence_city) = UPPER('${city}')`);
+          if (zip) sub.push(`residence_zipcode = '${zip}'`);
+          if (sub.length > 0) compositeClauses.push(`(${sub.join(' AND ')})`);
+        }
+      });
+      if (compositeClauses.length > 0) conditions.push(`(${compositeClauses.join(' OR ')})`);
     }
 
     // Construct the WHERE clause

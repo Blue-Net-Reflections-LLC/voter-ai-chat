@@ -79,7 +79,7 @@ export interface PaginationState {
 
 export interface VoterListState {
   filters: FilterState;
-  residenceAddressFilters: ResidenceAddressFilterState;
+  residenceAddressFilters: ResidenceAddressFilterState[];
   pagination: PaginationState;
   isLoading: boolean;
 } 

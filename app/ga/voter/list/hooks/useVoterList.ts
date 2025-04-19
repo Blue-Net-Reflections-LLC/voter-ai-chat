@@ -533,6 +533,7 @@ export function useVoterList() {
     updatePage,
     updatePageSize,
     updateSort,
+    setResidenceAddressFilters,
     
     // Helpers
     hasActiveFilters: hasActiveFilters()

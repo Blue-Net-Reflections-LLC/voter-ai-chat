@@ -21,9 +21,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FilterPanelProps {
   filters: FilterState;
-  residenceAddressFilters: ResidenceAddressFilterState;
+  residenceAddressFilters: ResidenceAddressFilterState[];
   updateFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
-  updateResidenceAddressFilter: (key: keyof ResidenceAddressFilterState, value: string) => void;
+  updateResidenceAddressFilter: (id: string, key: keyof ResidenceAddressFilterState, value: string) => void;
+  setResidenceAddressFilters: React.Dispatch<React.SetStateAction<ResidenceAddressFilterState[]>>;
   clearAllFilters: () => void;
 }
 
@@ -32,6 +33,7 @@ export function FilterPanel({
   residenceAddressFilters,
   updateFilter,
   updateResidenceAddressFilter,
+  setResidenceAddressFilters,
   clearAllFilters
 }: FilterPanelProps) {
   const { 
@@ -46,146 +48,23 @@ export function FilterPanel({
     races
   } = useLookupData();
 
-  // Add state for address filters
-  const [addressFilters, setAddressFilters] = useState<AddressFilter[]>([]);
-
   // Add state for checkbox selections
   const [neverVoted, setNeverVoted] = useState(false);
   const [contactedNoResponse, setContactedNoResponse] = useState(false);
   const [redistrictingAffected, setRedistrictingAffected] = useState(false);
 
-  // Add address filter handler
+  // Add address filter handler (from ResidenceAddressFilter component)
   const addAddressFilter = (filter?: AddressFilter) => {
     if (!filter) return;
-    
-    setAddressFilters(prev => [...prev, filter]);
-    
-    // Helper function to append to a URL parameter
-    const appendToUrlParam = (key: string, value: string) => {
-      const url = new URL(window.location.href);
-      url.searchParams.append(key, value);
-      
-      // Update browser URL without reload
-      window.history.pushState({}, '', url.toString());
-    };
-    
-    // Update the address filter parameters in the URL for API consumption
-    if (filter.residence_street_number) {
-      appendToUrlParam('residenceStreetNumber', filter.residence_street_number);
-      updateResidenceAddressFilter('residence_street_number', filter.residence_street_number);
-    }
-    if (filter.residence_pre_direction) {
-      appendToUrlParam('residencePreDirection', filter.residence_pre_direction);
-      updateResidenceAddressFilter('residence_pre_direction', filter.residence_pre_direction);
-    }
-    if (filter.residence_street_name) {
-      appendToUrlParam('residenceStreetName', filter.residence_street_name);
-      updateResidenceAddressFilter('residence_street_name', filter.residence_street_name);
-    }
-    if (filter.residence_street_type) {
-      appendToUrlParam('residenceStreetSuffix', filter.residence_street_type);
-      updateResidenceAddressFilter('residence_street_type', filter.residence_street_type);
-    }
-    if (filter.residence_post_direction) {
-      appendToUrlParam('residencePostDirection', filter.residence_post_direction);
-      updateResidenceAddressFilter('residence_post_direction', filter.residence_post_direction);
-    }
-    if (filter.residence_apt_unit_number) {
-      appendToUrlParam('residenceAptUnitNumber', filter.residence_apt_unit_number);
-      updateResidenceAddressFilter('residence_apt_unit_number', filter.residence_apt_unit_number);
-    }
-    if (filter.residence_zipcode) {
-      appendToUrlParam('residenceZipcode', filter.residence_zipcode);
-      updateResidenceAddressFilter('residence_zipcode', filter.residence_zipcode);
-    }
-    if (filter.residence_city) {
-      appendToUrlParam('residenceCity', filter.residence_city);
-      updateResidenceAddressFilter('residence_city', filter.residence_city);
-    }
+    setResidenceAddressFilters(prev => [...prev, filter as ResidenceAddressFilterState]);
   };
 
-  // Remove address filter handler
   const removeAddressFilter = (id: string) => {
-    // Find the filter that's being removed
-    const filterToRemove = addressFilters.find(filter => filter.id === id);
-    
-    if (filterToRemove) {
-      // Get the current URL parameters
-      const url = new URL(window.location.href);
-      
-      // Remove this filter's values from URL params
-      // Note: This is a simplistic approach - more complex handling would be needed
-      // for perfect URL param management with multiple overlapping filters
-      if (filterToRemove.residence_street_number) {
-        const allValues = url.searchParams.getAll('residenceStreetNumber');
-        url.searchParams.delete('residenceStreetNumber');
-        // Re-add all values except the one being removed
-        allValues.filter(v => v !== filterToRemove.residence_street_number)
-          .forEach(v => url.searchParams.append('residenceStreetNumber', v));
-      }
-      
-      if (filterToRemove.residence_street_name) {
-        const allValues = url.searchParams.getAll('residenceStreetName');
-        url.searchParams.delete('residenceStreetName');
-        allValues.filter(v => v !== filterToRemove.residence_street_name)
-          .forEach(v => url.searchParams.append('residenceStreetName', v));
-      }
-      
-      if (filterToRemove.residence_street_type) {
-        const allValues = url.searchParams.getAll('residenceStreetSuffix');
-        url.searchParams.delete('residenceStreetSuffix');
-        allValues.filter(v => v !== filterToRemove.residence_street_type)
-          .forEach(v => url.searchParams.append('residenceStreetSuffix', v));
-      }
-      
-      if (filterToRemove.residence_city) {
-        const allValues = url.searchParams.getAll('residenceCity');
-        url.searchParams.delete('residenceCity');
-        allValues.filter(v => v !== filterToRemove.residence_city)
-          .forEach(v => url.searchParams.append('residenceCity', v));
-      }
-      
-      if (filterToRemove.residence_zipcode) {
-        const allValues = url.searchParams.getAll('residenceZipcode');
-        url.searchParams.delete('residenceZipcode');
-        allValues.filter(v => v !== filterToRemove.residence_zipcode)
-          .forEach(v => url.searchParams.append('residenceZipcode', v));
-      }
-      
-      // Update the URL without reloading
-      window.history.pushState({}, '', url.toString());
-    }
-    
-    setAddressFilters(prev => prev.filter(filter => filter.id !== id));
+    setResidenceAddressFilters(prev => prev.filter(f => f.id !== id));
   };
 
-  // Clear all address filters handler
   const clearAllAddressFilters = () => {
-    // Remove all address parameters from the URL
-    const url = new URL(window.location.href);
-    
-    // List of all address-related URL parameters
-    const addressParams = [
-      'residenceStreetNumber',
-      'residenceStreetName',
-      'residenceStreetSuffix',
-      'residencePreDirection',
-      'residencePostDirection',
-      'residenceAptUnitNumber',
-      'residenceCity',
-      'residenceZipcode'
-    ];
-    
-    // Clear all address params
-    addressParams.forEach(param => {
-      url.searchParams.delete(param);
-    });
-    
-    // Update the URL without reloading
-    window.history.pushState({}, '', url.toString());
-    
-    // Clear the address filters state
-    setAddressFilters([]);
+    setResidenceAddressFilters([]);
   };
 
   return (
@@ -243,12 +122,13 @@ export function FilterPanel({
 
           {/* Residence Address Filter */}
           <ResidenceAddressFilter
-            filters={residenceAddressFilters}
-            setFilter={updateResidenceAddressFilter}
-            addressFilters={addressFilters}
+            addressFilters={residenceAddressFilters}
             addAddressFilter={addAddressFilter}
             removeAddressFilter={removeAddressFilter}
             clearAllAddressFilters={clearAllAddressFilters}
+            updateAddressFilter={(id, field, value) => {
+              updateResidenceAddressFilter(id, field as keyof ResidenceAddressFilterState, value);
+            }}
           />
         </div>
         <Separator />
