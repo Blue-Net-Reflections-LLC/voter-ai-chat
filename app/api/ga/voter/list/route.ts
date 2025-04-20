@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
     const genderValues = searchParams.getAll('gender');
     const raceValues = searchParams.getAll('race');
     const notVotedSinceYear = searchParams.get('notVotedSinceYear');
+    const electionTypes = searchParams.getAll('electionType');
     
     // Residence address filters
     const residenceStreetNames = searchParams.getAll('residenceStreetName');
@@ -255,6 +256,15 @@ export async function GET(request: NextRequest) {
       const cutoffStart = `${notVotedSinceYear}-01-01`;
       // Voters with no vote on/after cutoff
       conditions.push(`(derived_last_vote_date IS NULL OR derived_last_vote_date < '${cutoffStart}')`);
+    }
+
+    // Election Type filter (uses denormalized array and GIN index)
+    if (electionTypes.length > 0) {
+      // Ensure types are uppercase for matching the stored array
+      const upperElectionTypes = electionTypes.map(et => et.toUpperCase());
+      // Use the array overlap operator '&&'
+      // Finds rows where participated_election_types contains ANY of the selected types.
+      conditions.push(`participated_election_types && ARRAY[${upperElectionTypes.map(et => `'${et}'`).join(',')}]::text[]`);
     }
 
     const hasCompositeAddressFilters = residentAddresses.length > 0;

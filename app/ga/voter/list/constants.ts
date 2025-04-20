@@ -21,8 +21,13 @@ export const VOTER_STATUS_OPTIONS = ["Active", "Inactive"]
 export const PARTY_OPTIONS = ["Democrat", "Republican", "Independent"]
   .map(party => ({ value: party, label: party }));
 
-export const AGE_RANGE_OPTIONS = ["18-23", "25-44", "45-64", "65-74", "75+"]
-  .map(age => ({ value: age, label: age }));
+export const AGE_RANGE_OPTIONS = [
+  { value: '18-23', label: '18-23' },
+  { value: '25-44', label: '25-44' },
+  { value: '45-64', label: '45-64' },
+  { value: '65-74', label: '65-74' },
+  { value: '75+', label: '75+' },
+];
 
 export const GENDER_OPTIONS = ["Male", "Female", "Other"]
   .map(gender => ({ value: gender, label: gender }));
@@ -30,11 +35,38 @@ export const GENDER_OPTIONS = ["Male", "Female", "Other"]
 export const RACE_OPTIONS = ["White", "Black", "Hispanic", "Asian", "Other"]
   .map(race => ({ value: race, label: race }));
 
-export const INCOME_LEVEL_OPTIONS = ["< $25k", "$25k-$50k", "$50k-$100k", "> $100k"]
-  .map(income => ({ value: income, label: income }));
+export const INCOME_LEVEL_OPTIONS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
 
-export const EDUCATION_LEVEL_OPTIONS = ["High School", "Some College", "Bachelor's", "Graduate"]
-  .map(education => ({ value: education, label: education }));
+export const EDUCATION_LEVEL_OPTIONS = [
+  { value: 'high_school', label: 'High School' },
+  { value: 'some_college', label: 'Some College' },
+  { value: 'bachelors', label: "Bachelor's" },
+  { value: 'graduate', label: 'Graduate' },
+];
 
-export const ELECTION_TYPE_OPTIONS = ["General", "Primary", "Runoff", "Special"]
-  .map(type => ({ value: type, label: type })); 
+// Define the hard-coded election type options
+export const ELECTION_TYPE_OPTIONS = [
+  { value: 'GENERAL', label: 'General' },
+  { value: 'GENERAL ELECTION RUNOFF', label: 'General Election Runoff' },
+  { value: 'GENERAL PRIMARY', label: 'General Primary' },
+  { value: 'GENERAL PRIMARY RUNOFF', label: 'General Primary Runoff' },
+  { value: 'NON- PARTISAN', label: 'Non-Partisan' }, // Note: Two variations exist in list
+  { value: 'NON-PARTISAN', label: 'Non-Partisan' },
+  { value: 'PPP', label: 'PPP' }, // Presidential Preference Primary?
+  { value: 'RECALL', label: 'Recall' },
+  { value: 'SPECIAL ELECTION', label: 'Special Election' },
+  { value: 'SPECIAL ELECTION RUNOFF', label: 'Special Election Runoff' },
+  { value: 'SPECIAL/NON-PARTISAN', label: 'Special/Non-Partisan' },
+  { value: 'SPECIAL PRIMARY', label: 'Special Primary' },
+  { value: 'SPECIAL PRIMARY RUNOFF', label: 'Special Primary Runoff' },
+  { value: 'STATEWIDE', label: 'Statewide' },
+].reduce((acc, current) => { // De-duplicate labels
+  if (!acc.some(item => item.label === current.label)) {
+    acc.push(current);
+  }
+  return acc;
+}, [] as { value: string, label: string }[]); 

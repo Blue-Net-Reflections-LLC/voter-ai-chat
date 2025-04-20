@@ -60,9 +60,10 @@ export async function GET(req: NextRequest) {
     
     // Fetch values for each requested field
     const queries = fieldsToFetch.map(async (fieldInfo) => {
+      const sourceTable = 'GA_VOTER_REGISTRATION_LIST'; // Only query registration list now
       const queryString = `
         SELECT DISTINCT ${fieldInfo.name}
-        FROM GA_VOTER_REGISTRATION_LIST
+        FROM ${sourceTable}
         WHERE ${fieldInfo.name} IS NOT NULL AND TRIM(${fieldInfo.name}) != ''
         ORDER BY ${fieldInfo.name}
         LIMIT ${fieldInfo.limit}

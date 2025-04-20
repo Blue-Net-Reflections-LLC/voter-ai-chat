@@ -309,6 +309,11 @@ export function useVoterList() {
     if (filters.neverVoted) params.set('neverVoted', 'true');
     if (filters.notVotedSinceYear) params.set('notVotedSinceYear', filters.notVotedSinceYear);
     
+    // Add election type filter
+    if (filters.electionType.length > 0) {
+      filters.electionType.forEach(value => params.append('electionType', value));
+    }
+    
     // Add address filters
     if (residenceAddressFilters.length > 0) {
       residenceAddressFilters.forEach(filter => {
@@ -387,6 +392,11 @@ export function useVoterList() {
     
     if (filters.neverVoted) params.set('neverVoted', 'true');
     if (filters.notVotedSinceYear) params.set('notVotedSinceYear', filters.notVotedSinceYear);
+    
+    // Add election type filter
+    if (filters.electionType.length > 0) {
+      filters.electionType.forEach(value => params.append('electionType', value));
+    }
     
     // Add composite address filters
     residenceAddressFilters.forEach(filter => {
