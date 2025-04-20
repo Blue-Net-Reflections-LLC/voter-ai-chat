@@ -57,12 +57,14 @@ export function FilterPanel({
   const [neverVoted, setNeverVoted] = useState(false);
   const [contactedNoResponse, setContactedNoResponse] = useState(false);
   const [redistrictingAffected, setRedistrictingAffected] = useState(false);
+  const [notVotedYearInput, setNotVotedYearInput] = useState(filters.notVotedSinceYear || '');
 
   // When filters prop changes (e.g., Clear All), sync local inputs
   useEffect(() => {
     setFirstNameInput(filters.firstName || '');
     setLastNameInput(filters.lastName || '');
-  }, [filters.firstName, filters.lastName]);
+    setNotVotedYearInput(filters.notVotedSinceYear || '');
+  }, [filters.firstName, filters.lastName, filters.notVotedSinceYear]);
 
   // Add address filter handler (from ResidenceAddressFilter component)
   const addAddressFilter = (filter?: AddressFilter) => {
@@ -266,11 +268,14 @@ export function FilterPanel({
             </div>
             <div>
               <label className="text-xs font-medium">Has Not Voted Since Year</label>
-              <Input 
-                placeholder="e.g. 2020" 
-                type="number" 
-                min="1900" 
-                max="2100" 
+              <Input
+                placeholder="e.g. 2020"
+                type="number"
+                min="1900"
+                max="2100"
+                value={notVotedYearInput}
+                onChange={(e) => setNotVotedYearInput(e.target.value)}
+                onBlur={() => updateFilter('notVotedSinceYear', notVotedYearInput.trim())}
                 className="h-8 text-xs"
               />
             </div>

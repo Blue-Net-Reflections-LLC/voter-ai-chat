@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
     const ageRanges = searchParams.getAll('ageRange');
     const genderValues = searchParams.getAll('gender');
     const raceValues = searchParams.getAll('race');
+    const notVotedSinceYear = searchParams.get('notVotedSinceYear');
     
     // Residence address filters
     const residenceStreetNames = searchParams.getAll('residenceStreetName');
@@ -245,9 +246,15 @@ export async function GET(request: NextRequest) {
 
     const neverVoted = searchParams.get('neverVoted') === 'true';
 
-    // Never voted filter
+    // Never voted filter (use derived column)
     if (neverVoted) {
-      conditions.push(`NOT EXISTS (SELECT 1 FROM GA_VOTER_HISTORY h WHERE h.registration_number = GA_VOTER_REGISTRATION_LIST.voter_registration_number)`);
+      conditions.push(`derived_last_vote_date IS NULL`);
+    }
+
+    if (notVotedSinceYear) {
+      const cutoffStart = `${notVotedSinceYear}-01-01`;
+      // Voters with no vote on/after cutoff
+      conditions.push(`(derived_last_vote_date IS NULL OR derived_last_vote_date < '${cutoffStart}')`);
     }
 
     const hasCompositeAddressFilters = residentAddresses.length > 0;

@@ -59,6 +59,7 @@ export interface FilterState {
   firstName: string;
   lastName: string;
   neverVoted: boolean;
+  notVotedSinceYear?: string;
   // Add more filter fields as needed
 }
 

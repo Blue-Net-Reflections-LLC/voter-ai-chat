@@ -32,7 +32,8 @@ const initialFilterState: FilterState = {
   electionType: [],
   firstName: '',
   lastName: '',
-  neverVoted: false
+  neverVoted: false,
+  notVotedSinceYear: ''
 };
 
 // Initial address filter state
@@ -115,6 +116,7 @@ export function useVoterList() {
     const raceParams = searchParams.getAll('race');
     const firstNameParam = searchParams.get('firstName');
     const lastNameParam = searchParams.get('lastName');
+    const ageMin = searchParams.get('ageMin');
     if (raceParams.length > 0) filterState.race = raceParams;
     
     if (firstNameParam) filterState.firstName = firstNameParam;
@@ -122,6 +124,9 @@ export function useVoterList() {
     
     const neverVotedParam = searchParams.get('neverVoted');
     if (neverVotedParam === 'true') filterState.neverVoted = true;
+    
+    const notVotedYearParam = searchParams.get('notVotedSinceYear');
+    if (notVotedYearParam) filterState.notVotedSinceYear = notVotedYearParam;
     
     return filterState;
   });
@@ -302,6 +307,7 @@ export function useVoterList() {
     if (filters.lastName)  params.set('lastName',  filters.lastName);
     
     if (filters.neverVoted) params.set('neverVoted', 'true');
+    if (filters.notVotedSinceYear) params.set('notVotedSinceYear', filters.notVotedSinceYear);
     
     // Add address filters
     if (residenceAddressFilters.length > 0) {
@@ -380,6 +386,7 @@ export function useVoterList() {
     if (filters.lastName)  params.set('lastName',  filters.lastName);
     
     if (filters.neverVoted) params.set('neverVoted', 'true');
+    if (filters.notVotedSinceYear) params.set('notVotedSinceYear', filters.notVotedSinceYear);
     
     // Add composite address filters
     residenceAddressFilters.forEach(filter => {
@@ -542,11 +549,12 @@ export function useVoterList() {
       (filters.lastName && filters.lastName.trim().length > 0);
 
     const hasNeverVoted = filters.neverVoted;
+    const hasNotVotedYear = !!(filters.notVotedSinceYear && filters.notVotedSinceYear.trim().length > 0);
 
     // Composite address filters
     const hasActiveAddressFilters = residenceAddressFilters.length > 0;
 
-    return hasActiveArrayFilters || hasActiveNameFilters || hasNeverVoted || hasActiveAddressFilters;
+    return hasActiveArrayFilters || hasActiveNameFilters || hasNeverVoted || hasNotVotedYear || hasActiveAddressFilters;
   };
   
   return {
