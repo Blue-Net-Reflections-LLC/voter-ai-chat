@@ -48,3 +48,5 @@ yarn-error.log*
 lib/ga-voter-history/data/
 lib/ga-voter-history/data-processed/
 temp/
+
+lib/ga-voter-registration/redistrict-imports/

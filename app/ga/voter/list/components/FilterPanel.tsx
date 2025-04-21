@@ -24,7 +24,7 @@ interface FilterPanelProps {
   filters: FilterState;
   residenceAddressFilters: ResidenceAddressFilterState[];
   updateFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
-  updateResidenceAddressFilter: (id: string, key: keyof ResidenceAddressFilterState, value: string) => void;
+  updateResidenceAddressFilter: (id: string, key: keyof Omit<ResidenceAddressFilterState, 'id'>, value: string) => void;
   setResidenceAddressFilters: React.Dispatch<React.SetStateAction<ResidenceAddressFilterState[]>>;
   clearAllFilters: () => void;
 }
@@ -140,7 +140,7 @@ export function FilterPanel({
             removeAddressFilter={removeAddressFilter}
             clearAllAddressFilters={clearAllAddressFilters}
             updateAddressFilter={(id, field, value) => {
-              updateResidenceAddressFilter(id, field as keyof ResidenceAddressFilterState, value);
+              updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
             }}
           />
         </div>
