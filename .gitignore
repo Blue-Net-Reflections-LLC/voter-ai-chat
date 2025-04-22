@@ -50,3 +50,6 @@ lib/ga-voter-history/data-processed/
 temp/
 
 lib/ga-voter-registration/redistrict-imports/
+
+# Geocoding logs
+lib/ga-voter-registration/import/geocoding_log.txt

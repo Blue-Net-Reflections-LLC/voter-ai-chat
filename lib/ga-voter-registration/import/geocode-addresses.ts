@@ -30,6 +30,9 @@ const CENSUS_BATCH_API_URL = 'https://geocoding.geo.census.gov/geocoder/geograph
 const CENSUS_BENCHMARK = 'Public_AR_Current'; // Or choose another benchmark
 const CENSUS_VINTAGE = 'Current_Current';   // Or choose another vintage
 
+// Records flagged with this source are considered terminal (we won't retry in this script)
+const TERMINAL_TIE_SOURCE = 'census_batch_tie';
+
 // --- Helper Functions --- //
 
 // Simple delay function (might not be needed for batch if run sequentially)
@@ -277,6 +280,7 @@ async function runGeocoding() {
           residence_zipcode
         FROM ${REGISTRATION_TABLE}
         WHERE geom IS NULL -- Target records not yet geocoded
+          AND (geocoding_source IS NULL OR geocoding_source <> ${TERMINAL_TIE_SOURCE})
         ORDER BY voter_registration_number -- NEED consistent order for OFFSET
         LIMIT ${BATCH_SIZE};
       `;
