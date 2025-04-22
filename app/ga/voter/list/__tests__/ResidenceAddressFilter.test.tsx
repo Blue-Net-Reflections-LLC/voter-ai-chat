@@ -1,84 +1,100 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { ResidenceAddressFilter } from '../ResidenceAddressFilter';
-import type { VoterFilters } from '../useVoterFilters';
 
-const ADDRESS_FIELDS = [
-  { key: 'residence_street_number', label: 'Street Number' },
-  { key: 'residence_pre_direction', label: 'Pre Direction' },
-  { key: 'residence_street_name', label: 'Street Name' },
-  { key: 'residence_street_type', label: 'Street Type' },
-  { key: 'residence_post_direction', label: 'Post Direction' },
-  { key: 'residence_apt_unit_number', label: 'Apt/Unit Number' },
-  { key: 'residence_zipcode', label: 'Zipcode' },
-  { key: 'residence_city', label: 'City' },
-];
+// Mock the dependent components
+vi.mock('../ReactSelectAutocomplete', () => ({
+  ReactSelectAutocomplete: ({ label, fieldKey }: any) => (
+    <div data-testid={`select-${fieldKey}`}>
+      <label htmlFor={fieldKey}>{label}</label>
+      <select id={fieldKey}></select>
+    </div>
+  )
+}));
+
+vi.mock('../CitySelect', () => ({
+  CitySelect: ({ label }: any) => (
+    <div data-testid="select-city">
+      <label htmlFor="residence_city">{label}</label>
+      <select id="residence_city"></select>
+    </div>
+  )
+}));
+
+vi.mock('../AddressDataProvider', () => ({
+  AddressDataProvider: ({ children }: any) => <div>{children}</div>,
+  useAddressData: () => ({
+    filter: { id: 'test-id' },
+    setField: vi.fn(),
+    resetFilter: vi.fn(),
+    confirmFilter: vi.fn()
+  })
+}));
 
 describe('ResidenceAddressFilter', () => {
-  const mockFilters: VoterFilters = {
-    county: [],
-    congressionalDistricts: [],
-    stateSenateDistricts: [],
-    stateHouseDistricts: [],
-    residence_street_number: '',
-    residence_pre_direction: '',
-    residence_street_name: '',
-    residence_street_type: '',
-    residence_post_direction: '',
-    residence_apt_unit_number: '',
-    residence_zipcode: '',
-    residence_city: '',
-  };
-  const mockSetFilter = vi.fn();
-  let fetchMock: any;
-
-  beforeEach(() => {
-    fetchMock = vi.spyOn(global, 'fetch');
-    mockSetFilter.mockClear();
+  it('renders the add filter button', () => {
+    const mockProps = {
+      addressFilters: [],
+      addAddressFilter: vi.fn(),
+      updateAddressFilter: vi.fn(),
+      removeAddressFilter: vi.fn(),
+      clearAllAddressFilters: vi.fn()
+    };
+    
+    render(<ResidenceAddressFilter {...mockProps} />);
+    
+    // Check if the "Add Address Filter" button is rendered
+    const addButton = screen.getByRole('button', { name: /add address filter/i });
+    expect(addButton).toBeInTheDocument();
   });
 
-  afterEach(() => {
-    fetchMock.mockRestore();
+  it('opens a dialog when the add button is clicked', () => {
+    const mockProps = {
+      addressFilters: [],
+      addAddressFilter: vi.fn(),
+      updateAddressFilter: vi.fn(),
+      removeAddressFilter: vi.fn(),
+      clearAllAddressFilters: vi.fn()
+    };
+    
+    render(<ResidenceAddressFilter {...mockProps} />);
+    
+    // Click the "Add Address Filter" button
+    const addButton = screen.getByRole('button', { name: /add address filter/i });
+    fireEvent.click(addButton);
+    
+    // Check if the dialog is opened with a title - use a more specific selector
+    const dialogTitle = screen.getByRole('heading', { name: /add address filter/i });
+    expect(dialogTitle).toBeInTheDocument();
   });
 
-  it('renders all address fields as selects with correct labels', () => {
-    render(<ResidenceAddressFilter filters={mockFilters} setFilter={mockSetFilter} />);
-    ADDRESS_FIELDS.forEach(({ label }) => {
-      expect(screen.getByLabelText(label)).toBeInTheDocument();
-    });
-    // No longer require selects to be disabled, as they may become enabled after loading
-    expect(screen.getAllByRole('combobox').length).toBe(ADDRESS_FIELDS.length);
+  it('displays existing address filters', () => {
+    const mockProps = {
+      addressFilters: [
+        {
+          id: 'test-filter-1',
+          residence_street_number: '123',
+          residence_street_name: 'Main',
+          residence_street_type: 'St',
+          residence_city: 'Atlanta'
+        }
+      ],
+      addAddressFilter: vi.fn(),
+      updateAddressFilter: vi.fn(),
+      removeAddressFilter: vi.fn(),
+      clearAllAddressFilters: vi.fn()
+    };
+    
+    render(<ResidenceAddressFilter {...mockProps} />);
+    
+    // Check if the existing filter is displayed
+    expect(screen.getByText('Address Filter #1')).toBeInTheDocument();
+    expect(screen.getByText(/123 Main St/)).toBeInTheDocument();
+    expect(screen.getByText(/Atlanta, GA/)).toBeInTheDocument();
+    
+    // Check if remove button exists
+    const removeButton = screen.getByRole('button', { name: /remove address filter 1/i });
+    expect(removeButton).toBeInTheDocument();
   });
-
-  it('renders options for each field after loading', async () => {
-    // Mock fetch to return options for each field
-    fetchMock.mockImplementation((url: string) => {
-      const urlObj = new URL(url, 'http://localhost');
-      const field = urlObj.searchParams.get('field');
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ field, values: [`OPT1_${field}`, `OPT2_${field}`] }),
-      });
-    });
-    render(<ResidenceAddressFilter filters={mockFilters} setFilter={mockSetFilter} />);
-    // Wait for all options to load
-    for (const { label, key } of ADDRESS_FIELDS) {
-      await waitFor(() => {
-        expect(screen.getByLabelText(label)).not.toBeDisabled();
-        expect(screen.getByText(`OPT1_${key}`)).toBeInTheDocument();
-        expect(screen.getByText(`OPT2_${key}`)).toBeInTheDocument();
-      });
-    }
-  });
-
-  it('shows error message if fetch fails', async () => {
-    fetchMock.mockImplementation(() => Promise.resolve({ ok: false }));
-    render(<ResidenceAddressFilter filters={mockFilters} setFilter={mockSetFilter} />);
-    await waitFor(() => {
-      expect(screen.getAllByText('Failed to load options').length).toBeGreaterThan(0);
-    });
-  });
-
-  // TODO: Add tests for loading state, auto-select logic, dependent clearing, etc.
 }); 

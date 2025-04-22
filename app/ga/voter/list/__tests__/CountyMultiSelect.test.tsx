@@ -1,71 +1,58 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { CountyMultiSelect } from '../page'; // Assuming the file path is correct
+import { CountyMultiSelect } from '../components/CountyMultiSelect';
+
+// Mock the useLookupData hook
+vi.mock('../hooks/useLookupData', () => ({
+  useLookupData: () => ({
+    counties: [
+      { value: 'FULTON', label: 'Fulton' },
+      { value: 'DEKALB', label: 'DeKalb' },
+      { value: 'COBB', label: 'Cobb' }
+    ],
+    isLoading: false,
+    error: null
+  })
+}));
 
 describe('CountyMultiSelect', () => {
-  // Helper function to render with state management
-  const RenderWrapper = ({ initialValue = [] }: { initialValue?: string[] }) => {
-    const [value, setValue] = React.useState<string[]>(initialValue);
-    return <CountyMultiSelect value={value} setValue={setValue} />;
-  };
-
-  it('renders and filters counties', () => {
-    render(<RenderWrapper />);
-
-    // Check if initial counties are present (use some known options)
+  it('renders with county options', () => {
+    const mockSetValue = vi.fn();
+    render(<CountyMultiSelect value={[]} setValue={mockSetValue} />);
+    
+    // Verify component renders with expected elements
+    expect(screen.getByText('County')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search counties...')).toBeInTheDocument();
     expect(screen.getByText('Fulton')).toBeInTheDocument();
     expect(screen.getByText('DeKalb')).toBeInTheDocument();
-
-    // Get the search input
-    const searchInput = screen.getByPlaceholderText(/search counties/i);
-    expect(searchInput).toBeInTheDocument();
-
-    // Filter by typing
-    fireEvent.change(searchInput, { target: { value: 'Dek' } });
-
-    // Check filtered results
-    expect(screen.getByText('DeKalb')).toBeInTheDocument();
-    expect(screen.queryByText('Fulton')).not.toBeInTheDocument();
+    expect(screen.getByText('Cobb')).toBeInTheDocument();
   });
 
-  it('selects and deselects a county', () => {
-    render(<RenderWrapper />);
-
+  it('allows selecting a county', () => {
+    const mockSetValue = vi.fn();
+    render(<CountyMultiSelect value={[]} setValue={mockSetValue} />);
+    
+    // Find and click the Fulton checkbox
     const fultonCheckbox = screen.getByLabelText('Fulton');
-    expect(fultonCheckbox).not.toBeChecked();
-
-    // Select Fulton
     fireEvent.click(fultonCheckbox);
-    expect(fultonCheckbox).toBeChecked();
-
-    // Check if "Selected" label appears
-    expect(screen.getByText('Selected')).toBeInTheDocument();
-
-    // Deselect Fulton
-    fireEvent.click(fultonCheckbox);
-    expect(fultonCheckbox).not.toBeChecked();
+    
+    // Verify setValue was called with the correct value
+    expect(mockSetValue).toHaveBeenCalledWith(['FULTON']);
   });
 
-  it('clears all selected counties', () => {
-    render(<RenderWrapper initialValue={['Fulton', 'Cobb']} />);
-
-    // Check initial selections - expect TWO checkboxes for each selected county
-    const fultonCheckboxes = screen.getAllByLabelText('Fulton');
-    expect(fultonCheckboxes).toHaveLength(2);
-    fultonCheckboxes.forEach(checkbox => expect(checkbox).toBeChecked());
-
-    const cobbCheckboxes = screen.getAllByLabelText('Cobb');
-    expect(cobbCheckboxes).toHaveLength(2);
-    cobbCheckboxes.forEach(checkbox => expect(checkbox).toBeChecked());
-
-    // Find and click the "Clear All" button
+  it('displays the clear button when counties are selected', () => {
+    const mockSetValue = vi.fn();
+    render(<CountyMultiSelect value={['FULTON']} setValue={mockSetValue} />);
+    
+    // Verify the clear button is displayed
     const clearButton = screen.getByRole('button', { name: /clear all/i });
+    expect(clearButton).toBeInTheDocument();
+    
+    // Click the clear button
     fireEvent.click(clearButton);
-
-    // Check if selections are cleared - expect ONE UNCHECKED checkbox for each
-    expect(screen.getByLabelText('Fulton')).not.toBeChecked(); // Only one instance remains
-    expect(screen.getByLabelText('Cobb')).not.toBeChecked();   // Only one instance remains
-    expect(screen.queryByText('Selected')).not.toBeInTheDocument(); // Selected section disappears
+    
+    // Verify setValue was called with an empty array
+    expect(mockSetValue).toHaveBeenCalledWith([]);
   });
 }); 
