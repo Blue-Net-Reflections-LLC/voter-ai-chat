@@ -32,6 +32,7 @@ const CENSUS_VINTAGE = 'Current_Current';   // Or choose another vintage
 
 // Records flagged with this source are considered terminal (we won't retry in this script)
 const TERMINAL_TIE_SOURCE = 'census_batch_tie';
+const TERMINAL_NO_MATCH_SOURCE = 'census_batch_no_match';
 
 // --- Helper Functions --- //
 
@@ -55,7 +56,7 @@ interface VoterRecord {
 interface CensusBatchResponseRow {
   Input_UniqueID: string;
   Input_Address: string; // Column 2 seems to be the input address string or matched string
-  Match_Status: 'Match' | 'Non_Match' | 'Tie';
+  Match_Status: 'Match' | 'Non_Match' | 'No_Match' | 'Tie';
   Match_Type: string;
   Output_MatchedAddress: string;
   Output_LongitudeLatitude: string; // Comma-separated "Lon,Lat"
@@ -220,11 +221,19 @@ async function geocodeBatchViaAPI(records: VoterRecord[]) {
             logToFile('WARN', coordWarnMsg);
             failCount++; // Count as failure if coords are bad
           }
-        } else if (res.Match_Status === 'Non_Match') {
+        } else if (res.Match_Status === 'No_Match') {
           noMatchCount++;
-          logToFile('INFO', `[${uniqueId}] Geocoding Non_Match for address: ${res.Input_Address}`);
-          // Optionally update DB to mark as non-match
-          // await transaction`UPDATE ${REGISTRATION_TABLE} SET geocoded_at = NOW(), geocoding_source = 'census_batch_no_match' WHERE voter_registration_number = ${uniqueId};`
+          logToFile('INFO', `[${uniqueId}] Geocoding No_Match for address: ${res.Input_Address}`);
+          // Attempt to update DB to mark as non-match
+          try {
+             logToFile('INFO', `[${uniqueId}] Attempting to mark as No_Match in DB...`);
+             await transaction`UPDATE ${REGISTRATION_TABLE} SET geocoded_at = NOW(), geocoding_source = ${TERMINAL_NO_MATCH_SOURCE} WHERE voter_registration_number = ${uniqueId};`
+             logToFile('INFO', `[${uniqueId}] Successfully marked as No_Match in DB.`);
+          } catch (noMatchDbError) {
+             const noMatchDbErrorMsg = `[${uniqueId}] DB Update Error attempting to mark No_Match: ${noMatchDbError instanceof Error ? noMatchDbError.message : noMatchDbError}`;
+             logToFile('ERROR', noMatchDbErrorMsg);
+             // This might cause the transaction to fail later
+          }
         } else if (res.Match_Status === 'Tie') {
           tieCount++;
           const tieMsg = `[${uniqueId}] Geocoding Tie for address: ${res.Input_Address}`;
@@ -280,7 +289,7 @@ async function runGeocoding() {
           residence_zipcode
         FROM ${REGISTRATION_TABLE}
         WHERE geom IS NULL -- Target records not yet geocoded
-          AND (geocoding_source IS NULL OR geocoding_source <> ${TERMINAL_TIE_SOURCE})
+          AND (geocoding_source IS NULL OR geocoding_source NOT IN (${TERMINAL_TIE_SOURCE}, ${TERMINAL_NO_MATCH_SOURCE}))
         ORDER BY voter_registration_number -- NEED consistent order for OFFSET
         LIMIT ${BATCH_SIZE};
       `;
