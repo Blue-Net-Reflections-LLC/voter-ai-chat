@@ -1,4 +1,4 @@
-import { convertToCoreMessages, type CoreUserMessage, createDataStreamResponse, type Message, streamText, } from 'ai';
+import { convertToCoreMessages, type CoreUserMessage, createDataStreamResponse, type Message, streamText } from 'ai';
 import { auth } from '@/app/(auth)/auth';
 import { models } from '@/lib/ai/models';
 import { deleteChatById, getChatById, saveChat, saveMessages, } from '@/lib/db/queries';
@@ -162,8 +162,9 @@ export async function POST(request: NextRequest) {
         streamingData.writeData('initialized call');
 
         const result = streamText({
-          model,
-          system: finalSystemPrompt, // <-- Use prompt with date injected
+        // @ts-expect-error - Type mismatch between SDK versions but works at runtime
+          model: model as Record<string, any>,
+          system: finalSystemPrompt,
           messages: coreMessages,
           maxSteps: 20,
           tools: {

@@ -248,11 +248,116 @@ async function processCSVFiles(directoryPath: string): Promise<void> {
 	console.log('\n--- All files processed --- \n');
 }
 
+// --- Function to Update Derived Last Vote Date --- //
+async function updateDerivedLastVoteDate(): Promise<void> {
+	console.log('\n--- Updating derived_last_vote_date in registration table ---');
+	const startTime = Date.now();
+
+	// Get the schema name safely for interpolation
+	const registrationTable = sql`${sql(schemaName!)}.ga_voter_registration_list`;
+	const historyTable = sql`${sql(schemaName!)}.ga_voter_history`;
+
+	try {
+		// Query 1: Update based on MAX(election_date) from history
+		console.log('Step 1: Calculating and updating latest vote dates from history...');
+		const updateFromHistory = sql`
+			WITH "LastVotePerVoter" AS (
+					SELECT
+							registration_number,
+							MAX(election_date) AS max_election_date
+					FROM
+							${historyTable}
+					GROUP BY
+							registration_number
+			)
+			UPDATE
+					${registrationTable} reg
+			SET
+					derived_last_vote_date = lv.max_election_date
+			FROM
+					"LastVotePerVoter" lv
+			WHERE
+					reg.voter_registration_number = lv.registration_number
+					AND reg.derived_last_vote_date IS DISTINCT FROM lv.max_election_date;
+		`;
+		const result1 = await updateFromHistory;
+		console.log(`  Updated ${result1.count} rows with latest vote date from history.`);
+
+		// Query 2: Set NULL for voters with no history records
+		console.log('Step 2: Setting derived_last_vote_date to NULL for voters with no history...');
+		const updateNulls = sql`
+			UPDATE
+					${registrationTable} reg
+			SET
+					derived_last_vote_date = NULL
+			WHERE
+					reg.derived_last_vote_date IS NOT NULL
+					AND NOT EXISTS (
+							SELECT 1
+							FROM ${historyTable} h
+							WHERE h.registration_number = reg.voter_registration_number
+					);
+		`;
+		const result2 = await updateNulls;
+		console.log(`  Updated ${result2.count} rows to NULL (voters with no history).`);
+
+		// Query 3: Analyze the table
+		console.log('Step 3: Analyzing registration table for updated statistics...');
+		await sql.unsafe(`ANALYZE ${registrationTable}`); // Use unsafe for ANALYZE
+		console.log('  Analysis complete.');
+
+		const endTime = Date.now();
+		console.log(`--- Finished updating derived_last_vote_date. Duration: ${(endTime - startTime) / 1000} seconds ---`);
+
+	} catch (error) {
+		console.error('Error updating derived_last_vote_date:', error);
+		// Decide if this should be a fatal error for the import
+		throw error; // Re-throw to indicate failure
+	}
+}
+
+// Add a function to update the JSONB voting_events column
+async function updateVotingEvents(): Promise<void> {
+	console.log('Step 4: Updating voting_events JSONB column...');
+	const registrationTable = sql`${sql(schemaName!)}.ga_voter_registration_list`;
+	const historyTable = sql`${sql(schemaName!)}.ga_voter_history`;
+
+	try {
+		const result = await sql`
+			UPDATE ${registrationTable} reg
+			SET voting_events = (
+				SELECT jsonb_agg(
+					jsonb_build_object(
+						'election_date', h.election_date,
+						'election_type', UPPER(h.election_type),
+						'party', UPPER(h.party),
+						'ballot_style', h.ballot_style,
+						'absentee', h.absentee,
+						'provisional', h.provisional,
+						'supplemental', h.supplemental
+					) ORDER BY h.election_date
+				)
+				FROM ${historyTable} h
+				WHERE h.registration_number = reg.voter_registration_number
+			);
+		`;
+		console.log(`  Updated ${result.count} voting_events entries.`);
+	} catch (error) {
+		console.error('Error updating voting_events JSONB:', error);
+		throw error;
+	}
+}
+
 // --- Script Execution --- //
 (async () => {
 	try {
 		console.log(`Starting GA Voter History import from ${DATA_DIRECTORY}...`);
 		await processCSVFiles(DATA_DIRECTORY);
+
+		// After processing all CSVs, update the derived columns
+		await updateDerivedLastVoteDate();
+		await updateVotingEvents();
+
 		console.log('Import completed successfully.');
 	} catch (error) {
 		console.error("Fatal error during import process:", error);
