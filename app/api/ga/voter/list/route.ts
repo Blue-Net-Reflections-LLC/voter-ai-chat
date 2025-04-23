@@ -342,22 +342,29 @@ export async function GET(request: NextRequest) {
 
     // Handle redistricting affected types
     if (redistrictingAffectedTypes.length > 0) {
-      const redistrictingConditions = [];
-      redistrictingAffectedTypes.forEach(type => {
-        switch (type.toLowerCase()) {
-          case 'congress':
-            redistrictingConditions.push('redistricting_cong_affected = TRUE');
-            break;
-          case 'senate':
-            redistrictingConditions.push('redistricting_senate_affected = TRUE');
-            break;
-          case 'house':
-            redistrictingConditions.push('redistricting_house_affected = TRUE');
-            break;
+      // If 'Any' is selected, include voters affected by any chamber
+      if (redistrictingAffectedTypes.map(t => t.toLowerCase()).includes('any')) {
+        conditions.push(
+          '(redistricting_cong_affected = TRUE OR redistricting_senate_affected = TRUE OR redistricting_house_affected = TRUE)'
+        );
+      } else {
+        const redistrictingConditions: string[] = [];
+        redistrictingAffectedTypes.forEach(type => {
+          switch (type.toLowerCase()) {
+            case 'congress':
+              redistrictingConditions.push('redistricting_cong_affected = TRUE');
+              break;
+            case 'senate':
+              redistrictingConditions.push('redistricting_senate_affected = TRUE');
+              break;
+            case 'house':
+              redistrictingConditions.push('redistricting_house_affected = TRUE');
+              break;
+          }
+        });
+        if (redistrictingConditions.length > 0) {
+          conditions.push(`(${redistrictingConditions.join(' OR ')})`);
         }
-      });
-      if (redistrictingConditions.length > 0) {
-        conditions.push(`(${redistrictingConditions.join(' OR ')})`);
       }
     }
 

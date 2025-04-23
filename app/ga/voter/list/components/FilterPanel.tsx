@@ -300,7 +300,14 @@ export function FilterPanel({
               label="Redistricting Affected"
               options={REDISTRICTING_TYPE_OPTIONS}
               value={filters.redistrictingAffectedTypes}
-              setValue={(value) => updateFilter('redistrictingAffectedTypes', value)}
+              setValue={(value) => {
+                if (value.includes('any')) {
+                  updateFilter('redistrictingAffectedTypes', ['any']);
+                } else {
+                  const filtered = value.filter(v => v !== 'any');
+                  updateFilter('redistrictingAffectedTypes', filtered);
+                }
+              }}
               compact={true}
             />
           </div>

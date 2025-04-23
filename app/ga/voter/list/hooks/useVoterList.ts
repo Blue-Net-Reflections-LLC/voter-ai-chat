@@ -118,7 +118,11 @@ export function useVoterList() {
     if (raceParams.length > 0) filterState.race = raceParams;
 
     const redistrictingParams = searchParams.getAll('redistrictingAffectedTypes');
-    if (redistrictingParams.length > 0) filterState.redistrictingAffectedTypes = redistrictingParams;
+    if (redistrictingParams.length > 0) {
+      // Deduplicate and preserve order
+      const uniqueParams = Array.from(new Set(redistrictingParams));
+      filterState.redistrictingAffectedTypes = uniqueParams;
+    }
     
     const firstNameParam = searchParams.get('firstName');
     const lastNameParam = searchParams.get('lastName');

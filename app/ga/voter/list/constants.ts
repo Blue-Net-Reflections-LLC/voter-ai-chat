@@ -72,6 +72,7 @@ export const ELECTION_TYPE_OPTIONS = [
 }, [] as { value: string, label: string }[]);
 
 export const REDISTRICTING_TYPE_OPTIONS = [
+  { value: "any", label: "Any" },
   { value: "congress", label: "Congress" },
   { value: "senate", label: "Senate" },
   { value: "house", label: "House" }
