@@ -14,7 +14,8 @@ import {
   AGE_RANGE_OPTIONS,
   INCOME_LEVEL_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
-  ELECTION_TYPE_OPTIONS
+  ELECTION_TYPE_OPTIONS,
+  REDISTRICTING_TYPE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -56,7 +57,6 @@ export function FilterPanel({
   // Add state for checkbox selections
   const [neverVoted, setNeverVoted] = useState(false);
   const [contactedNoResponse, setContactedNoResponse] = useState(false);
-  const [redistrictingAffected, setRedistrictingAffected] = useState(false);
   const [notVotedYearInput, setNotVotedYearInput] = useState(filters.notVotedSinceYear || '');
 
   // When filters prop changes (e.g., Clear All), sync local inputs
@@ -296,16 +296,13 @@ export function FilterPanel({
               setValue={(value) => updateFilter('electionType', value)}
               compact={true}
             />
-            <div className="flex items-center justify-between">
-              <label htmlFor="redistricting-affected" className="text-xs font-medium">Redistricting Affected</label>
-              <input 
-                id="redistricting-affected"
-                type="checkbox" 
-                className="form-checkbox h-3 w-3"
-                checked={redistrictingAffected}
-                onChange={() => setRedistrictingAffected(!redistrictingAffected)}
-              />
-            </div>
+            <MultiSelect
+              label="Redistricting Affected"
+              options={REDISTRICTING_TYPE_OPTIONS}
+              value={filters.redistrictingAffectedTypes}
+              setValue={(value) => updateFilter('redistrictingAffectedTypes', value)}
+              compact={true}
+            />
           </div>
         </div>
       </CardContent>

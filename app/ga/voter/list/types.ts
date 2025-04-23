@@ -60,6 +60,7 @@ export interface FilterState {
   lastName: string;
   neverVoted: boolean;
   notVotedSinceYear?: string;
+  redistrictingAffectedTypes: string[];
   // Add more filter fields as needed
 }
 

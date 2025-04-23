@@ -69,4 +69,10 @@ export const ELECTION_TYPE_OPTIONS = [
     acc.push(current);
   }
   return acc;
-}, [] as { value: string, label: string }[]); 
+}, [] as { value: string, label: string }[]);
+
+export const REDISTRICTING_TYPE_OPTIONS = [
+  { value: "congress", label: "Congress" },
+  { value: "senate", label: "Senate" },
+  { value: "house", label: "House" }
+]; 

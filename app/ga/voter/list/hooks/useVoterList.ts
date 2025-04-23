@@ -33,7 +33,8 @@ const initialFilterState: FilterState = {
   firstName: '',
   lastName: '',
   neverVoted: false,
-  notVotedSinceYear: ''
+  notVotedSinceYear: '',
+  redistrictingAffectedTypes: []
 };
 
 // Initial address filter state
@@ -114,10 +115,13 @@ export function useVoterList() {
     if (genderParams.length > 0) filterState.gender = genderParams;
     
     const raceParams = searchParams.getAll('race');
+    if (raceParams.length > 0) filterState.race = raceParams;
+
+    const redistrictingParams = searchParams.getAll('redistrictingAffectedTypes');
+    if (redistrictingParams.length > 0) filterState.redistrictingAffectedTypes = redistrictingParams;
+    
     const firstNameParam = searchParams.get('firstName');
     const lastNameParam = searchParams.get('lastName');
-    const ageMin = searchParams.get('ageMin');
-    if (raceParams.length > 0) filterState.race = raceParams;
     
     if (firstNameParam) filterState.firstName = firstNameParam;
     if (lastNameParam)  filterState.lastName = lastNameParam;
@@ -238,7 +242,7 @@ export function useVoterList() {
   // Build query params for API call
   const buildQueryParams = useCallback(() => {
     const params = new URLSearchParams();
-    debugger
+    
     // Add pagination params
     params.set('page', pagination.currentPage.toString());
     params.set('pageSize', pagination.pageSize.toString());
@@ -247,59 +251,45 @@ export function useVoterList() {
     params.set('sortField', sort.field);
     params.set('sortDirection', sort.direction);
     
-    // Add county filter
+    // Add array filter params
     if (filters.county.length > 0) {
-      params.set('county', filters.county[0]); // API only supports one county at a time
+      filters.county.forEach(value => params.append('county', value));
     }
     
-    // Add congressional districts
     if (filters.congressionalDistricts.length > 0) {
-      filters.congressionalDistricts.forEach(district => 
-        params.append('congressionalDistricts', district)
-      );
+      filters.congressionalDistricts.forEach(value => params.append('congressionalDistricts', value));
     }
     
-    // Add state senate districts
     if (filters.stateSenateDistricts.length > 0) {
-      filters.stateSenateDistricts.forEach(district => 
-        params.append('stateSenateDistricts', district)
-      );
+      filters.stateSenateDistricts.forEach(value => params.append('stateSenateDistricts', value));
     }
     
-    // Add state house districts
     if (filters.stateHouseDistricts.length > 0) {
-      filters.stateHouseDistricts.forEach(district => 
-        params.append('stateHouseDistricts', district)
-      );
+      filters.stateHouseDistricts.forEach(value => params.append('stateHouseDistricts', value));
     }
     
-    // Add status filter
     if (filters.status.length > 0) {
-      filters.status.forEach(status => 
-        params.append('status', status)
-      );
+      filters.status.forEach(value => params.append('status', value));
     }
     
-    // Add party filter
     if (filters.party.length > 0) {
-      filters.party.forEach(partyValue => 
-        params.append('party', partyValue)
-      );
+      filters.party.forEach(value => params.append('party', value));
     }
     
-    // Add age filter
     if (filters.age.length > 0) {
       filters.age.forEach(value => params.append('ageRange', value));
     }
     
-    // Add gender filter
     if (filters.gender.length > 0) {
       filters.gender.forEach(value => params.append('gender', value));
     }
     
-    // Add race filter
     if (filters.race.length > 0) {
       filters.race.forEach(value => params.append('race', value));
+    }
+
+    if (filters.redistrictingAffectedTypes.length > 0) {
+      filters.redistrictingAffectedTypes.forEach(value => params.append('redistrictingAffectedTypes', value));
     }
     
     // Add name filters

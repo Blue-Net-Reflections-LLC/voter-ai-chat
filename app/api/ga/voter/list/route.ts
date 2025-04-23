@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
     const stateHouseDistricts = searchParams.getAll('stateHouseDistricts');
     const statusValues = searchParams.getAll('status');
     const partyValues = searchParams.getAll('party');
+    const redistrictingAffectedTypes = searchParams.getAll('redistrictingAffectedTypes');
     
     // Voter details filters
     const firstName = searchParams.get('firstName');
@@ -337,6 +338,27 @@ export async function GET(request: NextRequest) {
         }
       });
       if (compositeClauses.length > 0) conditions.push(`(${compositeClauses.join(' OR ')})`);
+    }
+
+    // Handle redistricting affected types
+    if (redistrictingAffectedTypes.length > 0) {
+      const redistrictingConditions = [];
+      redistrictingAffectedTypes.forEach(type => {
+        switch (type.toLowerCase()) {
+          case 'congress':
+            redistrictingConditions.push('redistricting_cong_affected = TRUE');
+            break;
+          case 'senate':
+            redistrictingConditions.push('redistricting_senate_affected = TRUE');
+            break;
+          case 'house':
+            redistrictingConditions.push('redistricting_house_affected = TRUE');
+            break;
+        }
+      });
+      if (redistrictingConditions.length > 0) {
+        conditions.push(`(${redistrictingConditions.join(' OR ')})`);
+      }
     }
 
     // Construct the WHERE clause
