@@ -14,6 +14,7 @@ interface DistrictMultiSelectProps {
   isLoading?: boolean;
   error?: string | null;
   compact?: boolean;
+  formatLabel?: (value: string) => string;
 }
 
 export function DistrictMultiSelect({ 
@@ -23,7 +24,8 @@ export function DistrictMultiSelect({
   setValue,
   isLoading = false,
   error = null,
-  compact = false
+  compact = false,
+  formatLabel
 }: DistrictMultiSelectProps) {
   const [search, setSearch] = useState("");
   
@@ -35,11 +37,15 @@ export function DistrictMultiSelect({
     return code;
   };
 
+  // Determine the label formatter to use
+  const getDisplayLabel = formatLabel || formatDistrict;
+
   // Filtered options: all districts matching search (by display number)
   const filtered = options.filter(
     (option) => {
-      const display = formatDistrict(option.value);
-      return display.includes(search.replace(/^0+/, ""));
+      const displayLabel = getDisplayLabel(option.value);
+      // Search against the formatted label
+      return displayLabel.toLowerCase().includes(search.toLowerCase());
     }
   );
   
@@ -47,7 +53,7 @@ export function DistrictMultiSelect({
 
   function renderDistrictCheckbox(option: MultiSelectOption, keyPrefix = "") {
     const checked = value.includes(option.value);
-    const display = formatDistrict(option.value);
+    const displayLabel = getDisplayLabel(option.value);
     return (
       <label key={keyPrefix + option.value} className={`flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer ${checked ? 'bg-muted' : 'hover:bg-muted'}`}
         style={{ marginBottom: '2px' }}
@@ -64,7 +70,7 @@ export function DistrictMultiSelect({
           }}
           className="form-checkbox h-3 w-3"
         />
-        {display}
+        {displayLabel}
       </label>
     );
   }

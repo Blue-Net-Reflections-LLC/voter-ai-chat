@@ -84,6 +84,21 @@ export function FilterPanel({
     setResidenceAddressFilters([]);
   };
 
+  // Helper function to format YYYY-MM-DD to Month D, YYYY
+  const formatDateLabel = (dateString: string): string => {
+    try {
+      const [year, month, day] = dateString.split('-');
+      const date = new Date(Number(year), Number(month) - 1, Number(day));
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch (e) {
+      return dateString; // Fallback to original string on error
+    }
+  };
+
   return (
     <Card className="w-full h-full overflow-auto">
       <CardContent className="space-y-3 pt-2 px-3">
@@ -322,12 +337,13 @@ export function FilterPanel({
               setValue={(value) => updateFilter('electionYear', value)}
               compact={true}
             />
-            <MultiSelect
+            <DistrictMultiSelect
               label="Election Date"
               options={ELECTION_DATE_OPTIONS}
               value={filters.electionDate}
               setValue={(value) => updateFilter('electionDate', value)}
               compact={true}
+              formatLabel={formatDateLabel}
             />
             <MultiSelect
               label="Ballot Style"
