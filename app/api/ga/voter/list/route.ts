@@ -76,6 +76,8 @@ export async function GET(request: NextRequest) {
     const raceValues = searchParams.getAll('race');
     const notVotedSinceYear = searchParams.get('notVotedSinceYear');
     const electionTypes = searchParams.getAll('electionType');
+    const electionYears = searchParams.getAll('electionYear');
+    const electionDates = searchParams.getAll('electionDate');
     
     // Residence address filters
     const residenceStreetNames = searchParams.getAll('residenceStreetName');
@@ -264,11 +266,26 @@ export async function GET(request: NextRequest) {
 
     // Election Type filter via voting_events JSONB
     if (electionTypes.length > 0) {
-      // Build JSONB containment clauses for each selected election type
       const clauses = electionTypes
         .map(et => `voting_events @> '[{"election_type":"${et.toUpperCase()}"}]'`)
         .join(' OR ');
       conditions.push(`(${clauses})`);
+    }
+
+    // Election Year filter via voting_events JSONB
+    if (electionYears.length > 0) {
+      const yearClauses = electionYears.map(year => 
+        `EXISTS (SELECT 1 FROM jsonb_array_elements(voting_events) evt WHERE (evt->>'election_date') LIKE '${year}-%')`
+      ).join(' OR ');
+      conditions.push(`(${yearClauses})`);
+    }
+
+    // Election Date filter via voting_events JSONB
+    if (electionDates.length > 0) {
+      const dateClauses = electionDates.map(date => 
+        `voting_events @> '[{"election_date":"${date}"}]'`
+      ).join(' OR ');
+      conditions.push(`(${dateClauses})`);
     }
 
     // Voter Events filters via JSONB voting_events
