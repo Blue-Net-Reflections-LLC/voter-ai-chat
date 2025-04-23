@@ -30,6 +30,8 @@ const initialFilterState: FilterState = {
   income: [],
   education: [],
   electionType: [],
+  electionYear: [],
+  electionDate: [],
   ballotStyle: [],
   eventParty: [],
   voterEventMethod: '',
@@ -127,6 +129,10 @@ export function useVoterList() {
     if (eventPartyParams.length > 0) filterState.eventParty = eventPartyParams;
     const voterEventMethodParam = searchParams.get('voterEventMethod');
     if (voterEventMethodParam) filterState.voterEventMethod = voterEventMethodParam;
+    const electionYearParams = searchParams.getAll('electionYear');
+    if (electionYearParams.length > 0) filterState.electionYear = electionYearParams;
+    const electionDateParams = searchParams.getAll('electionDate');
+    if (electionDateParams.length > 0) filterState.electionDate = electionDateParams;
 
     const redistrictingParams = searchParams.getAll('redistrictingAffectedTypes');
     if (redistrictingParams.length > 0) {
@@ -351,6 +357,14 @@ export function useVoterList() {
       params.append('voterEventMethod', filters.voterEventMethod);
     }
     
+    // Election date filters
+    if (filters.electionYear.length > 0) {
+      filters.electionYear.forEach(value => params.append('electionYear', value));
+    }
+    if (filters.electionDate.length > 0) {
+      filters.electionDate.forEach(value => params.append('electionDate', value));
+    }
+    
     return params;
   }, [filters, residenceAddressFilters, pagination, sort]);
   
@@ -448,6 +462,14 @@ export function useVoterList() {
       ];
       params.append('resident_address', addressParts.join(','));
     });
+    
+    // Add election date filters to URL
+    if (filters.electionYear.length > 0) {
+      filters.electionYear.forEach(value => params.append('electionYear', value));
+    }
+    if (filters.electionDate.length > 0) {
+      filters.electionDate.forEach(value => params.append('electionDate', value));
+    }
     
     // Get current URL params
     const currentParams = new URLSearchParams(searchParams.toString());

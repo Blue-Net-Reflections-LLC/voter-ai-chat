@@ -24,6 +24,8 @@ const LOOKUP_FIELDS = [
   // Registration fields
   { name: 'status', limit: 20, category: 'registration' },
   { name: 'last_party_voted', limit: 50, category: 'registration' },
+  // Voter events dates
+  { name: 'election_date', limit: 1000, category: 'voter_events' },
 ];
 
 export async function GET(req: NextRequest) {
@@ -61,14 +63,25 @@ export async function GET(req: NextRequest) {
     // Fetch values for each requested field
     const queries = fieldsToFetch.map(async (fieldInfo) => {
       const sourceTable = 'GA_VOTER_REGISTRATION_LIST';
-      // Direct column lookup for all fields
-      const queryString = `
-        SELECT DISTINCT ${fieldInfo.name}
-        FROM ${sourceTable}
-        WHERE ${fieldInfo.name} IS NOT NULL AND TRIM(${fieldInfo.name}) != ''
-        ORDER BY ${fieldInfo.name}
-        LIMIT ${fieldInfo.limit}
-      `;
+      let queryString: string;
+      if (fieldInfo.name === 'election_date') {
+        // Extract distinct event dates from JSONB and order reverse chronologic
+        queryString = `
+          SELECT DISTINCT jsonb_array_elements(voting_events)->>'election_date' AS election_date
+          FROM ${sourceTable}
+          WHERE voting_events IS NOT NULL
+          ORDER BY election_date DESC
+          LIMIT ${fieldInfo.limit}
+        `;
+      } else {
+        queryString = `
+          SELECT DISTINCT ${fieldInfo.name}
+          FROM ${sourceTable}
+          WHERE ${fieldInfo.name} IS NOT NULL AND TRIM(${fieldInfo.name}) != ''
+          ORDER BY ${fieldInfo.name}
+          LIMIT ${fieldInfo.limit}
+        `;
+      }
       
       try {
         const fieldResult = await sql.unsafe(queryString);

@@ -15,7 +15,9 @@ import {
   INCOME_LEVEL_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
   REDISTRICTING_TYPE_OPTIONS,
-  ELECTION_TYPE_OPTIONS
+  ELECTION_TYPE_OPTIONS,
+  ELECTION_YEAR_OPTIONS,
+  ELECTION_DATE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -311,6 +313,20 @@ export function FilterPanel({
               options={ELECTION_TYPE_OPTIONS}
               value={filters.electionType}
               setValue={(value) => updateFilter('electionType', value)}
+              compact={true}
+            />
+            <MultiSelect
+              label="Election Year"
+              options={ELECTION_YEAR_OPTIONS}
+              value={filters.electionYear}
+              setValue={(value) => updateFilter('electionYear', value)}
+              compact={true}
+            />
+            <MultiSelect
+              label="Election Date"
+              options={ELECTION_DATE_OPTIONS}
+              value={filters.electionDate}
+              setValue={(value) => updateFilter('electionDate', value)}
               compact={true}
             />
             <MultiSelect

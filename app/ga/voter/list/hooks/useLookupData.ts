@@ -60,6 +60,14 @@ export function useLookupData() {
   const parties = getOptionsForField('last_party_voted');
   const genders = getOptionsForField('gender');
   const races = getOptionsForField('race');
+  // Voter events lookup for election_date
+  const electionDates = getOptionsForField('election_date');
+  // Derive election years from dates
+  const electionYears = Array.from(
+    new Set(electionDates.map(opt => opt.value.split('-')[0]))
+  )
+    .sort((a, b) => Number(b) - Number(a))
+    .map(year => ({ value: year, label: year }));
 
   // Hardcoded Voter Events options
   const ballotStyles = BALLOT_STYLE_OPTIONS;
@@ -72,28 +80,32 @@ export function useLookupData() {
       setError(null);
       
       try {
-        // Fetch district, registration, and demographic data in parallel
-        const [districtResponse, registrationResponse, demographicResponse] = await Promise.all([
+        // Fetch district, registration, demographic, and voter_events data in parallel
+        const [districtResponse, registrationResponse, demographicResponse, eventsResponse] = await Promise.all([
           fetch('/api/ga/voter/list/lookup?category=district'),
           fetch('/api/ga/voter/list/lookup?category=registration'),
-          fetch('/api/ga/voter/list/lookup?category=demographic')
+          fetch('/api/ga/voter/list/lookup?category=demographic'),
+          fetch('/api/ga/voter/list/lookup?category=voter_events')
         ]);
         
-        if (!districtResponse.ok || !registrationResponse.ok || !demographicResponse.ok) {
+        if (!districtResponse.ok || !registrationResponse.ok || !demographicResponse.ok || !eventsResponse.ok) {
           throw new Error(`API error: ${!districtResponse.ok ? districtResponse.status : 
-                                      !registrationResponse.ok ? registrationResponse.status : demographicResponse.status}`);
+                                      !registrationResponse.ok ? registrationResponse.status : 
+                                      !demographicResponse.ok ? demographicResponse.status : eventsResponse.status}`);
         }
         
         const districtData = await districtResponse.json();
         const registrationData = await registrationResponse.json();
         const demographicData = await demographicResponse.json();
+        const eventsData = await eventsResponse.json();
         
-        // Combine all data sets
+        // Combine all data sets including voter_events
         const combinedData = {
           fields: [
             ...districtData.fields,
             ...registrationData.fields,
-            ...demographicData.fields
+            ...demographicData.fields,
+            ...eventsData.fields
           ],
           timestamp: new Date().toISOString()
         };
@@ -122,6 +134,8 @@ export function useLookupData() {
     parties,
     genders,
     races,
+    electionYears,
+    electionDates,
     ballotStyles,
     eventParties,
     getValuesForField,
