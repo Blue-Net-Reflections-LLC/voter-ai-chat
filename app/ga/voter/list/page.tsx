@@ -1,11 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import FilterPanel from "./components/FilterPanel";
 import ResultsPanel from "./components/ResultsPanel";
 import { useVoterList } from "./hooks/useVoterList";
 
-export default function VoterListPage() {
+function VoterListContent() {
   const {
     filters,
     residenceAddressFilters,
@@ -51,5 +51,13 @@ export default function VoterListPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VoterListPage() {
+  return (
+    <Suspense>
+      <VoterListContent />
+    </Suspense>
   );
 } 
