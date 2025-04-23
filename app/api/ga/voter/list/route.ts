@@ -272,12 +272,14 @@ export async function GET(request: NextRequest) {
       conditions.push(`(${clauses})`);
     }
 
-    // Election Year filter via voting_events JSONB
+    // Election Year filter using the generated participated_election_years column
     if (electionYears.length > 0) {
-      const yearClauses = electionYears.map(year => 
-        `EXISTS (SELECT 1 FROM jsonb_array_elements(voting_events) evt WHERE (evt->>'election_date') LIKE '${year}-%')`
-      ).join(' OR ');
-      conditions.push(`(${yearClauses})`);
+      // Ensure years are integers for the array literal
+      const yearIntegers = electionYears.map(y => parseInt(y, 10)).filter(y => !isNaN(y));
+      if (yearIntegers.length > 0) {
+        // Use the efficient array overlap operator (&&) with the indexed generated column
+        conditions.push(`participated_election_years && ARRAY[${yearIntegers.join(',')}]::int[]`);
+      }
     }
 
     // Election Date filter via voting_events JSONB
