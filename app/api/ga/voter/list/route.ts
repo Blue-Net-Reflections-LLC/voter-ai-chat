@@ -262,13 +262,13 @@ export async function GET(request: NextRequest) {
       conditions.push(`(derived_last_vote_date IS NULL OR derived_last_vote_date < '${cutoffStart}')`);
     }
 
-    // Election Type filter (uses denormalized array and GIN index)
+    // Election Type filter via voting_events JSONB
     if (electionTypes.length > 0) {
-      // Ensure types are uppercase for matching the stored array
-      const upperElectionTypes = electionTypes.map(et => et.toUpperCase());
-      // Use the array overlap operator '&&'
-      // Finds rows where participated_election_types contains ANY of the selected types.
-      conditions.push(`participated_election_types && ARRAY[${upperElectionTypes.map(et => `'${et}'`).join(',')}]::text[]`);
+      // Build JSONB containment clauses for each selected election type
+      const clauses = electionTypes
+        .map(et => `voting_events @> '[{"election_type":"${et.toUpperCase()}"}]'`)
+        .join(' OR ');
+      conditions.push(`(${clauses})`);
     }
 
     // Voter Events filters via JSONB voting_events

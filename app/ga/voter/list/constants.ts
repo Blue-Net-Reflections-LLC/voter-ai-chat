@@ -50,26 +50,21 @@ export const EDUCATION_LEVEL_OPTIONS = [
 
 // Define the hard-coded election type options
 export const ELECTION_TYPE_OPTIONS = [
-  { value: 'GENERAL', label: 'General' },
-  { value: 'GENERAL ELECTION RUNOFF', label: 'General Election Runoff' },
-  { value: 'GENERAL PRIMARY', label: 'General Primary' },
-  { value: 'GENERAL PRIMARY RUNOFF', label: 'General Primary Runoff' },
-  { value: 'NON- PARTISAN', label: 'Non-Partisan' }, // Note: Two variations exist in list
-  { value: 'NON-PARTISAN', label: 'Non-Partisan' },
-  { value: 'PPP', label: 'PPP' }, // Presidential Preference Primary?
-  { value: 'RECALL', label: 'Recall' },
-  { value: 'SPECIAL ELECTION', label: 'Special Election' },
-  { value: 'SPECIAL ELECTION RUNOFF', label: 'Special Election Runoff' },
-  { value: 'SPECIAL/NON-PARTISAN', label: 'Special/Non-Partisan' },
-  { value: 'SPECIAL PRIMARY', label: 'Special Primary' },
-  { value: 'SPECIAL PRIMARY RUNOFF', label: 'Special Primary Runoff' },
-  { value: 'STATEWIDE', label: 'Statewide' },
-].reduce((acc, current) => { // De-duplicate labels
-  if (!acc.some(item => item.label === current.label)) {
-    acc.push(current);
-  }
-  return acc;
-}, [] as { value: string, label: string }[]);
+  { value: 'GENERAL', label: 'GENERAL' },
+  { value: 'GENERAL ELECTION RUNOFF', label: 'GENERAL ELECTION RUNOFF' },
+  { value: 'GENERAL PRIMARY', label: 'GENERAL PRIMARY' },
+  { value: 'GENERAL PRIMARY RUNOFF', label: 'GENERAL PRIMARY RUNOFF' },
+  { value: 'NON- PARTISAN', label: 'NON- PARTISAN' },
+  { value: 'NON-PARTISAN', label: 'NON-PARTISAN' },
+  { value: 'PPP', label: 'PPP' },
+  { value: 'RECALL', label: 'RECALL' },
+  { value: 'SPECIAL ELECTION', label: 'SPECIAL ELECTION' },
+  { value: 'SPECIAL ELECTION RUNOFF', label: 'SPECIAL ELECTION RUNOFF' },
+  { value: 'SPECIAL/NON-PARTISAN', label: 'SPECIAL/NON-PARTISAN' },
+  { value: 'SPECIAL PRIMARY', label: 'SPECIAL PRIMARY' },
+  { value: 'SPECIAL PRIMARY RUNOFF', label: 'SPECIAL PRIMARY RUNOFF' },
+  { value: 'STATEWIDE', label: 'STATEWIDE' }
+];
 
 export const REDISTRICTING_TYPE_OPTIONS = [
   { value: "any", label: "Any" },

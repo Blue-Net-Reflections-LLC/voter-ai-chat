@@ -60,7 +60,8 @@ export async function GET(req: NextRequest) {
     
     // Fetch values for each requested field
     const queries = fieldsToFetch.map(async (fieldInfo) => {
-      const sourceTable = 'GA_VOTER_REGISTRATION_LIST'; // Only query registration list now
+      const sourceTable = 'GA_VOTER_REGISTRATION_LIST';
+      // Direct column lookup for all fields
       const queryString = `
         SELECT DISTINCT ${fieldInfo.name}
         FROM ${sourceTable}

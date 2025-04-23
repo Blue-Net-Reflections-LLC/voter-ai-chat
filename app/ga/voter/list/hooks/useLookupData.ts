@@ -81,8 +81,7 @@ export function useLookupData() {
         
         if (!districtResponse.ok || !registrationResponse.ok || !demographicResponse.ok) {
           throw new Error(`API error: ${!districtResponse.ok ? districtResponse.status : 
-                                      !registrationResponse.ok ? registrationResponse.status : 
-                                      demographicResponse.status}`);
+                                      !registrationResponse.ok ? registrationResponse.status : demographicResponse.status}`);
         }
         
         const districtData = await districtResponse.json();
@@ -91,7 +90,11 @@ export function useLookupData() {
         
         // Combine all data sets
         const combinedData = {
-          fields: [...districtData.fields, ...registrationData.fields, ...demographicData.fields],
+          fields: [
+            ...districtData.fields,
+            ...registrationData.fields,
+            ...demographicData.fields
+          ],
           timestamp: new Date().toISOString()
         };
         

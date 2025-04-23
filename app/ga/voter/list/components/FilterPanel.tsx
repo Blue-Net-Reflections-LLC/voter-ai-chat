@@ -14,10 +14,8 @@ import {
   AGE_RANGE_OPTIONS,
   INCOME_LEVEL_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
-  ELECTION_TYPE_OPTIONS,
   REDISTRICTING_TYPE_OPTIONS,
-  BALLOT_STYLE_OPTIONS,
-  EVENT_PARTY_OPTIONS
+  ELECTION_TYPE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";

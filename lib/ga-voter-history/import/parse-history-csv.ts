@@ -316,72 +316,6 @@ async function updateDerivedLastVoteDate(): Promise<void> {
 	}
 }
 
-// --- Function to Update Participated Election Types Array --- //
-async function updateParticipatedElectionTypes(): Promise<void> {
-	console.log('\n--- Updating participated_election_types in registration table ---');
-	const startTime = Date.now();
-
-	const registrationTable = sql`${sql(schemaName!)}.ga_voter_registration_list`;
-	const historyTable = sql`${sql(schemaName!)}.ga_voter_history`;
-
-	try {
-		// Query 1: Aggregate distinct election types and update the array
-		console.log('Step 1: Aggregating and updating election type arrays...');
-		const updateTypes = sql`
-			WITH "ElectionTypesPerVoter" AS (
-					SELECT
-							registration_number,
-							array_agg(DISTINCT UPPER(election_type)) FILTER (WHERE election_type IS NOT NULL AND TRIM(election_type) <> '') AS types_array
-					FROM
-							${historyTable}
-					GROUP BY
-							registration_number
-			)
-			UPDATE
-					${registrationTable} reg
-			SET
-					participated_election_types = et.types_array
-			FROM
-					"ElectionTypesPerVoter" et
-			WHERE
-					reg.voter_registration_number = et.registration_number
-					AND reg.participated_election_types IS DISTINCT FROM et.types_array;
-		`;
-		const result1 = await updateTypes;
-		console.log(`  Updated ${result1.count} voters with new election type arrays.`);
-
-		// Query 2: Set to NULL for voters with no history
-		console.log('Step 2: Setting election types to NULL for voters with no history...');
-		const updateNulls = sql`
-			UPDATE
-					${registrationTable} reg
-			SET
-					participated_election_types = NULL
-			WHERE
-					reg.participated_election_types IS NOT NULL
-					AND NOT EXISTS (
-							SELECT 1
-							FROM ${historyTable} h
-							WHERE h.registration_number = reg.voter_registration_number
-					);
-		`;
-		const result2 = await updateNulls;
-		console.log(`  Updated ${result2.count} voters with NULL election types (no history).`);
-
-		// Re-Analyze after potentially significant updates
-		console.log('Step 3: Re-analyzing registration table...');
-		await sql.unsafe(`ANALYZE ${registrationTable}`);
-		console.log('  Analysis complete.');
-
-		const endTime = Date.now();
-		console.log(`--- Finished updating participated_election_types. Duration: ${(endTime - startTime) / 1000} seconds ---`);
-
-	} catch (error) {
-		console.error('Error updating participated_election_types:', error);
-		throw error; // Propagate error
-	}
-}
-
 // Add a function to update the JSONB voting_events column
 async function updateVotingEvents(): Promise<void> {
 	console.log('Step 4: Updating voting_events JSONB column...');
@@ -422,7 +356,6 @@ async function updateVotingEvents(): Promise<void> {
 
 		// After processing all CSVs, update the derived columns
 		await updateDerivedLastVoteDate();
-		await updateParticipatedElectionTypes();
 		await updateVotingEvents();
 
 		console.log('Import completed successfully.');
