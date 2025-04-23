@@ -15,7 +15,9 @@ import {
   INCOME_LEVEL_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
   ELECTION_TYPE_OPTIONS,
-  REDISTRICTING_TYPE_OPTIONS
+  REDISTRICTING_TYPE_OPTIONS,
+  BALLOT_STYLE_OPTIONS,
+  EVENT_PARTY_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -47,7 +49,9 @@ export function FilterPanel({
     parties,
     statuses,
     genders,
-    races
+    races,
+    ballotStyles,
+    eventParties
   } = useLookupData();
 
   // Local state for name inputs (for Apply button)
@@ -300,16 +304,51 @@ export function FilterPanel({
               label="Redistricting Affected"
               options={REDISTRICTING_TYPE_OPTIONS}
               value={filters.redistrictingAffectedTypes}
-              setValue={(value) => {
-                if (value.includes('any')) {
-                  updateFilter('redistrictingAffectedTypes', ['any']);
-                } else {
-                  const filtered = value.filter(v => v !== 'any');
-                  updateFilter('redistrictingAffectedTypes', filtered);
-                }
-              }}
+              setValue={(value) => updateFilter('redistrictingAffectedTypes', value)}
               compact={true}
             />
+          </div>
+        </div>
+        <Separator />
+        
+        {/* Voter Events Filters */}
+        <div>
+          <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voter Events</div>
+          <div className="space-y-2">
+            <MultiSelect
+              label="Ballot Style"
+              options={ballotStyles}
+              value={filters.ballotStyle}
+              setValue={(value) => updateFilter('ballotStyle', value)}
+              compact={true}
+            />
+            <MultiSelect
+              label="Event Party"
+              options={eventParties}
+              value={filters.eventParty}
+              setValue={(value) => updateFilter('eventParty', value)}
+              compact={true}
+            />
+            <div>
+              <div className="text-xs font-medium mb-1">Ballot Cast</div>
+              <div className="flex space-x-2">
+                {[
+                  { value: '', label: 'Any' },
+                  { value: 'absentee', label: 'Absentee' },
+                  { value: 'provisional', label: 'Provisional' },
+                  { value: 'supplemental', label: 'Supplemental' }
+                ].map(opt => (
+                  <Button
+                    key={opt.value}
+                    variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => updateFilter('voterEventMethod', opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>

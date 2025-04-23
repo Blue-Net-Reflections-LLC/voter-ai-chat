@@ -56,6 +56,9 @@ export interface FilterState {
   income: string[];
   education: string[];
   electionType: string[];
+  ballotStyle: string[];
+  eventParty: string[];
+  voterEventMethod: string;
   firstName: string;
   lastName: string;
   neverVoted: boolean;

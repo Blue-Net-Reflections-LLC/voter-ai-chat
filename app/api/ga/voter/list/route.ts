@@ -62,6 +62,9 @@ export async function GET(request: NextRequest) {
     const statusValues = searchParams.getAll('status');
     const partyValues = searchParams.getAll('party');
     const redistrictingAffectedTypes = searchParams.getAll('redistrictingAffectedTypes');
+    const ballotStyles = searchParams.getAll('ballotStyle');
+    const eventParties = searchParams.getAll('eventParty');
+    const voterEventMethod = searchParams.get('voterEventMethod');
     
     // Voter details filters
     const firstName = searchParams.get('firstName');
@@ -266,6 +269,33 @@ export async function GET(request: NextRequest) {
       // Use the array overlap operator '&&'
       // Finds rows where participated_election_types contains ANY of the selected types.
       conditions.push(`participated_election_types && ARRAY[${upperElectionTypes.map(et => `'${et}'`).join(',')}]::text[]`);
+    }
+
+    // Voter Events filters via JSONB voting_events
+    if (ballotStyles.length > 0) {
+      const clauses = ballotStyles
+        .map(bs => `voting_events @> '[{"ballot_style":"${bs}"}]'`)
+        .join(' OR ');
+      conditions.push(`(${clauses})`);
+    }
+    if (eventParties.length > 0) {
+      const clauses = eventParties
+        .map(p => `voting_events @> '[{"party":"${p}"}]'`)
+        .join(' OR ');
+      conditions.push(`(${clauses})`);
+    }
+    if (voterEventMethod) {
+      switch (voterEventMethod.toLowerCase()) {
+        case 'absentee':
+          conditions.push(`voting_events @> '[{"absentee":"Y"}]'`);
+          break;
+        case 'provisional':
+          conditions.push(`voting_events @> '[{"provisional":"Y"}]'`);
+          break;
+        case 'supplemental':
+          conditions.push(`voting_events @> '[{"supplemental":"Y"}]'`);
+          break;
+      }
     }
 
     const hasCompositeAddressFilters = residentAddresses.length > 0;

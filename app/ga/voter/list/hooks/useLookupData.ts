@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MultiSelectOption } from '../components/MultiSelect';
+import { BALLOT_STYLE_OPTIONS, EVENT_PARTY_OPTIONS } from '../constants';
 
 export type LookupField = {
   name: string;
@@ -60,6 +61,10 @@ export function useLookupData() {
   const genders = getOptionsForField('gender');
   const races = getOptionsForField('race');
 
+  // Hardcoded Voter Events options
+  const ballotStyles = BALLOT_STYLE_OPTIONS;
+  const eventParties = EVENT_PARTY_OPTIONS;
+
   // Fetch lookup data on component mount
   useEffect(() => {
     async function fetchLookupData() {
@@ -114,6 +119,8 @@ export function useLookupData() {
     parties,
     genders,
     races,
+    ballotStyles,
+    eventParties,
     getValuesForField,
     getOptionsForField
   };

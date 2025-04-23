@@ -76,4 +76,27 @@ export const REDISTRICTING_TYPE_OPTIONS = [
   { value: "congress", label: "Congress" },
   { value: "senate", label: "Senate" },
   { value: "house", label: "House" }
-]; 
+];
+
+export const BALLOT_STYLE_OPTIONS = [
+  "ABSENTEE",
+  "ABSENTEE BY MAIL",
+  "EARLY",
+  "EARLY IN-PERSON",
+  "ELECTION DAY (BMD)",
+  "ELECTION DAY (PROVISIONAL)",
+  "ELECTRONIC BALLOT DELIVERY",
+  "IN ELECTRONICALLY",
+  "IN PERSON",
+  "MAIL IN",
+  "MUNICIPAL PAPER BALLOT ELECTIONS",
+  "REGULAR"
+].map(style => ({ value: style, label: style }));
+
+export const EVENT_PARTY_OPTIONS = [
+  "DEMOCRAT",
+  "DEMOCRATIC",
+  "N",
+  "NON-PARTISAN",
+  "REPUBLICAN"
+].map(p => ({ value: p, label: p })); 

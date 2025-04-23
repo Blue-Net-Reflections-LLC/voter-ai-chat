@@ -102,7 +102,12 @@ The Voter Profile tool should provide:
         |                    | Has Not Voted Since Year | Date / Year Input        | Specify year (e.g., "2020")                               |
         |                    | Contacted (No Response)  | Boolean / Switch         | *Requires data source*                                     |
         |                    | Voted by Election Type   | Multi-select             | Select from available election types                       |
-        |                    | Redistricting Affected   | Boolean / Switch         | Filter for voters affected in last 4 years               |
+        |                    | Redistricting Affected   | Boolean / Switch         | Filter for voters affected in last 4 years                |
+        | **Voter Events**   | Ballot Style             | Multi-select             | Hardcoded options (e.g., REGULAR, ABSENTEE, EARLY, etc.)   |
+        |                    | Event Party              | Multi-select             | Hardcoded options (e.g., DEMOCRAT, REPUBLICAN, NON-PARTISAN)|
+        |                    | Absentee                 | Toggle (Y/N)             | Show only voters who cast absentee ballots                |
+        |                    | Provisional              | Toggle (Y/N)             | Show only voters who cast provisional ballots             |
+        |                    | Supplemental             | Toggle (Y/N)             | Show only voters who cast supplemental ballots            |
 
 - **Display:**
     - **Pagination:** Paginated results with user-selectable page sizes (e.g., 10, 25, 50, 100 per page), default 25, maximum 100.
