@@ -294,13 +294,6 @@ export function FilterPanel({
               />
             </div>
             <MultiSelect
-              label="Voted by Election Type"
-              options={ELECTION_TYPE_OPTIONS}
-              value={filters.electionType}
-              setValue={(value) => updateFilter('electionType', value)}
-              compact={true}
-            />
-            <MultiSelect
               label="Redistricting Affected"
               options={REDISTRICTING_TYPE_OPTIONS}
               value={filters.redistrictingAffectedTypes}
@@ -315,6 +308,13 @@ export function FilterPanel({
         <div>
           <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voter Events</div>
           <div className="space-y-2">
+            <MultiSelect
+              label="Voted by Election Type"
+              options={ELECTION_TYPE_OPTIONS}
+              value={filters.electionType}
+              setValue={(value) => updateFilter('electionType', value)}
+              compact={true}
+            />
             <MultiSelect
               label="Ballot Style"
               options={ballotStyles}
