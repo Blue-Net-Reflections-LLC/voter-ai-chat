@@ -376,6 +376,11 @@ export function useVoterList() {
       filters.race.forEach(value => params.append('race', value));
     }
     
+    // Add redistricting affected types filter to URL
+    if (filters.redistrictingAffectedTypes.length > 0) {
+      filters.redistrictingAffectedTypes.forEach(value => params.append('redistrictingAffectedTypes', value));
+    }
+    
     // Add name filters
     if (filters.firstName) params.set('firstName', filters.firstName);
     if (filters.lastName)  params.set('lastName',  filters.lastName);
