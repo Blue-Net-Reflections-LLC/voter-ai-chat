@@ -382,6 +382,38 @@ async function updateParticipatedElectionTypes(): Promise<void> {
 	}
 }
 
+// Add a function to update the JSONB voting_events column
+async function updateVotingEvents(): Promise<void> {
+	console.log('Step 4: Updating voting_events JSONB column...');
+	const registrationTable = sql`${sql(schemaName!)}.ga_voter_registration_list`;
+	const historyTable = sql`${sql(schemaName!)}.ga_voter_history`;
+
+	try {
+		const result = await sql`
+			UPDATE ${registrationTable} reg
+			SET voting_events = (
+				SELECT jsonb_agg(
+					jsonb_build_object(
+						'election_date', h.election_date,
+						'election_type', UPPER(h.election_type),
+						'party', UPPER(h.party),
+						'ballot_style', h.ballot_style,
+						'absentee', h.absentee,
+						'provisional', h.provisional,
+						'supplemental', h.supplemental
+					) ORDER BY h.election_date
+				)
+				FROM ${historyTable} h
+				WHERE h.registration_number = reg.voter_registration_number
+			);
+		`;
+		console.log(`  Updated ${result.count} voting_events entries.`);
+	} catch (error) {
+		console.error('Error updating voting_events JSONB:', error);
+		throw error;
+	}
+}
+
 // --- Script Execution --- //
 (async () => {
 	try {
@@ -391,6 +423,7 @@ async function updateParticipatedElectionTypes(): Promise<void> {
 		// After processing all CSVs, update the derived columns
 		await updateDerivedLastVoteDate();
 		await updateParticipatedElectionTypes();
+		await updateVotingEvents();
 
 		console.log('Import completed successfully.');
 	} catch (error) {
