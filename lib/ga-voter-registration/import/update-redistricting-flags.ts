@@ -64,73 +64,75 @@ SET
     redistricting_cong_affected = FALSE,
     redistricting_senate_affected = FALSE,
     redistricting_house_affected = FALSE,
-    redistricting_affected = FALSE;
+    redistricting_affected = FALSE
+WHERE geom IS NOT NULL; -- Ensure we reset only voters that will be re-evaluated
 `;
 
 const sqlUpdateCongFlag = `
-WITH curr AS MATERIALIZED (
+WITH VoterDistricts AS MATERIALIZED (
     SELECT
         v.voter_registration_number,
-        t.${cong2023TileCol} AS current_district
+        t.${cong2023TileCol} AS current_district,
+        prev.${cong2021DistCol} AS previous_district -- Get previous district in CTE
     FROM
         public.ga_voter_registration_list v
-    JOIN
+    JOIN -- Use INNER JOIN for current tile match (required)
         public.ga_districts_cong_2023_tiles t ON ST_Intersects(v.geom, t.geom)
+    LEFT JOIN -- Use LEFT JOIN for previous district (may not exist)
+        public.ga_districts_cong_2021 prev ON ST_Contains(prev.geom, v.geom) -- Join based on original voter geom
     WHERE v.geom IS NOT NULL
 )
 UPDATE public.ga_voter_registration_list reg
 SET redistricting_cong_affected = TRUE
-FROM curr
-LEFT JOIN public.ga_districts_cong_2021 prev
-    ON ST_Contains(prev.geom, reg.geom)
+FROM VoterDistricts vd
 WHERE
-    reg.voter_registration_number = curr.voter_registration_number
-    AND reg.geom IS NOT NULL
-    AND curr.current_district IS DISTINCT FROM prev.${cong2021DistCol};
+    reg.voter_registration_number = vd.voter_registration_number
+    -- Compare districts fetched in CTE
+    AND vd.current_district IS DISTINCT FROM vd.previous_district;
 `;
 
 const sqlUpdateSenateFlag = `
-WITH curr AS MATERIALIZED (
+WITH VoterDistricts AS MATERIALIZED (
     SELECT
         v.voter_registration_number,
-        t.${senate2023TileCol} AS current_district
+        t.${senate2023TileCol} AS current_district,
+        prev.${senate2021DistCol} AS previous_district -- Get previous district in CTE
     FROM
         public.ga_voter_registration_list v
     JOIN
         public.ga_districts_senate_2023_tiles t ON ST_Intersects(v.geom, t.geom)
+    LEFT JOIN
+        public.ga_districts_senate_2021 prev ON ST_Contains(prev.geom, v.geom)
     WHERE v.geom IS NOT NULL
 )
 UPDATE public.ga_voter_registration_list reg
 SET redistricting_senate_affected = TRUE
-FROM curr
-LEFT JOIN public.ga_districts_senate_2021 prev
-    ON ST_Contains(prev.geom, reg.geom)
+FROM VoterDistricts vd
 WHERE
-    reg.voter_registration_number = curr.voter_registration_number
-    AND reg.geom IS NOT NULL
-    AND curr.current_district IS DISTINCT FROM prev.${senate2021DistCol};
+    reg.voter_registration_number = vd.voter_registration_number
+    AND vd.current_district IS DISTINCT FROM vd.previous_district;
 `;
 
 const sqlUpdateHouseFlag = `
-WITH curr AS MATERIALIZED (
+WITH VoterDistricts AS MATERIALIZED (
     SELECT
         v.voter_registration_number,
-        t.${house2023TileCol} AS current_district
+        t.${house2023TileCol} AS current_district,
+        prev.${house2021DistCol} AS previous_district -- Get previous district in CTE
     FROM
         public.ga_voter_registration_list v
     JOIN
         public.ga_districts_house_2023_tiles t ON ST_Intersects(v.geom, t.geom)
+    LEFT JOIN
+        public.ga_districts_house_2021 prev ON ST_Contains(prev.geom, v.geom)
     WHERE v.geom IS NOT NULL
 )
 UPDATE public.ga_voter_registration_list reg
 SET redistricting_house_affected = TRUE
-FROM curr
-LEFT JOIN public.ga_districts_house_2021 prev
-    ON ST_Contains(prev.geom, reg.geom)
+FROM VoterDistricts vd
 WHERE
-    reg.voter_registration_number = curr.voter_registration_number
-    AND reg.geom IS NOT NULL
-    AND curr.current_district IS DISTINCT FROM prev.${house2021DistCol};
+    reg.voter_registration_number = vd.voter_registration_number
+    AND vd.current_district IS DISTINCT FROM vd.previous_district;
 `;
 
 const sqlUpdateCombinedFlag = `
@@ -162,7 +164,8 @@ async function executeQuery(
             result = await sqlClient.unsafe(query);
             // For arrays, use length; otherwise try to get a count safely
             if (Array.isArray(result)) {
-                rowCount = result.length;
+                // postgres.js attaches .count to the returned array for non-RETURNING updates
+                rowCount = (result as unknown as { count?: number }).count ?? result.length;
             } else if (result && typeof result === 'object') {
                 // Use type assertion to tell TypeScript this object might have a count property
                 const resultWithCount = result as { count?: number | null };
@@ -175,7 +178,8 @@ async function executeQuery(
             result = await query;
             // For arrays, use length; otherwise try to get a count safely
             if (Array.isArray(result)) {
-                rowCount = result.length;
+                // postgres.js attaches .count to the returned array for non-RETURNING updates
+                rowCount = (result as unknown as { count?: number }).count ?? result.length;
             } else if (result && typeof result === 'object') {
                 // Use type assertion to tell TypeScript this object might have a count property
                 const resultWithCount = result as { count?: number | null };
