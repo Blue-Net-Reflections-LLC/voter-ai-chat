@@ -82,7 +82,7 @@ export const EVENT_PARTY_OPTIONS = [
 ].map(p => ({ value: p, label: p }));
 
 // All election dates in reverse chronological order
-export const ELECTION_DATES = [
+const ELECTION_DATES = [
   "2024-12-03","2024-11-05","2024-10-01","2024-09-24","2024-09-17","2024-06-18","2024-05-21","2024-05-07","2024-04-18","2024-04-09","2024-03-15","2024-03-12","2024-02-14","2024-02-13","2024-01-02",
   "2023-12-15","2023-12-05","2023-11-07","2023-10-31","2023-10-17","2023-09-19","2023-09-05","2023-06-20","2023-06-13","2023-05-16","2023-04-18","2023-03-21","2023-02-28","2023-02-15","2023-01-31","2023-01-03",
   "2022-12-20","2022-12-06","2022-11-08","2022-06-21","2022-05-24","2022-05-03","2022-04-12","2022-04-05","2022-03-15","2022-03-08",
@@ -105,7 +105,19 @@ export const ELECTION_DATES = [
   "2005-12-06","2005-11-08","2005-10-18","2005-09-27","2005-09-20","2005-08-30","2005-07-12","2005-06-21","2005-04-05","2005-03-15","2004-12-01","2004-11-23","2004-11-02","2004-10-12","2004-09-21","2004-08-24","2004-08-10","2004-07-20","2004-03-23","2004-03-02","2004-02-10","2004-01-20","2004-01-04"
 ];
 
-export const ELECTION_DATE_OPTIONS = ELECTION_DATES.map(date => ({ value: date, label: date }));
+// Month names for formatting
+const MONTH_NAMES = [
+  'January','February','March','April','May','June','July','August','September','October','November','December'
+];
+
+export const ELECTION_DATE_OPTIONS = ELECTION_DATES.map(date => {
+  const [year, month, day] = date.split('-');
+  const mIndex = parseInt(month, 10) - 1;
+  const monthName = MONTH_NAMES[mIndex] || month;
+  const dayNumber = parseInt(day, 10);
+  const label = `${monthName}, ${dayNumber}, ${year}`;
+  return { value: date, label };
+});
 
 export const ELECTION_YEAR_OPTIONS = Array.from(
   new Set(ELECTION_DATES.map(date => date.split('-')[0]))
