@@ -348,7 +348,7 @@ export default function VoterProfilePage() {
                     <span className="p-2 rounded-md bg-amber-500/10"><Bookmark className="h-4 w-4 text-amber-600" /></span>
                     <div>
                       <h4 className="font-medium text-sm">Important Information</h4>
-                      <p className="text-sm text-muted-foreground">Notes about this voter's preferences, concerns, and interactions.</p>
+                      <p className="text-sm text-muted-foreground">Notes about this voter&apos;s preferences, concerns, and interactions.</p>
                     </div>
                   </div>
                   <div className="p-4 rounded-md border border-border bg-muted/30">
