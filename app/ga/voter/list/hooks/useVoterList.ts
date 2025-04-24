@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { FilterState, ResidenceAddressFilterState, PaginationState, Voter } from '../types';
+import { useVoterFilterContext } from '../../VoterFilterProvider';
 
 // Debounce utility
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -90,138 +91,16 @@ export function useVoterList() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  // State
-  const [filters, setFilters] = useState<FilterState>(() => {
-    // Initialize from URL if available
-    const filterState = { ...initialFilterState };
-    
-    // Handle array filter params
-    const countyParams = searchParams.getAll('county');
-    if (countyParams.length > 0) filterState.county = countyParams;
-    
-    const congressionalParams = searchParams.getAll('congressionalDistricts');
-    if (congressionalParams.length > 0) filterState.congressionalDistricts = congressionalParams;
-    
-    const senateParams = searchParams.getAll('stateSenateDistricts');
-    if (senateParams.length > 0) filterState.stateSenateDistricts = senateParams;
-    
-    const houseParams = searchParams.getAll('stateHouseDistricts');
-    if (houseParams.length > 0) filterState.stateHouseDistricts = houseParams;
-    
-    const statusParams = searchParams.getAll('status');
-    if (statusParams.length > 0) filterState.status = statusParams;
-    
-    const partyParams = searchParams.getAll('party');
-    if (partyParams.length > 0) filterState.party = partyParams;
-    
-    const ageParams = searchParams.getAll('ageRange');
-    if (ageParams.length > 0) filterState.age = ageParams;
-    
-    const genderParams = searchParams.getAll('gender');
-    if (genderParams.length > 0) filterState.gender = genderParams;
-    
-    const raceParams = searchParams.getAll('race');
-    if (raceParams.length > 0) filterState.race = raceParams;
-
-    // Add handling for statusReason
-    const statusReasonParams = searchParams.getAll('statusReason');
-    if (statusReasonParams.length > 0) filterState.statusReason = statusReasonParams;
-
-    // Voter Events params
-    const ballotStyleParams = searchParams.getAll('ballotStyle');
-    if (ballotStyleParams.length > 0) filterState.ballotStyle = ballotStyleParams;
-    const eventPartyParams = searchParams.getAll('eventParty');
-    if (eventPartyParams.length > 0) filterState.eventParty = eventPartyParams;
-    const voterEventMethodParam = searchParams.get('voterEventMethod');
-    if (voterEventMethodParam) filterState.voterEventMethod = voterEventMethodParam;
-    const electionYearParams = searchParams.getAll('electionYear');
-    if (electionYearParams.length > 0) filterState.electionYear = electionYearParams;
-    const electionDateParams = searchParams.getAll('electionDate');
-    if (electionDateParams.length > 0) filterState.electionDate = electionDateParams;
-
-    const redistrictingParams = searchParams.getAll('redistrictingAffectedTypes');
-    if (redistrictingParams.length > 0) {
-      // Deduplicate and preserve order
-      const uniqueParams = Array.from(new Set(redistrictingParams));
-      filterState.redistrictingAffectedTypes = uniqueParams;
-    }
-    
-    const firstNameParam = searchParams.get('firstName');
-    const lastNameParam = searchParams.get('lastName');
-    
-    if (firstNameParam) filterState.firstName = firstNameParam;
-    if (lastNameParam)  filterState.lastName = lastNameParam;
-    
-    const neverVotedParam = searchParams.get('neverVoted');
-    if (neverVotedParam === 'true') filterState.neverVoted = true;
-    
-    const notVotedYearParam = searchParams.get('notVotedSinceYear');
-    if (notVotedYearParam) filterState.notVotedSinceYear = notVotedYearParam;
-    
-    return filterState;
-  });
-  
-  const [residenceAddressFilters, setResidenceAddressFilters] = useState<ResidenceAddressFilterState[]>(() => {
-    // 1. Parse composite resident_address params (new format)
-    const compositeParams = searchParams.getAll('resident_address');
-    if (compositeParams.length > 0) {
-      const parsedFilters: ResidenceAddressFilterState[] = [];
-      compositeParams.forEach(param => {
-        const parts = param.split(',');
-        if (parts.length === 8) {
-          const [streetNumber, preDir, streetName, streetType, postDir, aptUnit, city, zipcode] = parts;
-          parsedFilters.push({
-            id: crypto.randomUUID(),
-            residence_street_number: streetNumber || '',
-            residence_pre_direction: preDir || '',
-            residence_street_name: streetName || '',
-            residence_street_type: streetType || '',
-            residence_post_direction: postDir || '',
-            residence_apt_unit_number: aptUnit || '',
-            residence_city: city || '',
-            residence_zipcode: zipcode || ''
-          });
-        }
-      });
-      if (parsedFilters.length > 0) return parsedFilters;
-    }
-
-    // 2. Fallback to legacy individual params (backward compatibility)
-    const addressFilterState: ResidenceAddressFilterState = {
-      id: crypto.randomUUID(),
-      residence_street_number: '',
-      residence_pre_direction: '',
-      residence_street_name: '',
-      residence_street_type: '',
-      residence_post_direction: '',
-      residence_apt_unit_number: '',
-      residence_zipcode: '',
-      residence_city: ''
-    };
-
-    const urlToStateFieldMap: Record<string, keyof ResidenceAddressFilterState> = {
-      'residenceStreetNumber': 'residence_street_number',
-      'residencePreDirection': 'residence_pre_direction',
-      'residenceStreetName': 'residence_street_name',
-      'residenceStreetSuffix': 'residence_street_type',
-      'residencePostDirection': 'residence_post_direction',
-      'residenceAptUnitNumber': 'residence_apt_unit_number',
-      'residenceZipcode': 'residence_zipcode',
-      'residenceCity': 'residence_city'
-    };
-
-    const hasLegacyParams = Object.keys(urlToStateFieldMap).some(p => searchParams.has(p));
-    if (hasLegacyParams) {
-      Object.entries(urlToStateFieldMap).forEach(([param, stateField]) => {
-        const val = searchParams.get(param);
-        if (val) addressFilterState[stateField] = val;
-      });
-      return [addressFilterState];
-    }
-
-    // 3. No address filters
-    return [];
-  });
+  // Use filter context for all filter state and logic
+  const {
+    filters,
+    setFilters,
+    residenceAddressFilters,
+    setResidenceAddressFilters,
+    updateFilter,
+    updateResidenceAddressFilter,
+    clearAllFilters
+  } = useVoterFilterContext();
   
   const [pagination, setPagination] = useState<PaginationState>(() => {
     // Initialize from URL if available
@@ -575,32 +454,6 @@ export function useVoterList() {
   }, [filters, residenceAddressFilters, pagination.currentPage, pagination.pageSize, sort.field, sort.direction, fetchVotersDebounced, searchParams]);
   
   // Helper functions for state updates
-  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    // Reset to first page when filters change
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-  };
-  
-  const updateResidenceAddressFilter = (
-    id: string,
-    key: keyof Omit<ResidenceAddressFilterState, 'id'>,
-    value: string
-  ) => {
-    debugger
-    setResidenceAddressFilters(prev =>
-      prev.map(f => (f.id === id ? { ...f, [key]: value } : f))
-    );
-    // Reset to first page when filters change
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-  };
-  
-  const clearAllFilters = () => {
-    setFilters(initialFilterState);
-    setResidenceAddressFilters([]);
-    // Reset to first page when filters are cleared
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-  };
-  
   const updatePage = (page: number) => {
     setPagination(prev => ({ ...prev, currentPage: page }));
   };
@@ -651,24 +504,20 @@ export function useVoterList() {
   };
   
   return {
-    // State
     filters,
     residenceAddressFilters,
     pagination,
     sort,
     voters,
     isLoading,
-    
-    // Actions
+    setFilters,
+    setResidenceAddressFilters,
     updateFilter,
     updateResidenceAddressFilter,
     clearAllFilters,
     updatePage,
     updatePageSize,
     updateSort,
-    setResidenceAddressFilters,
-    
-    // Helpers
     hasActiveFilters: hasActiveFilters(),
     buildQueryParams
   };

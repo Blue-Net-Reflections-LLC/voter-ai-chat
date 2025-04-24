@@ -2,6 +2,7 @@ import React from "react";
 import { Metadata } from 'next';
 import VoterHeader from "./VoterHeader";
 import { Toaster } from "@/components/ui/toaster";
+import { VoterFilterProvider } from './VoterFilterProvider';
 
 export const metadata: Metadata = {
   title: 'Voter List | Georgia Voter Registry',
@@ -14,12 +15,29 @@ export default function VoterLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-screen flex flex-col">
-      <VoterHeader />
-      <main className="pt-1 flex-grow overflow-auto">
-        {children}
-      </main>
+    <VoterFilterProvider>
+      <div className="flex h-full w-full">
+        {/* Sidebar: Filter Panel and Tab Navigation */}
+        <aside className="w-1/4 min-w-[300px] max-w-[400px] h-full border-r bg-background">
+          {/* TODO: Tab Navigation (List/Stats) */}
+          <div className="p-2 border-b">
+            {/* Tab navigation goes here */}
+            <div className="flex gap-2">
+              {/* Example: <TabLink href="/ga/voter/list">Voter List</TabLink> */}
+              {/* Example: <TabLink href="/ga/voter/stats">Stats/Aggregate</TabLink> */}
+            </div>
+          </div>
+          {/* TODO: Filter Panel */}
+          <div className="p-2">
+            {/* <FilterPanel ... /> */}
+          </div>
+        </aside>
+        {/* Main content area: List or Stats view */}
+        <main className="flex-1 h-full overflow-auto">
+          {children}
+        </main>
+      </div>
       <Toaster />
-    </div>
+    </VoterFilterProvider>
   );
 } 
