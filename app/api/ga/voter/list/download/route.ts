@@ -4,7 +4,8 @@ import { PassThrough } from 'node:stream';
 import { stringify } from 'csv-stringify';
 import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause'; // Import shared function
 
-// Fields to include in the CSV export
+// Define the fields to include in the CSV export
+// Omitted: geom (replaced by lat/lon), geocoded_at, geocoding_source
 const CSV_FIELDS = [
   'county_name',
   'county_code',
@@ -58,11 +59,11 @@ const CSV_FIELDS = [
   'mailing_state',
   'mailing_country',
   'derived_last_vote_date',
-  'geom',
-  'geocoded_at',
+  // Add lat/lon derived from geom
+  'latitude',
+  'longitude',
   'census_tract',
   'census_block',
-  'geocoding_source',
   'redistricting_cong_affected',
   'redistricting_senate_affected',
   'redistricting_house_affected',
@@ -83,7 +84,8 @@ function toTitleCase(str: string): string {
 // Create CSV headers
 const CSV_HEADERS = CSV_FIELDS.map(field => {
   if (field === 'voter_registration_number') return 'Registration ID';
-  if (field === 'geom') return 'Geometry (WKT)'; // Explicit header for WKT geometry
+  if (field === 'latitude') return 'Latitude';
+  if (field === 'longitude') return 'Longitude';
   return toTitleCase(field);
 });
 
@@ -94,15 +96,18 @@ export async function GET(request: NextRequest) {
     // *** Use shared function to build the WHERE clause ***
     const whereClause = buildVoterListWhereClause(searchParams);
 
-    // Select specific fields for CSV, convert geom to WKT
+    // Select specific fields for CSV, extract lat/lon from geom
     const selectFields = CSV_FIELDS.map(field => {
-      if (field === 'geom') {
-        return 'ST_AsText(geom) as geom'; // Alias back to geom for simplicity in processing
+      if (field === 'latitude') {
+        return 'ST_Y(geom) as latitude'; // Extract Latitude
       }
-      // Handle potential array fields (like participated_election_years) - convert to string
+      if (field === 'longitude') {
+        return 'ST_X(geom) as longitude'; // Extract Longitude
+      }
       if (field === 'participated_election_years') {
          return `array_to_string(${field}, ',') as ${field}`;
       }
+      // Ensure original field names are used in SELECT if they aren't derived
       return field;
     }).join(', ');
 
@@ -143,17 +148,18 @@ export async function GET(request: NextRequest) {
     sql.unsafe(query).cursor(async (rows: any[]) => {
       // Process each batch of rows from the cursor
       for (const row of rows) {
-        // Ensure row data is suitable for stringifier (handle nulls, dates, etc.)
+        // Access fields directly by their names (or aliases) from CSV_FIELDS
         const processedRow = CSV_FIELDS.map(field => {
             let value = row[field];
-            // Basic handling for dates, arrays, booleans - adjust as needed
             if (value instanceof Date) {
-                return value.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+                return value.toISOString().split('T')[0];
             }
             if (typeof value === 'boolean') {
                 return value ? 'TRUE' : 'FALSE';
             }
-            // participated_election_years is already stringified by array_to_string
+            if (typeof value === 'number') { // Ensure lat/lon are formatted as strings
+                 return value.toString();
+            }
             return value === null || value === undefined ? '' : value;
         });
         // Write the processed row to the stringifier
