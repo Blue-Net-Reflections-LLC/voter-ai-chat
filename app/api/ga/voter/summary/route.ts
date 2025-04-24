@@ -3,27 +3,7 @@ import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause';
 import { sql } from '@/lib/voter/db';
 // import { buildWhereClause } from '@/lib/voter/whereClause'; // TODO: Uncomment and use actual whereClause builder
 
-// --- API Request & Response Contracts ---
-
-// Example: Filter params (expand as needed)
-interface VoterSummaryFilters {
-  status?: string;
-  status_reason?: string;
-  residence_city?: string;
-  residence_zipcode?: string;
-  county_name?: string;
-  congressional_district?: string;
-  state_senate_district?: string;
-  state_house_district?: string;
-  race?: string;
-  gender?: string;
-  birth_year_min?: number;
-  birth_year_max?: number;
-  derived_last_vote_date?: string;
-  participated_election_years?: string;
-  census_tract?: string;
-  // ...add all other filter fields as needed
-}
+const AGG_LIMIT = parseInt(process.env.VOTER_AGG_LIMIT || '500', 10);
 
 // Section names
 export type VoterSummarySection =
@@ -49,6 +29,23 @@ export interface VoterSummaryResponse {
   timestamp: string;
 }
 
+// Helper to get aggregate counts for a field
+async function getAggregateCounts(field: string, table: string, whereClause: string): Promise<AggregateItem[]> {
+  try {
+    return await sql.unsafe(`
+      SELECT ${field} AS label, COUNT(*) AS count
+      FROM ${table}
+      ${whereClause}
+      GROUP BY ${field}
+      ORDER BY count DESC
+      LIMIT ${AGG_LIMIT}
+    `);
+  } catch (e) {
+    console.error(`[voter/summary] Error querying ${field}:`, e);
+    return [];
+  }
+}
+
 // --- API Handler ---
 
 export async function GET(req: NextRequest) {
@@ -57,9 +54,6 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const section = url.searchParams.get('section') as VoterSummarySection | undefined;
     // TODO: Parse all filter params from url.searchParams
-    const filters: VoterSummaryFilters = {};
-    // Example: filters.status = url.searchParams.get('status') || undefined;
-    // ...parse all other filters
 
     // Only run queries if section is not specified or is voting_info
     const shouldQueryVotingInfo = !section || section === 'voting_info';
@@ -74,58 +68,17 @@ export async function GET(req: NextRequest) {
     let residence_zipcode: AggregateItem[] = [];
 
     if (shouldQueryVotingInfo) {
-      // Query for status
-      try {
-        status = await sql.unsafe(`
-          SELECT status AS label, COUNT(*) AS count
-          FROM GA_VOTER_REGISTRATION_LIST
-          ${whereClause}
-          GROUP BY status
-          ORDER BY count DESC
-          LIMIT 500
-        `);
-      } catch (e) {
-        console.error('[voter/summary] Error querying status:', e);
-      }
-      // Query for status_reason
-      try {
-        status_reason = await sql.unsafe(`
-          SELECT status_reason AS label, COUNT(*) AS count
-          FROM GA_VOTER_REGISTRATION_LIST
-          ${whereClause}
-          GROUP BY status_reason
-          ORDER BY count DESC
-          LIMIT 500
-        `);
-      } catch (e) {
-        console.error('[voter/summary] Error querying status_reason:', e);
-      }
-      // Query for residence_city
-      try {
-        residence_city = await sql.unsafe(`
-          SELECT residence_city AS label, COUNT(*) AS count
-          FROM GA_VOTER_REGISTRATION_LIST
-          ${whereClause}
-          GROUP BY residence_city
-          ORDER BY count DESC
-          LIMIT 500
-        `);
-      } catch (e) {
-        console.error('[voter/summary] Error querying residence_city:', e);
-      }
-      // Query for residence_zipcode
-      try {
-        residence_zipcode = await sql.unsafe(`
-          SELECT residence_zipcode AS label, COUNT(*) AS count
-          FROM GA_VOTER_REGISTRATION_LIST
-          ${whereClause}
-          GROUP BY residence_zipcode
-          ORDER BY count DESC
-          LIMIT 500
-        `);
-      } catch (e) {
-        console.error('[voter/summary] Error querying residence_zipcode:', e);
-      }
+      const statusPromise = getAggregateCounts('status', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+      const statusReasonPromise = getAggregateCounts('status_reason', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+      const residenceCityPromise = getAggregateCounts('residence_city', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+      const residenceZipcodePromise = getAggregateCounts('residence_zipcode', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+
+      [status, status_reason, residence_city, residence_zipcode] = await Promise.all([
+        statusPromise,
+        statusReasonPromise,
+        residenceCityPromise,
+        residenceZipcodePromise,
+      ]);
     }
 
     // --- Assemble response ---
