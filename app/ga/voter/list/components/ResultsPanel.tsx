@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, FilterX } from "lucide-react";
+import { Printer, Download, FilterX, LoaderCircle } from "lucide-react";
 import { Voter, PaginationState } from '../types';
 import VoterTable from './VoterTable';
 import PaginationControls from './PaginationControls';
 import { SortField, SortDirection } from '../hooks/useVoterList';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ResultsPanelProps {
   voters: Voter[];
@@ -129,7 +130,10 @@ export function ResultsPanel({
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                className={cn(
+                  "h-6 px-2 text-xs text-blue-600 hover:text-blue-800 flex items-center",
+                  isDownloadingCsv && "opacity-75 cursor-not-allowed"
+                )}
                 onClick={onClearFilters}
                 disabled={isLoading || isDownloadingCsv}
               >
@@ -139,17 +143,33 @@ export function ResultsPanel({
             )}
             
             <div className="flex gap-3">
-              <Button variant="link" size="sm" className="text-xs h-6 px-1" disabled={isLoading || isDownloadingCsv}>
+              <Button
+                variant="link"
+                size="sm"
+                className={cn(
+                  "text-xs h-6 px-1",
+                  isDownloadingCsv && "opacity-75 cursor-not-allowed"
+                )}
+                disabled={isLoading || isDownloadingCsv}
+              >
                 <Printer size={14} className="mr-1"/> Print
               </Button>
               <Button
                 variant="link"
                 size="sm"
-                className="text-xs h-6 px-1"
+                className={cn(
+                  "text-xs h-6 px-1",
+                  isDownloadingCsv && "opacity-75 cursor-not-allowed"
+                )}
                 onClick={handleDownloadCsv}
                 disabled={isLoading || isDownloadingCsv}
               >
-                <Download size={14} className="mr-1"/> Download CSV {isDownloadingCsv ? '(Processing...)' : ''}
+                {isDownloadingCsv ? (
+                  <LoaderCircle size={14} className="mr-1 animate-spin" />
+                ) : (
+                  <Download size={14} className="mr-1"/>
+                )}
+                Download CSV {isDownloadingCsv ? '(Processing...)' : ''}
               </Button>
             </div>
           </div>
