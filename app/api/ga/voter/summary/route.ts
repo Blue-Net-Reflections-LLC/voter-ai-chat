@@ -38,7 +38,7 @@ async function getAggregateCounts(field: string, table: string, whereClause: str
     const fullWhere = whereClause
       ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND`)
       : `WHERE ${extraFilter}`;
-    return await sql.unsafe(`
+    const results = await sql.unsafe(`
       SELECT ${field} AS label, COUNT(*) AS count
       FROM ${table}
       ${fullWhere}
@@ -46,6 +46,10 @@ async function getAggregateCounts(field: string, table: string, whereClause: str
       ORDER BY count DESC
       LIMIT ${AGG_LIMIT}
     `);
+    return results.map((row: any) => ({
+      label: row.label,
+      count: Number(row.count)
+    }));
   } catch (e) {
     console.error(`[voter/summary] Error querying ${field}:`, e);
     return [];
@@ -97,6 +101,48 @@ async function getDistrictsAggregates(whereClause: string, shouldQuery: boolean)
   return { county_name, congressional_district, state_senate_district, state_house_district };
 }
 
+async function getDemographicsAggregates(whereClause: string, shouldQuery: boolean) {
+  if (!shouldQuery) {
+    return {
+      race: [],
+      gender: [],
+      age_range: [],
+    };
+  }
+  const racePromise = getAggregateCounts('race', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const genderPromise = getAggregateCounts('gender', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+
+  // Age range logic
+  const currentYear = new Date().getFullYear();
+  const ageRanges = [
+    { label: '18-23', sql: `(birth_year <= ${currentYear - 18} AND birth_year >= ${currentYear - 23})` },
+    { label: '25-44', sql: `(birth_year <= ${currentYear - 25} AND birth_year >= ${currentYear - 44})` },
+    { label: '45-64', sql: `(birth_year <= ${currentYear - 45} AND birth_year >= ${currentYear - 64})` },
+    { label: '65-74', sql: `(birth_year <= ${currentYear - 65} AND birth_year >= ${currentYear - 74})` },
+    { label: '75+',   sql: `(birth_year <= ${currentYear - 75})` },
+  ];
+  const ageRangePromises = ageRanges.map(async (range) => {
+    // Add non-null, non-empty birth_year filter
+    const extraFilter = `(birth_year IS NOT NULL AND TRIM(CAST(birth_year AS TEXT)) != '')`;
+    const fullWhere = whereClause
+      ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND ${range.sql} AND`)
+      : `WHERE ${extraFilter} AND ${range.sql}`;
+    const result = await sql.unsafe(`
+      SELECT COUNT(*) AS count
+      FROM GA_VOTER_REGISTRATION_LIST
+      ${fullWhere}
+    `);
+    return { label: range.label, count: parseInt(result[0]?.count || '0', 10) };
+  });
+
+  const [race, gender, age_range] = await Promise.all([
+    racePromise,
+    genderPromise,
+    Promise.all(ageRangePromises),
+  ]);
+  return { race, gender, age_range };
+}
+
 // TODO: Add similar functions for demographics, voting_history, and census
 
 // --- API Handler ---
@@ -114,22 +160,20 @@ export async function GET(req: NextRequest) {
     // Section query flags
     const shouldQueryVotingInfo = !section || section === 'voting_info';
     const shouldQueryDistricts = !section || section === 'districts';
+    const shouldQueryDemographics = !section || section === 'demographics';
     // TODO: Add flags for other sections
 
     // Get aggregates for each section
     const votingInfo = await getVotingInfoAggregates(whereClause, shouldQueryVotingInfo);
     const districts = await getDistrictsAggregates(whereClause, shouldQueryDistricts);
+    const demographics = await getDemographicsAggregates(whereClause, shouldQueryDemographics);
     // TODO: Call other section functions
 
     // --- Assemble response ---
     const response: VoterSummaryResponse = {
       voting_info: votingInfo,
       districts: districts,
-      demographics: {
-        race: [],
-        gender: [],
-        age_range: [], // Calculated from birth_year
-      },
+      demographics: demographics,
       voting_history: {
         derived_last_vote_date: [],
         participated_election_years: [],

@@ -52,7 +52,7 @@ To create a dashboard of aggregate totals based on the applied filters.
     - [x] Reuse the existing `whereClause` builder for filters.
     - [ ] Add aggregation queries for each required field/section
         - [x] voting_info
-        - [ ] districts
+        - [x] districts
         - [ ] demographics
         - [ ] voting_history
         - [ ] census
