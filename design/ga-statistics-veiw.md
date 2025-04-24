@@ -50,15 +50,15 @@ To create a dashboard of aggregate totals based on the applied filters.
 - [x] **Design API contract** for the summary/aggregate endpoint (input filters, output structure, error handling).
 - [x] **Implement new API route** for summary/aggregate data.
     - [x] Reuse the existing `whereClause` builder for filters.
-    - [ ] Add aggregation queries for each required field/section
+    - [x] Add aggregation queries for each required field/section
         - [x] voting_info
         - [x] districts
         - [x] demographics
-        - [ ] voting_history
-        - [ ] census
-    - [ ] Limit results to top 500 counts per field.
+        - [x] voting_history
+        - [x] census
+    - [x] Limit results to top 500 counts per field.
     - [ ] Optimize queries for performance (indexes, batching, etc.).
-    - [ ] Return all aggregates in a structure suitable for section-based lazy loading.
+    - [x] Return all aggregates in a structure suitable for section-based lazy loading.
 - [ ] **Write tests** for the new API endpoint (unit/integration).
 
 ### Frontend/UI

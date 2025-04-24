@@ -171,7 +171,15 @@ async function getVotingHistoryAggregates(whereClause: string, shouldQuery: bool
   return { derived_last_vote_date, participated_election_years };
 }
 
-// TODO: Add similar functions for demographics, voting_history, and census
+async function getCensusAggregates(whereClause: string, shouldQuery: boolean) {
+  if (!shouldQuery) {
+    return {
+      census_tract: [],
+    };
+  }
+  const censusTract = await getAggregateCounts('census_tract', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  return { census_tract: censusTract };
+}
 
 // --- API Handler ---
 
@@ -190,6 +198,7 @@ export async function GET(req: NextRequest) {
     const shouldQueryDistricts = !section || section === 'districts';
     const shouldQueryDemographics = !section || section === 'demographics';
     const shouldQueryVotingHistory = !section || section === 'voting_history';
+    const shouldQueryCensus = !section || section === 'census';
     // TODO: Add flags for other sections
 
     // Get aggregates for each section
@@ -197,6 +206,7 @@ export async function GET(req: NextRequest) {
     const districts = await getDistrictsAggregates(whereClause, shouldQueryDistricts);
     const demographics = await getDemographicsAggregates(whereClause, shouldQueryDemographics);
     const voting_history = await getVotingHistoryAggregates(whereClause, shouldQueryVotingHistory);
+    const census = await getCensusAggregates(whereClause, shouldQueryCensus);
     // TODO: Call other section functions
 
     // --- Assemble response ---
@@ -205,9 +215,7 @@ export async function GET(req: NextRequest) {
       districts: districts,
       demographics: demographics,
       voting_history: voting_history,
-      census: {
-        census_tract: [],
-      },
+      census: census,
       timestamp: new Date().toISOString(),
     };
 
