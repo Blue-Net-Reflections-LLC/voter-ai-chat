@@ -39,7 +39,8 @@ const initialFilterState: FilterState = {
   lastName: '',
   neverVoted: false,
   notVotedSinceYear: '',
-  redistrictingAffectedTypes: []
+  redistrictingAffectedTypes: [],
+  statusReason: []
 };
 
 // Initial address filter state
@@ -121,6 +122,10 @@ export function useVoterList() {
     
     const raceParams = searchParams.getAll('race');
     if (raceParams.length > 0) filterState.race = raceParams;
+
+    // Add handling for statusReason
+    const statusReasonParams = searchParams.getAll('statusReason');
+    if (statusReasonParams.length > 0) filterState.statusReason = statusReasonParams;
 
     // Voter Events params
     const ballotStyleParams = searchParams.getAll('ballotStyle');
@@ -365,6 +370,11 @@ export function useVoterList() {
       filters.electionDate.forEach(value => params.append('electionDate', value));
     }
     
+    // Add statusReason params
+    if (filters.statusReason.length > 0) {
+      filters.statusReason.forEach(value => params.append('statusReason', value));
+    }
+    
     return params;
   }, [filters, residenceAddressFilters, pagination, sort]);
   
@@ -469,6 +479,11 @@ export function useVoterList() {
     }
     if (filters.electionDate.length > 0) {
       filters.electionDate.forEach(value => params.append('electionDate', value));
+    }
+    
+    // Add statusReason to URL
+    if (filters.statusReason.length > 0) {
+      filters.statusReason.forEach(value => params.append('statusReason', value));
     }
     
     // Get current URL params

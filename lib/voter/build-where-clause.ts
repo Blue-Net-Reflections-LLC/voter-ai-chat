@@ -9,6 +9,7 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   const stateSenateDistricts = searchParams.getAll('stateSenateDistricts');
   const stateHouseDistricts = searchParams.getAll('stateHouseDistricts');
   const statusValues = searchParams.getAll('status');
+  const statusReasonParams = searchParams.getAll('statusReason');
   const partyValues = searchParams.getAll('party');
   const redistrictingAffectedTypes = searchParams.getAll('redistrictingAffectedTypes');
   const ballotStyles = searchParams.getAll('ballotStyle');
@@ -73,6 +74,13 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
       const upperStatusValues = statusValues.map(s => `UPPER('${s}')`);
       conditions.push(`UPPER(status) IN (${upperStatusValues.join(', ')})`);
     }
+  }
+
+  // Add Status Reason Filter
+  if (statusReasonParams.length > 0) {
+    // Assuming status reasons might need case-insensitive matching and are single words or phrases
+    const reasonPlaceholders = statusReasonParams.map(r => `'${r.toUpperCase()}'`); // Basic upper-casing and quoting
+    conditions.push(`UPPER(status_reason) IN (${reasonPlaceholders.join(', ')})`);
   }
 
   // Congressional District Filter (Example)
