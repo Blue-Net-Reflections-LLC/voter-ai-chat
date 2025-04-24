@@ -20,8 +20,11 @@ function VoterListContent() {
     updatePage,
     updatePageSize,
     updateSort,
-    hasActiveFilters
+    hasActiveFilters,
+    buildQueryParams
   } = useVoterList();
+
+  const currentQueryParams = buildQueryParams().toString();
 
   return (
     <div className="h-[calc(100vh-60px)] flex flex-col">
@@ -43,6 +46,7 @@ function VoterListContent() {
             sort={sort}
             hasActiveFilters={hasActiveFilters}
             isLoading={isLoading}
+            currentQueryParams={currentQueryParams}
             onPageChange={updatePage}
             onPageSizeChange={updatePageSize}
             onSort={updateSort}

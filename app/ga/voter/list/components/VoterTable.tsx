@@ -5,7 +5,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Voter } from '../types';
 import { SortField, SortDirection } from '../hooks/useVoterList';
 import { cn } from "@/lib/utils";
@@ -20,15 +19,20 @@ interface VoterTableProps {
   onSort?: (field: SortField) => void;
 }
 
-// Debug helper
-const getStatusClass = (status: any) => {
-  console.log("Status value:", status, "Type:", typeof status);
-  
-  // Handle any possible status format
-  if (status === 'Active' || status === 'ACTIVE' || status === true || status === 1) {
-    return "bg-blue-500/10 border border-blue-600/30 text-blue-500";
+// Helper to get status display properties
+const getStatusProps = (status: string | undefined | null) => {
+  const upperStatus = status?.toUpperCase();
+  if (upperStatus === 'ACTIVE') {
+    return {
+      text: 'Active',
+      className: "bg-blue-500/10 border border-blue-600/30 text-blue-500"
+    };
   }
-  return "bg-gray-700/20 border border-gray-600/30 text-gray-400";
+  // Default to inactive or unknown style
+  return {
+    text: status || 'Unknown', // Display original status or 'Unknown'
+    className: "bg-gray-700/20 border border-gray-600/30 text-gray-400"
+  };
 };
 
 // Skeleton for loading state
@@ -112,18 +116,21 @@ export function VoterTable({
               </TableCell>
             </TableRow>
           ) : (
-            voters.map((voter) => (
-              <TableRow key={voter.id} className="h-8 border-b border-gray-800 hover:bg-gray-900/20">
-                <TableCell className="py-1 px-3 text-xs">{voter.id}</TableCell>
-                <TableCell className="py-1 px-3 text-xs">{voter.firstName} {voter.lastName}</TableCell>
-                <TableCell className="py-1 px-3 text-xs">{voter.county || (voter.address?.city && `${voter.address.city}`)}</TableCell>
-                <TableCell className="py-1 px-3">
-                  <span className="inline-flex items-center justify-center text-[10px] font-semibold rounded px-2 py-0.5 bg-blue-500/10 border border-blue-600/30 text-blue-500">
-                    ACTIVE
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))
+            voters.map((voter) => {
+              const statusProps = getStatusProps(voter.status);
+              return (
+                <TableRow key={voter.id} className="h-8 border-b border-gray-800 hover:bg-gray-900/20">
+                  <TableCell className="py-1 px-3 text-xs">{voter.id}</TableCell>
+                  <TableCell className="py-1 px-3 text-xs">{voter.firstName} {voter.lastName}</TableCell>
+                  <TableCell className="py-1 px-3 text-xs">{voter.county || (voter.address?.city && `${voter.address.city}`)}</TableCell>
+                  <TableCell className="py-1 px-3">
+                    <span className={cn("inline-flex items-center justify-center text-[10px] font-semibold rounded px-2 py-0.5", statusProps.className)}>
+                      {statusProps.text.toUpperCase()}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>

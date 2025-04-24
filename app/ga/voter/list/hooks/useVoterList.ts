@@ -654,6 +654,7 @@ export function useVoterList() {
     setResidenceAddressFilters,
     
     // Helpers
-    hasActiveFilters: hasActiveFilters()
+    hasActiveFilters: hasActiveFilters(),
+    buildQueryParams
   };
 } 
