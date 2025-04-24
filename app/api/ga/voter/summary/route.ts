@@ -32,10 +32,16 @@ export interface VoterSummaryResponse {
 // Helper to get aggregate counts for a field
 async function getAggregateCounts(field: string, table: string, whereClause: string): Promise<AggregateItem[]> {
   try {
+    // Add extra filter for non-null, non-empty values
+    const extraFilter = `(${field} IS NOT NULL AND TRIM(${field}) != '')`;
+    // If whereClause is not empty, append with AND; otherwise, just use extraFilter
+    const fullWhere = whereClause
+      ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND`)
+      : `WHERE ${extraFilter}`;
     return await sql.unsafe(`
       SELECT ${field} AS label, COUNT(*) AS count
       FROM ${table}
-      ${whereClause}
+      ${fullWhere}
       GROUP BY ${field}
       ORDER BY count DESC
       LIMIT ${AGG_LIMIT}
@@ -46,6 +52,53 @@ async function getAggregateCounts(field: string, table: string, whereClause: str
   }
 }
 
+// Section-specific aggregation functions
+async function getVotingInfoAggregates(whereClause: string, shouldQuery: boolean) {
+  if (!shouldQuery) {
+    return {
+      status: [],
+      status_reason: [],
+      residence_city: [],
+      residence_zipcode: [],
+    };
+  }
+  const statusPromise = getAggregateCounts('status', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const statusReasonPromise = getAggregateCounts('status_reason', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const residenceCityPromise = getAggregateCounts('residence_city', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const residenceZipcodePromise = getAggregateCounts('residence_zipcode', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const [status, status_reason, residence_city, residence_zipcode] = await Promise.all([
+    statusPromise,
+    statusReasonPromise,
+    residenceCityPromise,
+    residenceZipcodePromise,
+  ]);
+  return { status, status_reason, residence_city, residence_zipcode };
+}
+
+async function getDistrictsAggregates(whereClause: string, shouldQuery: boolean) {
+  if (!shouldQuery) {
+    return {
+      county_name: [],
+      congressional_district: [],
+      state_senate_district: [],
+      state_house_district: [],
+    };
+  }
+  const countyNamePromise = getAggregateCounts('county_name', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const congressionalDistrictPromise = getAggregateCounts('congressional_district', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const stateSenateDistrictPromise = getAggregateCounts('state_senate_district', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const stateHouseDistrictPromise = getAggregateCounts('state_house_district', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+  const [county_name, congressional_district, state_senate_district, state_house_district] = await Promise.all([
+    countyNamePromise,
+    congressionalDistrictPromise,
+    stateSenateDistrictPromise,
+    stateHouseDistrictPromise,
+  ]);
+  return { county_name, congressional_district, state_senate_district, state_house_district };
+}
+
+// TODO: Add similar functions for demographics, voting_history, and census
+
 // --- API Handler ---
 
 export async function GET(req: NextRequest) {
@@ -55,46 +108,23 @@ export async function GET(req: NextRequest) {
     const section = url.searchParams.get('section') as VoterSummarySection | undefined;
     // TODO: Parse all filter params from url.searchParams
 
-    // Only run queries if section is not specified or is voting_info
-    const shouldQueryVotingInfo = !section || section === 'voting_info';
-
     // Build WHERE clause using shared builder
     const whereClause = buildVoterListWhereClause(url.searchParams);
 
-    // --- Voting Info Aggregates ---
-    let status: AggregateItem[] = [];
-    let status_reason: AggregateItem[] = [];
-    let residence_city: AggregateItem[] = [];
-    let residence_zipcode: AggregateItem[] = [];
+    // Section query flags
+    const shouldQueryVotingInfo = !section || section === 'voting_info';
+    const shouldQueryDistricts = !section || section === 'districts';
+    // TODO: Add flags for other sections
 
-    if (shouldQueryVotingInfo) {
-      const statusPromise = getAggregateCounts('status', 'GA_VOTER_REGISTRATION_LIST', whereClause);
-      const statusReasonPromise = getAggregateCounts('status_reason', 'GA_VOTER_REGISTRATION_LIST', whereClause);
-      const residenceCityPromise = getAggregateCounts('residence_city', 'GA_VOTER_REGISTRATION_LIST', whereClause);
-      const residenceZipcodePromise = getAggregateCounts('residence_zipcode', 'GA_VOTER_REGISTRATION_LIST', whereClause);
-
-      [status, status_reason, residence_city, residence_zipcode] = await Promise.all([
-        statusPromise,
-        statusReasonPromise,
-        residenceCityPromise,
-        residenceZipcodePromise,
-      ]);
-    }
+    // Get aggregates for each section
+    const votingInfo = await getVotingInfoAggregates(whereClause, shouldQueryVotingInfo);
+    const districts = await getDistrictsAggregates(whereClause, shouldQueryDistricts);
+    // TODO: Call other section functions
 
     // --- Assemble response ---
     const response: VoterSummaryResponse = {
-      voting_info: {
-        status: status || [],
-        status_reason: status_reason || [],
-        residence_city: residence_city || [],
-        residence_zipcode: residence_zipcode || [],
-      },
-      districts: {
-        county_name: [],
-        congressional_district: [],
-        state_senate_district: [],
-        state_house_district: [],
-      },
+      voting_info: votingInfo,
+      districts: districts,
       demographics: {
         race: [],
         gender: [],
@@ -110,7 +140,7 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString(),
     };
 
-    // TODO: Implement aggregation for other sections (districts, demographics, voting_history, census)
+    // TODO: Implement aggregation for other sections (demographics, voting_history, census)
 
     // If section param is provided, only return that section (others remain empty arrays)
     if (section) {
