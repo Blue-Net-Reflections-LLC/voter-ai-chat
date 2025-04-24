@@ -51,7 +51,8 @@ export function FilterPanel({
     genders,
     races,
     ballotStyles,
-    eventParties
+    eventParties,
+    statusReasons
   } = useLookupData();
 
   // Local state for name inputs (for Apply button)
@@ -298,16 +299,14 @@ export function FilterPanel({
                 className="h-8 text-xs"
               />
             </div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="contacted-no-response" className="text-xs font-medium">Contacted (No Response)</label>
-              <input 
-                id="contacted-no-response"
-                type="checkbox" 
-                className="form-checkbox h-3 w-3"
-                checked={contactedNoResponse}
-                onChange={() => setContactedNoResponse(!contactedNoResponse)}
-              />
-            </div>
+            <MultiSelect
+              label="Inactive Reasons"
+              options={statusReasons}
+              value={filters.statusReason}
+              setValue={(value) => updateFilter('statusReason', value)}
+              isLoading={isLoading}
+              compact={true}
+            />
             <MultiSelect
               label="Redistricting Affected"
               options={REDISTRICTING_TYPE_OPTIONS}

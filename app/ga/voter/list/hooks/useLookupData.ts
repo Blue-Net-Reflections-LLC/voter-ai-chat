@@ -51,16 +51,16 @@ export function useLookupData() {
     return toOptions(getValuesForField(fieldName));
   };
 
-  // Cached values for commonly used fields
+  // Cached values for commonly used fields using the standard getOptionsForField
   const counties = getOptionsForField('county_name');
   const congressionalDistricts = getOptionsForField('congressional_district');
   const stateSenateDistricts = getOptionsForField('state_senate_district');
   const stateHouseDistricts = getOptionsForField('state_house_district');
   const statuses = getOptionsForField('status');
+  const statusReasons = getOptionsForField('status_reason'); // Derive using standard helper
   const parties = getOptionsForField('last_party_voted');
   const genders = getOptionsForField('gender');
   const races = getOptionsForField('race');
-  // Voter events lookup for election_date
   const electionDates = getOptionsForField('election_date');
   // Derive election years from dates
   const electionYears = Array.from(
@@ -110,6 +110,7 @@ export function useLookupData() {
           timestamp: new Date().toISOString()
         };
         
+        console.log("Lookup API Combined Data:", combinedData); // Log the full fetched data
         setLookupData(combinedData);
       } catch (err) {
         console.error('Error fetching lookup data:', err);
@@ -122,6 +123,17 @@ export function useLookupData() {
     fetchLookupData();
   }, []);
 
+  // Add logging after data is set
+  useEffect(() => {
+    if (lookupData) {
+      console.log("LookupData state updated:", lookupData);
+      const rawReasons = lookupData.fields.find(f => f.name === 'status_reason')?.values || [];
+      console.log("Raw status_reason values:", rawReasons);
+      const options = getOptionsForField('status_reason');
+      console.log("Generated statusReason Options:", options);
+    }
+  }, [lookupData]); // Run when lookupData changes
+
   return {
     isLoading,
     error,
@@ -131,6 +143,7 @@ export function useLookupData() {
     stateSenateDistricts,
     stateHouseDistricts,
     statuses,
+    statusReasons,
     parties,
     genders,
     races,

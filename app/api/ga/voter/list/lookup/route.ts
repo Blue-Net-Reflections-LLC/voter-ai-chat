@@ -23,10 +23,61 @@ const LOOKUP_FIELDS = [
   
   // Registration fields
   { name: 'status', limit: 20, category: 'registration' },
+  { name: 'status_reason', limit: 20, category: 'registration' },
   { name: 'last_party_voted', limit: 50, category: 'registration' },
   // Voter events dates
   { name: 'election_date', limit: 1000, category: 'voter_events' },
 ];
+
+// Define categories and corresponding fields
+const CATEGORIES: Record<string, { displayName: string; fields: string[] }> = {
+  district: {
+    displayName: "District Information",
+    fields: [
+      'county_name',
+      'congressional_district',
+      'state_senate_district',
+      'state_house_district',
+      // Add other district-related fields if needed
+    ]
+  },
+  registration: {
+    displayName: "Registration Details",
+    fields: [
+      'status',
+      'status_reason',
+      'last_party_voted'
+      // Add other registration-related fields like 'registration_date'? 
+    ]
+  },
+  demographic: {
+    displayName: "Demographics",
+    fields: [
+      'race',
+      'gender'
+      // Add other demographic fields like 'birth_year'?
+    ]
+  },
+  voter_events: {
+    displayName: "Voter Events",
+    fields: [
+      'election_date',
+      'election_type', // Add from voting_events
+      'party',         // Add from voting_events
+      'ballot_style'   // Add from voting_events
+    ]
+  },
+  address: { // Add address category if needed for specific fields
+    displayName: "Address Components",
+    fields: [
+      'residence_city',
+      'residence_zipcode',
+      'residence_street_type', // Example
+      'residence_pre_direction',
+      'residence_post_direction'
+    ]
+  }
+};
 
 export async function GET(req: NextRequest) {
   try {
