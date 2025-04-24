@@ -175,7 +175,7 @@ export function ResultsPanel({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 py-0 flex-grow overflow-auto">
+      <CardContent className="px-4 py-0 flex-grow overflow-auto min-h-0">
         <VoterTable 
           voters={voters} 
           isLoading={isLoading} 
