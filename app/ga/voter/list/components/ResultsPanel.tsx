@@ -112,7 +112,7 @@ export function ResultsPanel({
   };
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col h-full min-h-0">
       <CardHeader className="px-4 py-3 flex-shrink-0">
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
@@ -175,15 +175,17 @@ export function ResultsPanel({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 py-0 flex-grow overflow-auto min-h-0">
-        <VoterTable 
-          voters={voters} 
-          isLoading={isLoading} 
-          sort={sort}
-          onSort={onSort}
-        />
+      <CardContent className="px-4 py-0 flex-grow min-h-0">
+        <div className="h-full overflow-auto min-h-0">
+          <VoterTable 
+            voters={voters} 
+            isLoading={isLoading} 
+            sort={sort}
+            onSort={onSort}
+          />
+        </div>
       </CardContent>
-      <CardFooter className="py-2 px-4 flex-shrink-0 max-h-[50px] border-t">
+      <CardFooter className="py-0 px-4 flex-shrink-0 max-h-[50px] border-t">
         <PaginationControls
           currentPage={currentPage}
           pageSize={pageSize}

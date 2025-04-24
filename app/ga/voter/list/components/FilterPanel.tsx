@@ -95,7 +95,7 @@ export function FilterPanel() {
   };
 
   return (
-    <Card className="w-full h-full overflow-auto">
+    <Card className="w-full h-full overflow-auto pr-2">
       <CardContent className="space-y-3 pt-2 px-3">
         {/* Geographic Filters */}
         <div className="space-y-4">
