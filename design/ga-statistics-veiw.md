@@ -64,6 +64,8 @@ To create a dashboard of aggregate totals based on the applied filters.
 ### Frontend/UI
 - [ ] **Create Stats/Aggregate View page** (tabbed with the listing view).
     - [ ] Create /ga/voter/layout.tsx for shared layout (filter panel, tab navigation)
+        - [ ] Integrate FilterPanel in the sidebar, using context for state
+        - [ ] Implement tab navigation (links to /ga/voter/list and /ga/voter/stats)
     - [ ] Create /ga/voter/list/page.tsx for the voter list
     - [ ] Create /ga/voter/stats/page.tsx for the stats/aggregate dashboard
     - [ ] Implement a shared filter context/provider for state sharing

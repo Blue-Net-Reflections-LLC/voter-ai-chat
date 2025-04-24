@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { ResidenceAddressFilter, AddressFilter } from '../ResidenceAddressFilter';
-import { FilterState, ResidenceAddressFilterState } from '../types';
+import { ResidenceAddressFilter } from '../ResidenceAddressFilter';
 import CountyMultiSelect from './CountyMultiSelect';
 import DistrictMultiSelect from './DistrictMultiSelect';
 import MultiSelect from './MultiSelect';
@@ -22,29 +21,24 @@ import {
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from '@/components/ui/button';
+import { useVoterList } from '../hooks/useVoterList';
+import { ResidenceAddressFilterState } from '../types';
 
-interface FilterPanelProps {
-  filters: FilterState;
-  residenceAddressFilters: ResidenceAddressFilterState[];
-  updateFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
-  updateResidenceAddressFilter: (id: string, key: keyof Omit<ResidenceAddressFilterState, 'id'>, value: string) => void;
-  setResidenceAddressFilters: React.Dispatch<React.SetStateAction<ResidenceAddressFilterState[]>>;
-  clearAllFilters: () => void;
-}
+export function FilterPanel() {
+  const {
+    filters,
+    residenceAddressFilters,
+    updateFilter,
+    updateResidenceAddressFilter,
+    setResidenceAddressFilters,
+    clearAllFilters
+  } = useVoterList();
 
-export function FilterPanel({
-  filters,
-  residenceAddressFilters,
-  updateFilter,
-  updateResidenceAddressFilter,
-  setResidenceAddressFilters,
-  clearAllFilters
-}: FilterPanelProps) {
-  const { 
-    isLoading, 
-    error, 
-    congressionalDistricts, 
-    stateSenateDistricts, 
+  const {
+    isLoading,
+    error,
+    congressionalDistricts,
+    stateSenateDistricts,
     stateHouseDistricts,
     parties,
     statuses,
@@ -72,13 +66,13 @@ export function FilterPanel({
   }, [filters.firstName, filters.lastName, filters.notVotedSinceYear]);
 
   // Add address filter handler (from ResidenceAddressFilter component)
-  const addAddressFilter = (filter?: AddressFilter) => {
+  const addAddressFilter = (filter?: any) => {
     if (!filter) return;
-    setResidenceAddressFilters(prev => [...prev, filter as ResidenceAddressFilterState]);
+    setResidenceAddressFilters((prev: any) => [...prev, filter]);
   };
 
   const removeAddressFilter = (id: string) => {
-    setResidenceAddressFilters(prev => prev.filter(f => f.id !== id));
+    setResidenceAddressFilters((prev: any) => prev.filter((f: any) => f.id !== id));
   };
 
   const clearAllAddressFilters = () => {

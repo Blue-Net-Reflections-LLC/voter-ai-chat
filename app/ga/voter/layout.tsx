@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import VoterHeader from "./VoterHeader";
 import { Toaster } from "@/components/ui/toaster";
 import { VoterFilterProvider } from './VoterFilterProvider';
+import FilterPanel from './list/components/FilterPanel';
 
 export const metadata: Metadata = {
   title: 'Voter List | Georgia Voter Registry',
@@ -27,9 +28,9 @@ export default function VoterLayout({
               {/* Example: <TabLink href="/ga/voter/stats">Stats/Aggregate</TabLink> */}
             </div>
           </div>
-          {/* TODO: Filter Panel */}
+          {/* Filter Panel */}
           <div className="p-2">
-            {/* <FilterPanel ... /> */}
+            <FilterPanel />
           </div>
         </aside>
         {/* Main content area: List or Stats view */}
