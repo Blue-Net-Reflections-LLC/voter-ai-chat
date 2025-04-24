@@ -4,6 +4,12 @@ import { PassThrough } from 'node:stream';
 import { stringify } from 'csv-stringify';
 import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause'; // Import shared function
 
+// Suggest a longer execution time for platforms like Vercel (Pro/Enterprise plan may be required for > 60s)
+// Timeout behaviour ultimately depends on the deployment environment.
+export const maxDuration = 300; // 5 minutes
+
+const DOWNLOAD_BATCH_SIZE = 5000; // Define the batch size for fetching
+
 // Define the fields to include in the CSV export
 // Omitted: geom (replaced by lat/lon), geocoded_at, geocoding_source
 const CSV_FIELDS = [
@@ -111,20 +117,15 @@ export async function GET(request: NextRequest) {
       return field;
     }).join(', ');
 
-    const query = `
+    const baseQuery = `
       SELECT ${selectFields}
       FROM GA_VOTER_REGISTRATION_LIST
       ${whereClause}
-      ORDER BY voter_registration_number; -- Consistent ordering
+      ORDER BY voter_registration_number -- ORDER BY is important for stable pagination
     `;
 
-    // --- Start: Streaming Logic (Improved) ---
-
-    // Create a PassThrough stream which is both Readable and Writable
-    // This simplifies piping and error handling
+    // --- Start: Streaming Logic with Manual Pagination ---
     const responseStream = new PassThrough();
-
-    // Set headers for file download immediately
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `voter_list_${timestamp}.csv`;
     const headers = new Headers({
@@ -133,68 +134,78 @@ export async function GET(request: NextRequest) {
       'X-Content-Type-Options': 'nosniff'
     });
 
-    // Use csv-stringify to format data into CSV rows
-    // Pipe stringifier output directly to the response stream
+    // Initialize CSV stringifier and pipe to response stream immediately
     const stringifier = stringify({ header: true, columns: CSV_HEADERS });
     stringifier.pipe(responseStream);
 
-    // Handle errors during stringification
+    // Handle stringifier errors
     stringifier.on('error', (err) => {
       console.error('Error during CSV stringification:', err);
-      responseStream.destroy(err); // Destroy the response stream on error
+      if (!responseStream.destroyed) {
+        responseStream.destroy(err);
+      }
     });
 
-    // Execute the query using a cursor and pipe results to stringifier
-    sql.unsafe(query).cursor(async (rows: any[]) => {
-      // Process each batch of rows from the cursor
+    // Function to process a batch of rows
+    const processBatch = async (rows: any[]) => {
       for (const row of rows) {
-        // Access fields directly by their names (or aliases) from CSV_FIELDS
         const processedRow = CSV_FIELDS.map(field => {
-            let value = row[field];
-            if (value instanceof Date) {
-                return value.toISOString().split('T')[0];
-            }
-            if (typeof value === 'boolean') {
-                return value ? 'TRUE' : 'FALSE';
-            }
-            if (typeof value === 'number') { // Ensure lat/lon are formatted as strings
-                 return value.toString();
-            }
-            return value === null || value === undefined ? '' : value;
+          let value = row[field];
+          if (value instanceof Date) return value.toISOString().split('T')[0];
+          if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+          if (typeof value === 'number') return value.toString();
+          return value === null || value === undefined ? '' : value;
         });
-        // Write the processed row to the stringifier
-        // Handle backpressure from the stringifier
         if (!stringifier.write(processedRow)) {
+          // Handle backpressure
           await new Promise(resolve => stringifier.once('drain', resolve));
         }
       }
-    })
-    .then(() => {
-      console.log('Database cursor finished.');
-      stringifier.end(); // Signal end of data to the stringifier when cursor is done
-    })
-    .catch((dbError: Error) => {
-      console.error('Error executing database cursor query:', dbError);
-      // Ensure stringifier/stream are properly destroyed on DB error
-      if (!stringifier.destroyed) {
-        stringifier.destroy(dbError);
-      }
-      if (!responseStream.destroyed) {
-        responseStream.destroy(dbError);
-      }
-    });
+    };
 
-    // Return the response stream
-    // Use Readable.toWeb() to convert Node stream to Web Stream if needed by NextResponse
-    // Although NextResponse often handles Node streams directly.
-    // Let's keep it simple first.
+    // Start pagination loop
+    (async () => {
+      let offset = 0;
+      let continueFetching = true;
+      try {
+        while (continueFetching) {
+          console.log(`Fetching batch: LIMIT ${DOWNLOAD_BATCH_SIZE} OFFSET ${offset}`);
+          const batchQuery = `${baseQuery} LIMIT ${DOWNLOAD_BATCH_SIZE} OFFSET ${offset}`;
+          const rows = await sql.unsafe(batchQuery);
+
+          if (rows.length > 0) {
+            await processBatch(rows);
+          } else {
+            // No more rows left
+            continueFetching = false;
+          }
+
+          // If fewer rows than batch size were returned, it's the last batch
+          if (rows.length < DOWNLOAD_BATCH_SIZE) {
+            continueFetching = false;
+          }
+
+          offset += DOWNLOAD_BATCH_SIZE;
+        }
+        console.log('Finished fetching all batches.');
+        stringifier.end(); // Signal end of data to stringifier
+      } catch (dbError) {
+        console.error('Error during database query pagination:', dbError);
+        if (!stringifier.destroyed) {
+           stringifier.destroy(dbError instanceof Error ? dbError : new Error(String(dbError)));
+        }
+        if (!responseStream.destroyed) {
+           responseStream.destroy(dbError instanceof Error ? dbError : new Error(String(dbError)));
+        }
+      }
+    })(); // Immediately invoke the async loop function
+
+    // Return the stream immediately - the loop above will feed it data
     return new NextResponse(responseStream as any, { status: 200, headers });
-    // If the above fails, try: return new NextResponse(Readable.toWeb(responseStream), { status: 200, headers });
-
     // --- End: Streaming Logic ---
 
   } catch (error) {
-    console.error('Error in voter download API:', error);
+    console.error('Error setting up voter download API:', error);
     return NextResponse.json(
       { error: 'Failed to generate voter CSV data' },
       { status: 500 }
