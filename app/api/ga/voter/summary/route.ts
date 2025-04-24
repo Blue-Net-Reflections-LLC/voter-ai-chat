@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause';
 import { sql } from '@/lib/voter/db';
+import { AGE_RANGES } from './ageRangeUtils';
 // import { buildWhereClause } from '@/lib/voter/whereClause'; // TODO: Uncomment and use actual whereClause builder
 
 const AGG_LIMIT = parseInt(process.env.VOTER_AGG_LIMIT || '500', 10);
@@ -112,21 +113,14 @@ async function getDemographicsAggregates(whereClause: string, shouldQuery: boole
   const racePromise = getAggregateCounts('race', 'GA_VOTER_REGISTRATION_LIST', whereClause);
   const genderPromise = getAggregateCounts('gender', 'GA_VOTER_REGISTRATION_LIST', whereClause);
 
-  // Age range logic
+  // Age range logic using AGE_RANGES utility
   const currentYear = new Date().getFullYear();
-  const ageRanges = [
-    { label: '18-23', sql: `(birth_year <= ${currentYear - 18} AND birth_year >= ${currentYear - 23})` },
-    { label: '25-44', sql: `(birth_year <= ${currentYear - 25} AND birth_year >= ${currentYear - 44})` },
-    { label: '45-64', sql: `(birth_year <= ${currentYear - 45} AND birth_year >= ${currentYear - 64})` },
-    { label: '65-74', sql: `(birth_year <= ${currentYear - 65} AND birth_year >= ${currentYear - 74})` },
-    { label: '75+',   sql: `(birth_year <= ${currentYear - 75})` },
-  ];
-  const ageRangePromises = ageRanges.map(async (range) => {
+  const ageRangePromises = AGE_RANGES.map(async (range) => {
     // Add non-null, non-empty birth_year filter
     const extraFilter = `(birth_year IS NOT NULL AND TRIM(CAST(birth_year AS TEXT)) != '')`;
     const fullWhere = whereClause
-      ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND ${range.sql} AND`)
-      : `WHERE ${extraFilter} AND ${range.sql}`;
+      ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND ${range.getSql(currentYear)} AND`)
+      : `WHERE ${extraFilter} AND ${range.getSql(currentYear)}`;
     const result = await sql.unsafe(`
       SELECT COUNT(*) AS count
       FROM GA_VOTER_REGISTRATION_LIST
@@ -141,6 +135,40 @@ async function getDemographicsAggregates(whereClause: string, shouldQuery: boole
     Promise.all(ageRangePromises),
   ]);
   return { race, gender, age_range };
+}
+
+async function getVotingHistoryAggregates(whereClause: string, shouldQuery: boolean) {
+  if (!shouldQuery) {
+    return {
+      derived_last_vote_date: [],
+      participated_election_years: [],
+    };
+  }
+  // derived_last_vote_date: distinct dates and counts
+  const derivedLastVoteDatePromise = getAggregateCounts('derived_last_vote_date', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+
+  // participated_election_years: count of voters for each year
+  const participatedElectionYearsPromise = (async () => {
+    const sqlQuery = `
+      SELECT year::text AS label, COUNT(*) AS count
+      FROM (
+        SELECT UNNEST(participated_election_years) AS year
+        FROM GA_VOTER_REGISTRATION_LIST
+        ${whereClause}
+      ) AS years
+      GROUP BY year
+      ORDER BY year DESC
+      LIMIT ${AGG_LIMIT}
+    `;
+    const results = await sql.unsafe(sqlQuery);
+    return results.map((row: any) => ({ label: row.label, count: Number(row.count) }));
+  })();
+
+  const [derived_last_vote_date, participated_election_years] = await Promise.all([
+    derivedLastVoteDatePromise,
+    participatedElectionYearsPromise,
+  ]);
+  return { derived_last_vote_date, participated_election_years };
 }
 
 // TODO: Add similar functions for demographics, voting_history, and census
@@ -161,12 +189,14 @@ export async function GET(req: NextRequest) {
     const shouldQueryVotingInfo = !section || section === 'voting_info';
     const shouldQueryDistricts = !section || section === 'districts';
     const shouldQueryDemographics = !section || section === 'demographics';
+    const shouldQueryVotingHistory = !section || section === 'voting_history';
     // TODO: Add flags for other sections
 
     // Get aggregates for each section
     const votingInfo = await getVotingInfoAggregates(whereClause, shouldQueryVotingInfo);
     const districts = await getDistrictsAggregates(whereClause, shouldQueryDistricts);
     const demographics = await getDemographicsAggregates(whereClause, shouldQueryDemographics);
+    const voting_history = await getVotingHistoryAggregates(whereClause, shouldQueryVotingHistory);
     // TODO: Call other section functions
 
     // --- Assemble response ---
@@ -174,10 +204,7 @@ export async function GET(req: NextRequest) {
       voting_info: votingInfo,
       districts: districts,
       demographics: demographics,
-      voting_history: {
-        derived_last_vote_date: [],
-        participated_election_years: [],
-      },
+      voting_history: voting_history,
       census: {
         census_tract: [],
       },

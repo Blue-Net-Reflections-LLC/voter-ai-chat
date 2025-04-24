@@ -53,7 +53,7 @@ To create a dashboard of aggregate totals based on the applied filters.
     - [ ] Add aggregation queries for each required field/section
         - [x] voting_info
         - [x] districts
-        - [ ] demographics
+        - [x] demographics
         - [ ] voting_history
         - [ ] census
     - [ ] Limit results to top 500 counts per field.
