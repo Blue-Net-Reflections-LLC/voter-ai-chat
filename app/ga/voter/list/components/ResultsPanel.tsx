@@ -18,6 +18,7 @@ interface ResultsPanelProps {
     field: SortField;
     direction: SortDirection;
   };
+  currentQueryParams: string;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onSort: (field: SortField) => void;
@@ -30,6 +31,7 @@ export function ResultsPanel({
   hasActiveFilters,
   isLoading = false,
   sort,
+  currentQueryParams,
   onPageChange,
   onPageSizeChange,
   onSort,
@@ -40,6 +42,14 @@ export function ResultsPanel({
   // Calculate display range
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
+
+  // Handler for the download button
+  const handleDownloadCsv = () => {
+    // Construct the download URL using the current query params
+    const downloadUrl = `/api/ga/voter/list/download?${currentQueryParams}`;
+    console.log('Triggering download:', downloadUrl); // Optional: log for debugging
+    window.location.href = downloadUrl; // Trigger browser download
+  };
 
   return (
     <Card className="flex flex-col h-full">
@@ -72,7 +82,13 @@ export function ResultsPanel({
               <Button variant="link" size="sm" className="text-xs h-6 px-1">
                 <Printer size={14} className="mr-1"/> Print
               </Button>
-              <Button variant="link" size="sm" className="text-xs h-6 px-1">
+              <Button
+                variant="link"
+                size="sm"
+                className="text-xs h-6 px-1"
+                onClick={handleDownloadCsv}
+                disabled={isLoading}
+              >
                 <Download size={14} className="mr-1"/> Download CSV
               </Button>
             </div>
