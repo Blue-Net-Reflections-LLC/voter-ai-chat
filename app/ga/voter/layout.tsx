@@ -1,6 +1,7 @@
 import React from "react";
 import { Metadata } from 'next';
 import VoterHeader from "./VoterHeader";
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: 'Voter List | Georgia Voter Registry',
@@ -18,6 +19,7 @@ export default function VoterLayout({
       <main className="pt-1 flex-grow overflow-auto">
         {children}
       </main>
+      <Toaster />
     </div>
   );
 } 

@@ -66,6 +66,7 @@ export interface FilterState {
   neverVoted: boolean;
   notVotedSinceYear?: string;
   redistrictingAffectedTypes: string[];
+  statusReason: string[];
   // Add more filter fields as needed
 }
 
