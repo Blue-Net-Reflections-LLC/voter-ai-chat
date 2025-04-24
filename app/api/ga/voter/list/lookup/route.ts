@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/voter/db';
 
 // Configure caching for 1 week using Next.js revalidate
-export const revalidate = 60 * 60 * 24 * 7; // 604800 seconds
+// export const revalidate = 60 * 60 * 24 * 7; // 604800 seconds - REMOVED
+
+// In-memory cache shared across requests
+const lookupCache: Record<string, any> = {};
 
 // Define fields that we want to provide metadata for
 // These are typically smaller, enumerable fields with finite values
@@ -91,6 +94,16 @@ export async function GET(req: NextRequest) {
     const requestedField = url.searchParams.get('field');
     const requestedCategory = url.searchParams.get('category');
     
+    // Generate a cache key based on the request
+    const cacheKey = requestedField ? `field:${requestedField}` : requestedCategory ? `category:${requestedCategory}` : 'all';
+
+    // Check if the result is already in the cache
+    if (lookupCache[cacheKey]) {
+      console.log(`[/api/ga/voter/list/lookup] Cache hit for key: ${cacheKey}`);
+      return NextResponse.json(lookupCache[cacheKey]);
+    }
+    
+    console.log(`[/api/ga/voter/list/lookup] Cache miss for key: ${cacheKey}. Fetching from DB.`);
     const results: Record<string, string[]> = {};
     
     // Filter fields based on request
@@ -169,8 +182,12 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString()
     };
     
-    // Return response - Next.js will handle caching based on 'revalidate' export
-    return NextResponse.json(metadata); // No need to pass headers here for revalidate
+    // Store the result in the cache before returning
+    lookupCache[cacheKey] = metadata;
+    console.log(`[/api/ga/voter/list/lookup] Stored result in cache for key: ${cacheKey}`);
+
+    // Return response - No Cache-Control header needed with in-memory cache
+    return NextResponse.json(metadata); // REMOVED headers
   } catch (error) {
     console.error('Error in /api/ga/voter/list/lookup:', error);
     return NextResponse.json(
