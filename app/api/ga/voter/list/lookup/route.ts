@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/voter/db';
 
+// Configure caching for 1 week using Next.js revalidate
+export const revalidate = 60 * 60 * 24 * 7; // 604800 seconds
+
 // Define fields that we want to provide metadata for
 // These are typically smaller, enumerable fields with finite values
 const LOOKUP_FIELDS = [
@@ -166,7 +169,8 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString()
     };
     
-    return NextResponse.json(metadata);
+    // Return response - Next.js will handle caching based on 'revalidate' export
+    return NextResponse.json(metadata); // No need to pass headers here for revalidate
   } catch (error) {
     console.error('Error in /api/ga/voter/list/lookup:', error);
     return NextResponse.json(

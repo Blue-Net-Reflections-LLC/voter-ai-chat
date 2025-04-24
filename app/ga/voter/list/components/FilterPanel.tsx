@@ -218,14 +218,6 @@ export function FilterPanel({
               compact={true}
             />
             <MultiSelect
-              label="Voter History Party"
-              options={parties.length > 0 ? parties : []}
-              value={filters.historyParty}
-              setValue={(value) => updateFilter('historyParty', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-            <MultiSelect
               label="Age Range"
               options={AGE_RANGE_OPTIONS}
               value={filters.age}
@@ -246,20 +238,6 @@ export function FilterPanel({
               value={filters.race}
               setValue={(value) => updateFilter('race', value)}
               isLoading={isLoading}
-              compact={true}
-            />
-            <MultiSelect
-              label="Income Level"
-              options={INCOME_LEVEL_OPTIONS}
-              value={filters.income}
-              setValue={(value) => updateFilter('income', value)}
-              compact={true}
-            />
-            <MultiSelect
-              label="Education Level"
-              options={EDUCATION_LEVEL_OPTIONS}
-              value={filters.education}
-              setValue={(value) => updateFilter('education', value)}
               compact={true}
             />
           </div>
