@@ -58,30 +58,24 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   // --- Start: Build SQL conditions ---
   const conditions = [];
 
-  // Check if we're filtering by both county and status
-  const hasCounty = !!county;
-  const hasStatus = statusValues.length > 0;
-  if (hasCounty && hasStatus) {
+  // County Filter (Example)
+  if (county) {
+    conditions.push(`UPPER(county_name) = UPPER('${county}')`);
+  }
+
+  // Status Filter (Corrected Logic)
+  if (statusValues.length > 0) {
     if (statusValues.length === 1) {
-      conditions.push(`(UPPER(county_name) = UPPER('${county}') AND UPPER(status) = UPPER('${statusValues[0]}'))`);
+      // If only one status value, use equals comparison
+      conditions.push(`UPPER(status) = UPPER('${statusValues[0]}')`);
     } else {
-      const statusConditions = statusValues.map(s => `UPPER(status) = UPPER('${s}')`).join(' OR ');
-      conditions.push(`(UPPER(county_name) = UPPER('${county}') AND (${statusConditions}))`);
-    }
-  } else {
-    if (hasCounty) {
-      conditions.push(`UPPER(county_name) = UPPER('${county}')`);
-    }
-    if (hasStatus) {
-      if (statusValues.length === 1) {
-        conditions.push(`UPPER(status) = UPPER('${statusValues[0]}')`);
-      } else {
-        const statusConditions = statusValues.map(s => `UPPER(status) = UPPER('${s}')`).join(' OR ');
-        conditions.push(`(${statusConditions})`);
-      }
+      // If multiple status values, use IN clause
+      const upperStatusValues = statusValues.map(s => `UPPER('${s}')`);
+      conditions.push(`UPPER(status) IN (${upperStatusValues.join(', ')})`);
     }
   }
 
+  // Congressional District Filter (Example)
   if (congressionalDistricts.length > 0) {
     const placeholders = congressionalDistricts.map(district => `'${district}'`);
     conditions.push(`congressional_district IN (${placeholders.join(', ')})`);
