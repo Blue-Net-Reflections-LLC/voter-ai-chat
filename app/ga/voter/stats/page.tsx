@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, BadgeCheck, AlertCircle, MapPin, Mail, ListChecks } from "lucide-react";
 import { useVoterFilterContext, buildQueryParams, FILTER_TO_URL_PARAM_MAP } from "../VoterFilterProvider";
 import { cn } from "@/lib/utils";
-import type { FilterState } from "../list/types";
+import type { FilterState, ResidenceAddressFilterState } from "../list/types";
 
 function StatsSection({ title, children }: { title: string; children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -67,12 +67,33 @@ function VotingInfoSection() {
     return activeCount + inactiveCount;
   }, [data]);
 
-  // Helper to handle filter click for array filters
+  // Handler for simple array filters (status, statusReason)
   function handleArrayFilterClick(filterKey: keyof FilterState, value: string) {
     const prev = (filters[filterKey] as string[]) || [];
     if (prev.includes(value)) return; // Prevent duplicates
-    const newValue = [...prev, value];
-    updateFilter(filterKey, newValue);
+    updateFilter(filterKey, [...prev, value]);
+  }
+
+  // Handler for address filters (city, zipcode) - Updates the first address filter
+  function handleAddressFilterClick(addressKey: 'residence_city' | 'residence_zipcode', value: string) {
+    setResidenceAddressFilters((prevFilters: ResidenceAddressFilterState[]) => {
+      const updatedFilters = [...prevFilters];
+      let targetFilter = updatedFilters[0];
+
+      // Create a new filter if none exists
+      if (!targetFilter) {
+        targetFilter = { id: crypto.randomUUID() };
+        updatedFilters[0] = targetFilter;
+      }
+
+      // Update the specific field, preventing duplicates
+      if (targetFilter[addressKey] !== value) {
+        updatedFilters[0] = { ...targetFilter, [addressKey]: value };
+        return updatedFilters;
+      }
+
+      return prevFilters; // Return original if no change
+    });
   }
 
   if (loading) {
@@ -89,13 +110,27 @@ function VotingInfoSection() {
     return <div className="text-muted-foreground text-sm">No data available.</div>;
   }
 
-  // Helper to render a group card
-  function GroupCard({ icon, title, items, groupKey }: { icon: React.ReactNode; title: string; items: any[]; groupKey: keyof FilterState }) {
+  // Helper to render a group card - Accepts a generic onClick handler
+  function GroupCard({ 
+    icon, 
+    title, 
+    items, 
+    onItemClick // Generic click handler prop
+  }: { 
+    icon: React.ReactNode; 
+    title: string; 
+    items: any[]; 
+    onItemClick: (value: string) => void; // Function receives the clicked value
+  }) {
     if (!items || items.length === 0) return null;
     return (
       <Card className="w-full">
         <CardHeader className="flex flex-row items-center gap-2 py-1.5 px-3">
-          <CardTitle className="text-xs font-semibold text-primary tracking-tight">{title}</CardTitle>
+          {/* Removed icon from here, will place it with title */}
+          <CardTitle className="text-xs font-semibold text-primary tracking-tight flex items-center gap-1.5">
+            {icon} {/* Icon next to title */}
+            {title}
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
@@ -103,13 +138,15 @@ function VotingInfoSection() {
               <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
                 <button
                   type="button"
-                  className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer"
+                  className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
                   title={`Filter by ${item.label}`}
-                  onClick={() => handleArrayFilterClick(groupKey, item.label)}
+                  onClick={() => onItemClick(item.label)} // Call the passed handler
                 >
                   {item.label}
                 </button>
-                <span className="font-mono text-[10px] text-muted-foreground font-light">{item.count.toLocaleString()}</span>
+                <span className="font-mono text-[10px] text-muted-foreground font-light">
+                  {item.count.toLocaleString()}
+                </span>
               </li>
             ))}
           </ul>
@@ -139,13 +176,33 @@ function VotingInfoSection() {
             </CardContent>
           </Card>
         )}
-        <GroupCard icon={<BadgeCheck className="w-4 h-4 text-green-600" />} title="Status" items={data.status} groupKey="status" />
-        <GroupCard icon={<AlertCircle className="w-4 h-4 text-yellow-500" />} title="Status Reason" items={data.status_reason} groupKey="status_reason" />
+        <GroupCard
+          icon={<BadgeCheck className="w-4 h-4 text-green-600" />}
+          title="Status"
+          items={data.status}
+          onItemClick={(value) => handleArrayFilterClick('status', value)}
+        />
+        <GroupCard
+          icon={<AlertCircle className="w-4 h-4 text-yellow-500" />}
+          title="Status Reason"
+          items={data.status_reason}
+          onItemClick={(value) => handleArrayFilterClick('statusReason', value)}
+        />
       </div>
       {/* Middle column: Residence City */}
-      <GroupCard icon={<MapPin className="w-4 h-4 text-blue-500" />} title="Residence City" items={data.residence_city} groupKey="residence_city" />
+      <GroupCard
+        icon={<MapPin className="w-4 h-4 text-blue-500" />}
+        title="Residence City"
+        items={data.residence_city}
+        onItemClick={(value) => handleAddressFilterClick('residence_city', value)}
+      />
       {/* Right column: Residence Zipcode */}
-      <GroupCard icon={<Mail className="w-4 h-4 text-purple-500" />} title="Residence Zipcode" items={data.residence_zipcode} groupKey="residence_zipcode" />
+      <GroupCard
+        icon={<Mail className="w-4 h-4 text-purple-500" />}
+        title="Residence Zipcode"
+        items={data.residence_zipcode}
+        onItemClick={(value) => handleAddressFilterClick('residence_zipcode', value)}
+      />
     </div>
   );
 }
