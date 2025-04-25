@@ -55,7 +55,7 @@ function CensusSection() {
     return <div className="text-muted-foreground text-sm">No data available.</div>;
   }
 
-  function GroupCard({ icon, title, items, filterKey }: { icon: React.ReactNode; title: string; items: any[]; filterKey: keyof FilterState }) {
+  function GroupCard({ icon, title, items }: { icon: React.ReactNode; title: string; items: any[] }) {
     if (!items || items.length === 0) return null;
     return (
       <Card className="w-full">
@@ -69,14 +69,7 @@ function CensusSection() {
           <ul className="divide-y divide-border">
             {items.map((item: any) => (
               <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
-                <button
-                  type="button"
-                  className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
-                  title={`Filter by ${item.label}`}
-                  onClick={() => handleArrayFilterClick(filterKey, item.label)}
-                >
-                  {item.label}
-                </button>
+                <span className="truncate text-foreground" title={item.label}>{item.label}</span>
                 <span className="font-mono text-[10px] text-muted-foreground font-light">
                   {item.count.toLocaleString()}
                 </span>
@@ -90,7 +83,7 @@ function CensusSection() {
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      <GroupCard icon={<Globe className="w-4 h-4 text-blue-500" />} title="Census Tract" items={data.census_tract} filterKey="censusTract" />
+      <GroupCard icon={<Globe className="w-4 h-4 text-blue-500" />} title="Census Tract" items={data.census_tract} />
     </div>
   );
 }
