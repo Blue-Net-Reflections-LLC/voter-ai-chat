@@ -77,12 +77,13 @@ To create a dashboard of aggregate totals based on the applied filters.
     - [x] Style using Tailwind, shadcn/ui, and Radix as per codebase conventions
 
 - [ ] **Implement section-based lazy loading and data integration**
-    - [ ] Voting Info
-        - [ ] API call for Voting Info aggregates
-        - [ ] Show loading spinner while fetching
-        - [ ] Display aggregate counts/labels
-        - [ ] Handle empty state
+    - [x] Voting Info
+        - [x] API call for Voting Info aggregates
+        - [x] Show loading spinner while fetching
+        - [x] Display aggregate counts/labels
+        - [x] Handle empty state
         - [ ] Enable filter interaction (click to filter)
+        - [x] UI/UX and data integration for Voting Info complete
     - [ ] Districts
         - [ ] API call for Districts aggregates
         - [ ] Show loading spinner while fetching

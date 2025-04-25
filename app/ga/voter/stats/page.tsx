@@ -4,8 +4,9 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, BadgeCheck, AlertCircle, MapPin, Mail, ListChecks } from "lucide-react";
-import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider";
+import { useVoterFilterContext, buildQueryParams, FILTER_TO_URL_PARAM_MAP } from "../VoterFilterProvider";
 import { cn } from "@/lib/utils";
+import type { FilterState } from "../list/types";
 
 function StatsSection({ title, children }: { title: string; children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -29,7 +30,7 @@ function StatsSection({ title, children }: { title: string; children: React.Reac
 }
 
 function VotingInfoSection() {
-  const { filters, residenceAddressFilters, filtersHydrated } = useVoterFilterContext();
+  const { filters, residenceAddressFilters, filtersHydrated, setFilters, setResidenceAddressFilters, updateFilter } = useVoterFilterContext();
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -66,6 +67,14 @@ function VotingInfoSection() {
     return activeCount + inactiveCount;
   }, [data]);
 
+  // Helper to handle filter click for array filters
+  function handleArrayFilterClick(filterKey: keyof FilterState, value: string) {
+    const prev = (filters[filterKey] as string[]) || [];
+    if (prev.includes(value)) return; // Prevent duplicates
+    const newValue = [...prev, value];
+    updateFilter(filterKey, newValue);
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80px] text-muted-foreground text-sm">
@@ -81,19 +90,25 @@ function VotingInfoSection() {
   }
 
   // Helper to render a group card
-  function GroupCard({ icon, title, items }: { icon: React.ReactNode; title: string; items: any[] }) {
+  function GroupCard({ icon, title, items, groupKey }: { icon: React.ReactNode; title: string; items: any[]; groupKey: keyof FilterState }) {
     if (!items || items.length === 0) return null;
     return (
       <Card className="w-full">
         <CardHeader className="flex flex-row items-center gap-2 py-1.5 px-3">
-          {icon}
           <CardTitle className="text-xs font-semibold text-primary tracking-tight">{title}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
             {items.map((item: any) => (
               <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
-                <span className="truncate" title={item.label}>{item.label}</span>
+                <button
+                  type="button"
+                  className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer"
+                  title={`Filter by ${item.label}`}
+                  onClick={() => handleArrayFilterClick(groupKey, item.label)}
+                >
+                  {item.label}
+                </button>
                 <span className="font-mono text-[10px] text-muted-foreground font-light">{item.count.toLocaleString()}</span>
               </li>
             ))}
@@ -124,13 +139,13 @@ function VotingInfoSection() {
             </CardContent>
           </Card>
         )}
-        <GroupCard icon={<BadgeCheck className="w-4 h-4 text-green-600" />} title="Status" items={data.status} />
-        <GroupCard icon={<AlertCircle className="w-4 h-4 text-yellow-500" />} title="Status Reason" items={data.status_reason} />
+        <GroupCard icon={<BadgeCheck className="w-4 h-4 text-green-600" />} title="Status" items={data.status} groupKey="status" />
+        <GroupCard icon={<AlertCircle className="w-4 h-4 text-yellow-500" />} title="Status Reason" items={data.status_reason} groupKey="status_reason" />
       </div>
       {/* Middle column: Residence City */}
-      <GroupCard icon={<MapPin className="w-4 h-4 text-blue-500" />} title="Residence City" items={data.residence_city} />
+      <GroupCard icon={<MapPin className="w-4 h-4 text-blue-500" />} title="Residence City" items={data.residence_city} groupKey="residence_city" />
       {/* Right column: Residence Zipcode */}
-      <GroupCard icon={<Mail className="w-4 h-4 text-purple-500" />} title="Residence Zipcode" items={data.residence_zipcode} />
+      <GroupCard icon={<Mail className="w-4 h-4 text-purple-500" />} title="Residence Zipcode" items={data.residence_zipcode} groupKey="residence_zipcode" />
     </div>
   );
 }
