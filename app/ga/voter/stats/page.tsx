@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import VotingInfoSection from "./VotingInfoSection";
 import DistrictsSection from "./DistrictsSection";
 import StatsSection from "./StatsSection";
+import DemographicsSection from "./DemographicsSection";
 
 export default function StatsDashboardPage() {
   return (
@@ -17,9 +18,7 @@ export default function StatsDashboardPage() {
         <DistrictsSection />
       </StatsSection>
       <StatsSection title="DEMOGRAPHICS">
-        <div className="flex flex-col items-center justify-center min-h-[80px] text-muted-foreground text-sm">
-          <span className="animate-pulse">Loading Demographics...</span>
-        </div>
+        <DemographicsSection />
       </StatsSection>
       <StatsSection title="VOTING HISTORY">
         <div className="flex flex-col items-center justify-center min-h-[80px] text-muted-foreground text-sm">

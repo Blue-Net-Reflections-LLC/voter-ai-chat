@@ -84,12 +84,13 @@ To create a dashboard of aggregate totals based on the applied filters.
         - [x] Handle empty state
         - [x] Enable filter interaction (click to filter)
         - [x] UI/UX and data integration for Voting Info complete
-    - [ ] Districts
-        - [ ] API call for Districts aggregates
-        - [ ] Show loading spinner while fetching
-        - [ ] Display aggregate counts/labels
-        - [ ] Handle empty state
-        - [ ] Enable filter interaction (click to filter)
+    - [x] Districts
+        - [x] API call for Districts aggregates
+        - [x] Show loading spinner while fetching
+        - [x] Display aggregate counts/labels
+        - [x] Handle empty state
+        - [x] Enable filter interaction (click to filter)
+        - [x] UI/UX and data integration for Districts complete
     - [ ] Demographics
         - [ ] API call for Demographics aggregates
         - [ ] Show loading spinner while fetching

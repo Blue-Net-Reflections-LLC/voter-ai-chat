@@ -159,7 +159,7 @@ function VotingInfoSection() {
       <div className="flex flex-col gap-4">
         {totalVoters > 0 && (
           <Card className="w-full">
-            <CardHeader className="flex flex-row items-center gap-2 py-1.5 px-3">
+            <CardHeader className="flex flex-row items-center gap-2 py-3 px-3">
               <ListChecks className="w-4 h-4 text-muted-foreground" />
               <CardTitle className="text-xs font-semibold text-primary tracking-tight">Summary</CardTitle>
             </CardHeader>
