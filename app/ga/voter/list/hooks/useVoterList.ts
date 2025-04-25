@@ -142,6 +142,23 @@ export function useVoterList() {
   // Track last query params to prevent unnecessary fetches
   const lastQueryParams = useRef<string | null>(null);
   
+  // Only auto-reset page to 1 on filter change after hydration and if filters actually changed
+  const lastFilters = useRef<FilterState>(filters);
+  useEffect(() => {
+    if (!filtersHydrated) {
+      lastFilters.current = filters;
+      return;
+    }
+    if (
+      JSON.stringify(filters) !== JSON.stringify(lastFilters.current) &&
+      pagination.currentPage !== 1
+    ) {
+      setPagination(prev => ({ ...prev, currentPage: 1 }));
+    }
+    lastFilters.current = filters;
+    // eslint-disable-next-line
+  }, [filters, filtersHydrated]);
+  
   // Use addUrlParams from filter context to update URL with pagination and sort only
   useEffect(() => {
     addUrlParams({
