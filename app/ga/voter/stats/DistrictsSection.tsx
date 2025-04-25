@@ -59,7 +59,7 @@ function DistrictsSection() {
     if (!items || items.length === 0) return null;
     return (
       <Card className="w-full">
-        <CardHeader className="flex flex-row items-center gap-2 py-1.5 px-3">
+        <CardHeader className="flex flex-row items-center gap-2 py-3 px-3">
           <CardTitle className="text-xs font-semibold text-primary tracking-tight flex items-center gap-1.5">
             {icon}
             {title}
