@@ -36,7 +36,7 @@ export default function VoterLayout({
             <div className="flex flex-1 w-full min-h-0">
               {/* Fixed Sidebar - Ensure top style is correctly applied */}
               <aside 
-                className="w-1/4 min-w-[300px] max-w-[400px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
+                className="w-1/4 min-w-[300px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
                 style={{ top: FIXED_HEADER_NAV_HEIGHT }}
               >
                 <div className="h-full overflow-y-auto pb-4"> {/* Make inner div scrollable */}
