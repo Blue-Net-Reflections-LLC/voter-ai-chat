@@ -106,19 +106,20 @@ export function useVoterList() {
     filtersHydrated
   } = useVoterFilterContext();
   
-  // Use voter list context for pagination and voters
-  const { pagination, setPagination, voters, setVoters } = useVoterListContext();
+  // Use voter list context for voters
+  const { voters, setVoters } = useVoterListContext();
   
-  const [sort, setSort] = useState(() => {
-    // Initialize from URL if available
-    const sortField = searchParams.get('sortField') as SortField;
-    const sortDirection = searchParams.get('sortDirection') as SortDirection;
-    
-    return {
-      field: sortField || initialSortState.field,
-      direction: sortDirection || initialSortState.direction
-    };
-  });
+  // Hydrate pagination and sort from URL on first render
+  const [pagination, setPagination] = useState<PaginationState>(() => ({
+    currentPage: Number(searchParams.get('page')) || 1,
+    pageSize: Number(searchParams.get('pageSize')) || 25,
+    totalItems: 0,
+  }));
+  
+  const [sort, setSort] = useState(() => ({
+    field: (searchParams.get('sortField') as SortField) || initialSortState.field,
+    direction: (searchParams.get('sortDirection') as SortDirection) || initialSortState.direction,
+  }));
   
   const [isLoading, setIsLoading] = useState(false);
   
