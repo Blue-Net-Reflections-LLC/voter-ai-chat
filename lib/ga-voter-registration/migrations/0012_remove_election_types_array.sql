@@ -3,5 +3,5 @@
 
 ALTER TABLE IF EXISTS GA_VOTER_REGISTRATION_LIST
   DROP COLUMN IF EXISTS participated_election_types;
-
+ 
 DROP INDEX CONCURRENTLY IF EXISTS idx_gin_reg_list_election_types; 
