@@ -7,6 +7,7 @@ import VotingInfoSection from "./VotingInfoSection";
 import DistrictsSection from "./DistrictsSection";
 import StatsSection from "./StatsSection";
 import DemographicsSection from "./DemographicsSection";
+import VotingHistorySection from "./VotingHistorySection";
 
 export default function StatsDashboardPage() {
   return (
@@ -21,9 +22,7 @@ export default function StatsDashboardPage() {
         <DemographicsSection />
       </StatsSection>
       <StatsSection title="VOTING HISTORY">
-        <div className="flex flex-col items-center justify-center min-h-[80px] text-muted-foreground text-sm">
-          <span className="animate-pulse">Loading Voting History...</span>
-        </div>
+        <VotingHistorySection />
       </StatsSection>
       <StatsSection title="CENSUS">
         <div className="flex flex-col items-center justify-center min-h-[80px] text-muted-foreground text-sm">

@@ -33,18 +33,30 @@ export interface VoterSummaryResponse {
 // Helper to get aggregate counts for a field
 async function getAggregateCounts(field: string, table: string, whereClause: string): Promise<AggregateItem[]> {
   try {
-    // Add extra filter for non-null, non-empty values
-    const extraFilter = `(${field} IS NOT NULL AND TRIM(${field}) != '')`;
+    // List of known date fields (add more as needed)
+    const dateFields = new Set([
+      'derived_last_vote_date',
+      'registration_date',
+      'last_vote_date',
+      'last_modified_date',
+      'date_of_last_contact',
+      'voter_created_date',
+    ]);
+    // Add extra filter for non-null, non-empty values (string fields) or just non-null (date fields)
+    const extraFilter = dateFields.has(field)
+      ? `(${field} IS NOT NULL)`
+      : `(${field} IS NOT NULL AND TRIM(${field}) != '')`;
     // If whereClause is not empty, append with AND; otherwise, just use extraFilter
     const fullWhere = whereClause
       ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND`)
       : `WHERE ${extraFilter}`;
+    const orderBy = field === 'derived_last_vote_date' ? 'label DESC' : 'count DESC';
     const results = await sql.unsafe(`
       SELECT ${field} AS label, COUNT(*) AS count
       FROM ${table}
       ${fullWhere}
       GROUP BY ${field}
-      ORDER BY count DESC
+      ORDER BY ${orderBy}
       LIMIT ${AGG_LIMIT}
     `);
     return results.map((row: any) => ({
