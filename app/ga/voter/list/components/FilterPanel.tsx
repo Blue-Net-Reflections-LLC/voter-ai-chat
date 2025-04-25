@@ -19,7 +19,7 @@ import {
   ELECTION_DATE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, FilterX } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
@@ -31,7 +31,8 @@ export function FilterPanel() {
     updateFilter,
     updateResidenceAddressFilter,
     setResidenceAddressFilters,
-    clearAllFilters
+    clearAllFilters,
+    hasActiveFilters
   } = useVoterFilterContext();
 
   const {
@@ -96,6 +97,19 @@ export function FilterPanel() {
 
   return (
     <Card className="w-full h-full overflow-auto pr-2">
+      {hasActiveFilters() && (
+        <div className="px-3 py-2 border-b">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800 w-full justify-start"
+            onClick={clearAllFilters}
+          >
+            <FilterX size={14} className="mr-1.5" />
+            Clear All Filters
+          </Button>
+        </div>
+      )}
       <CardContent className="space-y-3 pt-2 px-3">
         {/* Geographic Filters */}
         <div className="space-y-4">

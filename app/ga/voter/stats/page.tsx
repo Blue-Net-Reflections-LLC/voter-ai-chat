@@ -82,7 +82,17 @@ function VotingInfoSection() {
 
       // Create a new filter if none exists
       if (!targetFilter) {
-        targetFilter = { id: crypto.randomUUID() };
+        targetFilter = { 
+          id: crypto.randomUUID(),
+          residence_street_number: '',
+          residence_pre_direction: '',
+          residence_street_name: '',
+          residence_street_type: '',
+          residence_post_direction: '',
+          residence_apt_unit_number: '',
+          residence_city: '',
+          residence_zipcode: '' 
+        };
         updatedFilters[0] = targetFilter;
       }
 

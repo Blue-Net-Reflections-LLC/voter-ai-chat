@@ -24,7 +24,6 @@ interface ResultsPanelProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onSort: (field: SortField) => void;
-  onClearFilters?: () => void;
 }
 
 export function ResultsPanel({
@@ -37,7 +36,6 @@ export function ResultsPanel({
   onPageChange,
   onPageSizeChange,
   onSort,
-  onClearFilters
 }: ResultsPanelProps) {
   const { currentPage, pageSize, totalItems } = pagination;
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
@@ -126,52 +124,34 @@ export function ResultsPanel({
           </div>
           
           <div className="flex items-center gap-4">
-            {hasActiveFilters && onClearFilters && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={cn(
-                  "h-6 px-2 text-xs text-blue-600 hover:text-blue-800 flex items-center",
-                  isDownloadingCsv && "opacity-75 cursor-not-allowed"
-                )}
-                onClick={onClearFilters}
-                disabled={isLoading || isDownloadingCsv}
-              >
-                <FilterX size={14} className="mr-1" />
-                Clear Filters
-              </Button>
-            )}
-            
-            <div className="flex gap-3">
-              <Button
-                variant="link"
-                size="sm"
-                className={cn(
-                  "text-xs h-6 px-1",
-                  isDownloadingCsv && "opacity-75 cursor-not-allowed"
-                )}
-                disabled={isLoading || isDownloadingCsv}
-              >
-                <Printer size={14} className="mr-1"/> Print
-              </Button>
-              <Button
-                variant="link"
-                size="sm"
-                className={cn(
-                  "text-xs h-6 px-1",
-                  isDownloadingCsv && "opacity-75 cursor-not-allowed"
-                )}
-                onClick={handleDownloadCsv}
-                disabled={isLoading || isDownloadingCsv}
-              >
-                {isDownloadingCsv ? (
-                  <LoaderCircle size={14} className="mr-1 animate-spin" />
-                ) : (
-                  <Download size={14} className="mr-1"/>
-                )}
-                Download CSV {isDownloadingCsv ? '(Processing...)' : ''}
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "text-xs h-6 px-1",
+                isDownloadingCsv && "opacity-75 cursor-not-allowed"
+              )}
+              disabled={isLoading || isDownloadingCsv}
+            >
+              <Printer size={14} className="mr-1"/> Print
+            </Button>
+            <Button
+              variant="link"
+              size="sm"
+              className={cn(
+                "text-xs h-6 px-1",
+                isDownloadingCsv && "opacity-75 cursor-not-allowed"
+              )}
+              onClick={handleDownloadCsv}
+              disabled={isLoading || isDownloadingCsv}
+            >
+              {isDownloadingCsv ? (
+                <LoaderCircle size={14} className="mr-1 animate-spin" />
+              ) : (
+                <Download size={14} className="mr-1"/>
+              )}
+              Download CSV {isDownloadingCsv ? '(Processing...)' : ''}
+            </Button>
           </div>
         </div>
       </CardHeader>

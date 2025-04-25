@@ -29,7 +29,6 @@ function VoterListContent() {
       onPageChange={updatePage}
       onPageSizeChange={updatePageSize}
       onSort={updateSort}
-      onClearFilters={clearAllFilters}
     />
   );
 }
