@@ -98,12 +98,13 @@ To create a dashboard of aggregate totals based on the applied filters.
         - [x] Handle empty state
         - [x] Enable filter interaction (click to filter)
         - [x] UI/UX and data integration for Demographics complete
-    - [ ] Voting History
-        - [ ] API call for Voting History aggregates
-        - [ ] Show loading spinner while fetching
-        - [ ] Display aggregate counts/labels
-        - [ ] Handle empty state
-        - [ ] Enable filter interaction (click to filter)
+    - [x] Voting History
+        - [x] API call for Voting History aggregates
+        - [x] Show loading spinner while fetching
+        - [x] Display aggregate counts/labels
+        - [x] Handle empty state
+        - [x] Enable filter interaction (click to filter)
+        - [x] UI/UX and data integration for Voting History complete
     - [ ] Census
         - [ ] API call for Census aggregates
         - [ ] Show loading spinner while fetching
@@ -111,7 +112,7 @@ To create a dashboard of aggregate totals based on the applied filters.
         - [ ] Handle empty state
         - [ ] Enable filter interaction (click to filter)
 
-- [ ] **Add client-side search/filter for long aggregate lists**
+- [ ] **Add client-side search/filter for long aggregate lists** [Cancelled]
 - [ ] **Sync filters with the voter list filter panel**
 
 ### General/Other

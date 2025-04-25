@@ -50,7 +50,8 @@ async function getAggregateCounts(field: string, table: string, whereClause: str
     const fullWhere = whereClause
       ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND`)
       : `WHERE ${extraFilter}`;
-    const orderBy = field === 'derived_last_vote_date' ? 'label DESC' : 'count DESC';
+    const orderBy = field === 'derived_last_vote_date' ? 'label DESC' :
+      field === 'census_tract' ? 'label ASC' : 'count DESC';
     const results = await sql.unsafe(`
       SELECT ${field} AS label, COUNT(*) AS count
       FROM ${table}
