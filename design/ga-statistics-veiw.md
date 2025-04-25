@@ -49,6 +49,7 @@ To create a dashboard of aggregate totals based on the applied filters.
 ### Backend/API
 - [x] **Design API contract** for the summary/aggregate endpoint (input filters, output structure, error handling).
 - [x] **Implement new API route** for summary/aggregate data.
+    - [x] Endpoint location: `app/api/ga/voter/summary/route.ts` (call as `/api/ga/voter/summary`)
     - [x] Reuse the existing `whereClause` builder for filters.
     - [x] Add aggregation queries for each required field/section
         - [x] voting_info
@@ -57,35 +58,67 @@ To create a dashboard of aggregate totals based on the applied filters.
         - [x] voting_history
         - [x] census
     - [x] Limit results to top 500 counts per field.
-    - [ ] Optimize queries for performance (indexes, batching, etc.).
     - [x] Return all aggregates in a structure suitable for section-based lazy loading.
-- [ ] **Write tests** for the new API endpoint (unit/integration).
+- [ ] Optimize queries for performance (indexes, batching, etc.).
+- [ ] Write tests for the new API endpoint.
 
 ### Frontend/UI
-- [ ] **Create Stats/Aggregate View page** (tabbed with the listing view).
-    - [ ] Create /ga/voter/layout.tsx for shared layout (filter panel, tab navigation)
-        - [ ] Integrate FilterPanel in the sidebar, using context for state
-        - [ ] Implement tab navigation (links to /ga/voter/list and /ga/voter/stats)
-    - [ ] Create /ga/voter/list/page.tsx for the voter list
-    - [ ] Create /ga/voter/stats/page.tsx for the stats/aggregate dashboard
-    - [ ] Implement a shared filter context/provider for state sharing
-    - [ ] Implement tab navigation using links to the two routes
-    - [ ] Scaffold the new page/component for the dashboard
-- [ ] **Implement section-based lazy loading** for aggregates.
-    - [ ] Show a spinner/loading indicator for each section while loading.
-- [ ] **Build grid layout** for dashboard sections.
-    - [ ] Ensure each section is collapsible.
-    - [ ] Set max height and enable vertical auto-scroll for long lists.
-- [ ] **Display aggregate counts** for each field/label.
-    - [ ] Always show sections, even if empty (empty state UI).
-    - [ ] Add client-side search/filter for long aggregate lists.
-- [ ] **Enable filter interaction:**
-    - [ ] Clicking a label applies the filter and updates the summary.
-    - [ ] Sync filters with the voter list filter panel.
-- [ ] **Ensure mobile-friendliness** (responsive design, test on various devices).
-- [ ] **Style using Tailwind, shadcn/ui, and Radix** as per codebase conventions.
+- [x] **Create Stats/Aggregate View page** (tabbed with the listing view).
+    - [x] Create /ga/voter/layout.tsx for shared layout (filter panel, tab navigation)
+        - [x] Integrate FilterPanel in the sidebar, using context for state
+        - [x] Implement tab navigation (links to /ga/voter/list and /ga/voter/stats)
+    - [x] Create /ga/voter/list/page.tsx for the voter list
+    - [x] Create /ga/voter/stats/page.tsx for the stats/aggregate dashboard
+    - [x] Scaffold the new page/component for the dashboard
+    - [x] Build grid layout for dashboard sections
+    - [x] Ensure each section is collapsible
+    - [x] Set max height and enable vertical auto-scroll for long lists (structure in place)
+    - [x] Ensure mobile-friendliness (responsive design, test on various devices)
+    - [x] Style using Tailwind, shadcn/ui, and Radix as per codebase conventions
+
+- [ ] **Implement section-based lazy loading and data integration**
+    - [ ] Voting Info
+        - [ ] API call for Voting Info aggregates
+        - [ ] Show loading spinner while fetching
+        - [ ] Display aggregate counts/labels
+        - [ ] Handle empty state
+        - [ ] Enable filter interaction (click to filter)
+    - [ ] Districts
+        - [ ] API call for Districts aggregates
+        - [ ] Show loading spinner while fetching
+        - [ ] Display aggregate counts/labels
+        - [ ] Handle empty state
+        - [ ] Enable filter interaction (click to filter)
+    - [ ] Demographics
+        - [ ] API call for Demographics aggregates
+        - [ ] Show loading spinner while fetching
+        - [ ] Display aggregate counts/labels
+        - [ ] Handle empty state
+        - [ ] Enable filter interaction (click to filter)
+    - [ ] Voting History
+        - [ ] API call for Voting History aggregates
+        - [ ] Show loading spinner while fetching
+        - [ ] Display aggregate counts/labels
+        - [ ] Handle empty state
+        - [ ] Enable filter interaction (click to filter)
+    - [ ] Census
+        - [ ] API call for Census aggregates
+        - [ ] Show loading spinner while fetching
+        - [ ] Display aggregate counts/labels
+        - [ ] Handle empty state
+        - [ ] Enable filter interaction (click to filter)
+
+- [ ] **Add client-side search/filter for long aggregate lists**
+- [ ] **Sync filters with the voter list filter panel**
 
 ### General/Other
 - [ ] **Update documentation** (requirements, API docs, usage instructions).
 - [ ] **QA and user testing** (test all edge cases, performance, and UX).
 - [ ] **Iterate based on feedback** from stakeholders or users.
+
+---
+
+**Next step:**
+- Implement the API call and UI for the Voting Info section in the stats/aggregate dashboard.
+
+- The aggregate stats API endpoint is implemented at `app/api/ga/voter/summary/route.ts` and is called as `/api/ga/voter/summary` from the frontend.
