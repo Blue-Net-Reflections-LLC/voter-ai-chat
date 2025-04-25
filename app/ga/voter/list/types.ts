@@ -68,6 +68,7 @@ export interface FilterState {
   redistrictingAffectedTypes: string[];
   statusReason: string[];
   // Add more filter fields as needed
+  [key: string]: string | boolean | string[] | undefined;
 }
 
 export interface ResidenceAddressFilterState {

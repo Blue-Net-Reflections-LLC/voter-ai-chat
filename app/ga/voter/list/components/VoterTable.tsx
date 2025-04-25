@@ -88,20 +88,20 @@ export function VoterTable({
   onSort 
 }: VoterTableProps) {
   return (
-    <div className="w-full h-full overflow-auto">
-      <Table className="relative border-separate border-spacing-0">
-        <TableHeader className="bg-gray-900 sticky top-0 z-10">
+    <div className="w-full h-full">
+      <Table className="relative border-separate border-spacing-0 w-full h-full" style={{ tableLayout: 'fixed' }}>
+        <TableHeader>
           <TableRow className="h-7 border-b-0">
-            <TableHead className="w-[25%] py-1.5 px-3 text-white font-normal">
+            <TableHead style={{ width: '25%', position: 'sticky', top: 0, zIndex: 2, background: '#18181b' }} className="py-1.5 px-3 text-white font-normal">
               <SortButton field="id" label="Registration ID" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead className="w-[35%] py-1.5 px-3 text-white font-normal">
+            <TableHead style={{ width: '35%', position: 'sticky', top: 0, zIndex: 2, background: '#18181b' }} className="py-1.5 px-3 text-white font-normal">
               <SortButton field="name" label="Full Name" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead className="w-[20%] py-1.5 px-3 text-white font-normal">
+            <TableHead style={{ width: '20%', position: 'sticky', top: 0, zIndex: 2, background: '#18181b' }} className="py-1.5 px-3 text-white font-normal">
               <SortButton field="county" label="County" currentSort={sort} onSort={onSort} />
             </TableHead>
-            <TableHead className="w-[20%] py-1.5 px-3 text-white font-normal">
+            <TableHead style={{ width: '20%', position: 'sticky', top: 0, zIndex: 2, background: '#18181b' }} className="py-1.5 px-3 text-white font-normal">
               <SortButton field="status" label="Status" currentSort={sort} onSort={onSort} />
             </TableHead>
           </TableRow>
@@ -120,10 +120,10 @@ export function VoterTable({
               const statusProps = getStatusProps(voter.status);
               return (
                 <TableRow key={voter.id} className="h-8 border-b border-gray-800 hover:bg-gray-900/20">
-                  <TableCell className="py-1 px-3 text-xs">{voter.id}</TableCell>
-                  <TableCell className="py-1 px-3 text-xs">{voter.firstName} {voter.lastName}</TableCell>
-                  <TableCell className="py-1 px-3 text-xs">{voter.county || (voter.address?.city && `${voter.address.city}`)}</TableCell>
-                  <TableCell className="py-1 px-3">
+                  <TableCell style={{ width: '25%' }} className="py-1 px-3 text-xs">{voter.id}</TableCell>
+                  <TableCell style={{ width: '35%' }} className="py-1 px-3 text-xs">{voter.firstName} {voter.lastName}</TableCell>
+                  <TableCell style={{ width: '20%' }} className="py-1 px-3 text-xs">{voter.county || (voter.address?.city && `${voter.address.city}`)}</TableCell>
+                  <TableCell style={{ width: '20%' }} className="py-1 px-3">
                     <span className={cn("inline-flex items-center justify-center text-[10px] font-semibold rounded px-2 py-0.5", statusProps.className)}>
                       {statusProps.text.toUpperCase()}
                     </span>

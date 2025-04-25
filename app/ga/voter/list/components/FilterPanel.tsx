@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { ResidenceAddressFilter, AddressFilter } from '../ResidenceAddressFilter';
-import { FilterState, ResidenceAddressFilterState } from '../types';
+import { ResidenceAddressFilter } from '../ResidenceAddressFilter';
 import CountyMultiSelect from './CountyMultiSelect';
 import DistrictMultiSelect from './DistrictMultiSelect';
 import MultiSelect from './MultiSelect';
@@ -20,31 +19,27 @@ import {
   ELECTION_DATE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, FilterX } from "lucide-react";
 import { Button } from '@/components/ui/button';
+import { useVoterFilterContext } from '../../VoterFilterProvider';
+import { ResidenceAddressFilterState } from '../types';
 
-interface FilterPanelProps {
-  filters: FilterState;
-  residenceAddressFilters: ResidenceAddressFilterState[];
-  updateFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
-  updateResidenceAddressFilter: (id: string, key: keyof Omit<ResidenceAddressFilterState, 'id'>, value: string) => void;
-  setResidenceAddressFilters: React.Dispatch<React.SetStateAction<ResidenceAddressFilterState[]>>;
-  clearAllFilters: () => void;
-}
+export function FilterPanel() {
+  const {
+    filters,
+    residenceAddressFilters,
+    updateFilter,
+    updateResidenceAddressFilter,
+    setResidenceAddressFilters,
+    clearAllFilters,
+    hasActiveFilters
+  } = useVoterFilterContext();
 
-export function FilterPanel({
-  filters,
-  residenceAddressFilters,
-  updateFilter,
-  updateResidenceAddressFilter,
-  setResidenceAddressFilters,
-  clearAllFilters
-}: FilterPanelProps) {
-  const { 
-    isLoading, 
-    error, 
-    congressionalDistricts, 
-    stateSenateDistricts, 
+  const {
+    isLoading,
+    error,
+    congressionalDistricts,
+    stateSenateDistricts,
     stateHouseDistricts,
     parties,
     statuses,
@@ -72,13 +67,13 @@ export function FilterPanel({
   }, [filters.firstName, filters.lastName, filters.notVotedSinceYear]);
 
   // Add address filter handler (from ResidenceAddressFilter component)
-  const addAddressFilter = (filter?: AddressFilter) => {
+  const addAddressFilter = (filter?: any) => {
     if (!filter) return;
-    setResidenceAddressFilters(prev => [...prev, filter as ResidenceAddressFilterState]);
+    setResidenceAddressFilters((prev: any) => [...prev, filter]);
   };
 
   const removeAddressFilter = (id: string) => {
-    setResidenceAddressFilters(prev => prev.filter(f => f.id !== id));
+    setResidenceAddressFilters((prev: any) => prev.filter((f: any) => f.id !== id));
   };
 
   const clearAllAddressFilters = () => {
@@ -101,7 +96,20 @@ export function FilterPanel({
   };
 
   return (
-    <Card className="w-full h-full overflow-auto">
+    <Card className="w-full h-full overflow-auto pr-2">
+      {hasActiveFilters() && (
+        <div className="px-3 py-2 border-b">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800 w-full justify-start"
+            onClick={clearAllFilters}
+          >
+            <FilterX size={14} className="mr-1.5" />
+            Clear All Filters
+          </Button>
+        </div>
+      )}
       <CardContent className="space-y-3 pt-2 px-3">
         {/* Geographic Filters */}
         <div className="space-y-4">
