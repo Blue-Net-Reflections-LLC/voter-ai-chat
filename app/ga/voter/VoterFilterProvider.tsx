@@ -53,6 +53,7 @@ interface VoterFilterContextType {
   clearAllFilters: () => void;
   addUrlParams: (extraParams: Record<string, string | number>) => void;
   hasActiveFilters: () => boolean;
+  filtersHydrated: boolean;
 }
 
 const VoterFilterContext = createContext<VoterFilterContextType | undefined>(undefined);
@@ -137,6 +138,7 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
 
   const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -156,6 +158,33 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setFilters(initialFilterState);
     setResidenceAddressFilters([]);
   };
+
+  // On mount, initialize filters from URL and set filtersHydrated
+  React.useEffect(() => {
+    const newFilters: FilterState = { ...initialFilterState };
+    FILTER_URL_KEYS.forEach(key => {
+      const urlValue = searchParams.getAll(key);
+      if (urlValue.length > 0) {
+        const filterKey = Object.keys(FILTER_TO_URL_PARAM_MAP).find(k => FILTER_TO_URL_PARAM_MAP[k] === key);
+        if (filterKey) {
+          const typedKey = filterKey as keyof FilterState;
+          if (Array.isArray(initialFilterState[typedKey])) {
+            newFilters[typedKey] = urlValue as any;
+          } else if (typeof initialFilterState[typedKey] === 'boolean') {
+            newFilters[typedKey] = (urlValue[0] === 'true') as any;
+          } else {
+            newFilters[typedKey] = urlValue[0] as any;
+          }
+        }
+      }
+    });
+    setFilters(newFilters);
+    setFiltersHydrated(true);
+    // TODO: Parse address filters if present
+    // (e.g., searchParams.getAll('resident_address'))
+    // setResidenceAddressFilters(...)
+    // eslint-disable-next-line
+  }, []);
 
   // Update URL with filter params when filters or address filters change
   React.useEffect(() => {
@@ -217,7 +246,8 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
         updateResidenceAddressFilter,
         clearAllFilters,
         addUrlParams,
-        hasActiveFilters
+        hasActiveFilters,
+        filtersHydrated
       }}
     >
       {children}

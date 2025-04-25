@@ -102,7 +102,8 @@ export function useVoterList() {
     updateResidenceAddressFilter,
     clearAllFilters,
     addUrlParams,
-    hasActiveFilters
+    hasActiveFilters,
+    filtersHydrated
   } = useVoterFilterContext();
   
   // Use voter list context for pagination and voters
@@ -190,6 +191,7 @@ export function useVoterList() {
   }, [filters, residenceAddressFilters, pagination, sort]);
   
   useEffect(() => {
+    if (!filtersHydrated) return;
     const paramsString = buildQueryParams(filters, residenceAddressFilters, {
       page: pagination.currentPage,
       pageSize: pagination.pageSize,
@@ -200,7 +202,7 @@ export function useVoterList() {
       fetchVoters();
     }
     // eslint-disable-next-line
-  }, [filters, residenceAddressFilters, pagination.currentPage, pagination.pageSize, sort.field, sort.direction, searchParams]);
+  }, [filtersHydrated, filters, residenceAddressFilters, pagination.currentPage, pagination.pageSize, sort.field, sort.direction, searchParams]);
   
   // Helper functions for state updates
   const updatePage = (page: number) => {
