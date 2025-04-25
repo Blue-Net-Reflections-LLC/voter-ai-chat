@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   description: 'View and manage the list of registered voters in Georgia',
 };
 
+// Estimate combined height of fixed elements (Header + Nav)
+const FIXED_HEADER_NAV_HEIGHT = '100px'; // User specified height
+
 export default function VoterLayout({
   children,
 }: {
@@ -19,27 +22,39 @@ export default function VoterLayout({
 }) {
   return (
     <>
-      <VoterHeader />
-      <TabNavigation />
-      <VoterListProvider>
-        <VoterFilterProvider>
-          <div className="flex flex-col w-full min-h-0">
+      {/* Fixed Header and Nav */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-background shadow-sm">
+        <VoterHeader />
+        <TabNavigation />
+      </div>
+
+      {/* Apply padding-top via inline style */}
+      <div className={`w-full h-screen flex flex-col`} style={{ paddingTop: FIXED_HEADER_NAV_HEIGHT }}>
+        <VoterListProvider>
+          <VoterFilterProvider>
+            {/* Flex container for sidebar and main content */}
             <div className="flex flex-1 w-full min-h-0">
-              {/* Sidebar: Filter Panel */}
-              <aside className="w-1/4 min-w-[300px] max-w-[400px] h-[calc(100vh-101px)] border-r bg-background flex-shrink-0">
-                <div className="p0 h-full overflow-auto">
+              {/* Fixed Sidebar - Ensure top style is correctly applied */}
+              <aside 
+                className="w-1/4 min-w-[300px] max-w-[400px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
+                style={{ top: FIXED_HEADER_NAV_HEIGHT }}
+              >
+                <div className="h-full overflow-y-auto pb-4"> {/* Make inner div scrollable */}
                   <FilterPanel />
                 </div>
               </aside>
-              {/* Main content area: List or Stats view */}
-              <main className="flex-1 h-[calc(100vh-101px)] min-h-0">
+              {/* Scrollable Main content area - Ensure height and margin are correct */}
+              <main 
+                className="flex-1 overflow-y-auto ml-[25%] w-[75%]"
+                style={{ height: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})` }}
+              >
                 {children}
               </main>
             </div>
-          </div>
-          <Toaster />
-        </VoterFilterProvider>
-      </VoterListProvider>
+            <Toaster />
+          </VoterFilterProvider>
+        </VoterListProvider>
+      </div>
     </>
   );
 } 

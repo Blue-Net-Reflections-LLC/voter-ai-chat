@@ -125,7 +125,7 @@ export function ResultsPanel({
           
           <div className="flex items-center gap-4">
             <Button
-              variant="outline"
+              variant="link"
               size="sm"
               className={cn(
                 "text-xs h-6 px-1",
