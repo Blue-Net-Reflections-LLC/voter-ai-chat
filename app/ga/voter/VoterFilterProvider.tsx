@@ -178,11 +178,35 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
       }
     });
+    // Parse address filters from URL
+    const addressParams = searchParams.getAll('resident_address');
+    const addressFilters: ResidenceAddressFilterState[] = addressParams.map(param => {
+      const [
+        residence_street_number = '',
+        residence_pre_direction = '',
+        residence_street_name = '',
+        residence_street_type = '',
+        residence_post_direction = '',
+        residence_apt_unit_number = '',
+        residence_city = '',
+        residence_zipcode = ''
+      ] = param.split(',');
+      return {
+        id: crypto.randomUUID(),
+        residence_street_number,
+        residence_pre_direction,
+        residence_street_name,
+        residence_street_type,
+        residence_post_direction,
+        residence_apt_unit_number,
+        residence_city,
+        residence_zipcode
+      };
+    }).filter(f => f.residence_street_number || f.residence_street_name || f.residence_city || f.residence_zipcode);
+
     setFilters(newFilters);
+    setResidenceAddressFilters(addressFilters);
     setFiltersHydrated(true);
-    // TODO: Parse address filters if present
-    // (e.g., searchParams.getAll('resident_address'))
-    // setResidenceAddressFilters(...)
     // eslint-disable-next-line
   }, []);
 
