@@ -168,7 +168,7 @@ export function FilterPanel() {
             removeAddressFilter={removeAddressFilter}
             clearAllAddressFilters={clearAllAddressFilters}
             updateAddressFilter={(id, field, value) => {
-              updateResidenceAddressFilter(id, field as keyof ResidenceAddressFilterState, value);
+              updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
             }}
           />
         </div>

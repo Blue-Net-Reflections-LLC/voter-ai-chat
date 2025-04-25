@@ -169,11 +169,11 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (filterKey) {
           const typedKey = filterKey as keyof FilterState;
           if (Array.isArray(initialFilterState[typedKey])) {
-            newFilters[typedKey] = urlValue as any;
+            newFilters[typedKey] = urlValue as unknown as typeof initialFilterState[typeof typedKey];
           } else if (typeof initialFilterState[typedKey] === 'boolean') {
-            newFilters[typedKey] = (urlValue[0] === 'true') as any;
+            newFilters[typedKey] = (urlValue[0] === 'true') as unknown as typeof initialFilterState[typeof typedKey];
           } else {
-            newFilters[typedKey] = urlValue[0] as any;
+            newFilters[typedKey] = urlValue[0] as unknown as typeof initialFilterState[typeof typedKey];
           }
         }
       }

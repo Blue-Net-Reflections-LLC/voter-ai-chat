@@ -76,7 +76,7 @@ To create a dashboard of aggregate totals based on the applied filters.
     - [x] Ensure mobile-friendliness (responsive design, test on various devices)
     - [x] Style using Tailwind, shadcn/ui, and Radix as per codebase conventions
 
-- [ ] **Implement section-based lazy loading and data integration**
+- [x] **Implement section-based lazy loading and data integration**
     - [x] Voting Info
         - [x] API call for Voting Info aggregates
         - [x] Show loading spinner while fetching
@@ -105,12 +105,13 @@ To create a dashboard of aggregate totals based on the applied filters.
         - [x] Handle empty state
         - [x] Enable filter interaction (click to filter)
         - [x] UI/UX and data integration for Voting History complete
-    - [ ] Census
-        - [ ] API call for Census aggregates
-        - [ ] Show loading spinner while fetching
-        - [ ] Display aggregate counts/labels
-        - [ ] Handle empty state
-        - [ ] Enable filter interaction (click to filter)
+    - [x] Census
+        - [x] API call for Census aggregates
+        - [x] Show loading spinner while fetching
+        - [x] Display aggregate counts/labels
+        - [x] Handle empty state
+        - [x] Enable filter interaction (click to filter)
+        - [x] UI/UX and data integration for Census complete
 
 - [ ] **Add client-side search/filter for long aggregate lists** [Cancelled]
 - [ ] **Sync filters with the voter list filter panel**
