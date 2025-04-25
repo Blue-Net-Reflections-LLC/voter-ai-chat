@@ -6,24 +6,17 @@ import { useVoterList } from "./hooks/useVoterList";
 
 function VoterListContent() {
   const {
-    filters,
-    residenceAddressFilters,
     pagination,
     sort,
     voters,
     isLoading,
-    updateFilter,
-    updateResidenceAddressFilter,
-    setResidenceAddressFilters,
     clearAllFilters,
     updatePage,
     updatePageSize,
     updateSort,
     hasActiveFilters,
-    buildQueryParams
+    currentQueryParams
   } = useVoterList();
-
-  const currentQueryParams = buildQueryParams().toString();
 
   return (
     <ResultsPanel

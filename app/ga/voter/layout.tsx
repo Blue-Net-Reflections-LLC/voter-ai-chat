@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { VoterFilterProvider } from './VoterFilterProvider';
 import FilterPanel from './list/components/FilterPanel';
 import TabNavigation from "./TabNavigation";
+import { VoterListProvider } from "./VoterListContext";
 
 export const metadata: Metadata = {
   title: 'Voter List | Georgia Voter Registry',
@@ -20,23 +21,25 @@ export default function VoterLayout({
     <>
       <VoterHeader />
       <TabNavigation />
-      <VoterFilterProvider>
-        <div className="flex flex-col w-full min-h-0">
-          <div className="flex flex-1 w-full min-h-0">
-            {/* Sidebar: Filter Panel */}
-            <aside className="w-1/4 min-w-[300px] max-w-[400px] h-[calc(100vh-101px)] border-r bg-background flex-shrink-0">
-              <div className="p0 h-full overflow-auto">
-                <FilterPanel />
-              </div>
-            </aside>
-            {/* Main content area: List or Stats view */}
-            <main className="flex-1 h-[calc(100vh-101px)] min-h-0">
-              {children}
-            </main>
+      <VoterListProvider>
+        <VoterFilterProvider>
+          <div className="flex flex-col w-full min-h-0">
+            <div className="flex flex-1 w-full min-h-0">
+              {/* Sidebar: Filter Panel */}
+              <aside className="w-1/4 min-w-[300px] max-w-[400px] h-[calc(100vh-101px)] border-r bg-background flex-shrink-0">
+                <div className="p0 h-full overflow-auto">
+                  <FilterPanel />
+                </div>
+              </aside>
+              {/* Main content area: List or Stats view */}
+              <main className="flex-1 h-[calc(100vh-101px)] min-h-0">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-        <Toaster />
-      </VoterFilterProvider>
+          <Toaster />
+        </VoterFilterProvider>
+      </VoterListProvider>
     </>
   );
 } 

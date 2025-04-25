@@ -21,7 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from '@/components/ui/button';
-import { useVoterList } from '../hooks/useVoterList';
+import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 
 export function FilterPanel() {
@@ -32,7 +32,7 @@ export function FilterPanel() {
     updateResidenceAddressFilter,
     setResidenceAddressFilters,
     clearAllFilters
-  } = useVoterList();
+  } = useVoterFilterContext();
 
   const {
     isLoading,
@@ -154,7 +154,7 @@ export function FilterPanel() {
             removeAddressFilter={removeAddressFilter}
             clearAllAddressFilters={clearAllAddressFilters}
             updateAddressFilter={(id, field, value) => {
-              updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
+              updateResidenceAddressFilter(id, field as keyof ResidenceAddressFilterState, value);
             }}
           />
         </div>
