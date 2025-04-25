@@ -155,9 +155,6 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const clearAllFilters = () => {
     setFilters(initialFilterState);
     setResidenceAddressFilters([]);
-    // Update URL to initial state (no filters)
-    // const params = buildQueryParams(initialFilterState, []);
-    // router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   // Update URL with filter params when filters or address filters change
