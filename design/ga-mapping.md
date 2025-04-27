@@ -69,18 +69,19 @@ Task List
     - [x] Define placeholder TTL/invalidation functions.
 - [x] Task: Integrate the shared `whereClause` builder, parsing filters from URL parameters.
 - [x] Task: Implement the database query (**parallel batching**): Launch multiple (e.g., 5) concurrent workers, each fetching filtered, aggregated address data (`ST_AsGeoJSON(geom)`, `COUNT`, `JSON_AGG(...) GROUP BY geom`) using unique `LIMIT`/`OFFSET` slices.
-- [x] Task: Implement the **parallel streaming** logic: Each worker fetches its batches in a loop, formats rows as GeoJSON Features, and pushes to the shared SSE stream (`data: ...`). Use `Promise.all` to manage workers.
+- [x] Task: Implement the **parallel streaming** logic: Each worker fetches its batches in a loop, formats rows as GeoJSON Features, and pushes to the shared SSE stream (`data: ...`). Use `Promise.allSettled` to manage workers.
 - [x] Task: Add `event: end` message when all workers are complete.
 - [x] Task: Implement robust error handling for parallel workers and stream closure on client disconnect or errors.
 
 ### 3. Frontend Data Integration (SSE)
-- [ ] Task: In `MapView.tsx`, consume the shared filter context.
-- [ ] Task: Implement `useEffect` hook triggered by filter changes:
-    - Close existing `EventSource`, clear graphics layer, set loading state.
-    - Create new `EventSource` pointing to `/api/ga/voter/map-data` with current filters as query params.
-    - Define `eventSource.onmessage`: Parse GeoJSON Feature, create ArcGIS `Graphic` with geometry and attributes (`voter_ids`, `voter_count`), add graphic to map layer, store graphic reference.
-    - Define `eventSource.onerror`: Log error, potentially show UI error, close connection.
-    - Define handler for `end` event (or `onclose`): Clear loading state, calculate extent of all received graphics, call `view.goTo()` for auto-zoom.
+- [x] Task: In `MapView.tsx`, consume the shared filter context.
+- [x] Task: Implement `useEffect` hook triggered by filter changes:
+    - [x] Close existing `EventSource`, clear graphics layer, set loading state.
+    - [x] Create new `EventSource` pointing to `/api/ga/voter/map-data` with current filters as query params.
+    - [x] Define `eventSource.onmessage`: Parse GeoJSON Feature, create ArcGIS `Graphic` with geometry and attributes (`voter_ids`, `voter_count`), add graphic to map layer, store graphic reference.
+    - [x] Define `eventSource.onerror`: Log error, potentially show UI error, close connection.
+    - [x] Define handler for `end` event (or `onclose`): Clear loading state, calculate extent of all received graphics, call `view.goTo()` for auto-zoom.
+- [x] Task: Implement the loading progress bar UI element (3px height, below tabs) controlled by the SSE connection state (visible from connection open until close/end event).
 
 ### 4. Map Interactions & Features
 - [ ] Task: Implement `view.on('click', ...)` handler:

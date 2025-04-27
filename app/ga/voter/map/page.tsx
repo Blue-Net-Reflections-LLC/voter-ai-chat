@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import the MapView component
@@ -8,15 +8,24 @@ const DynamicMapView = dynamic(
   () => import('@/components/ga/voter/map/MapView'),
   {
     ssr: false, // Important: MapView relies on browser APIs, disable SSR
-    loading: () => <div className="h-full w-full flex items-center justify-center"><p>Loading Map...</p></div> // Optional loading indicator
+    loading: () => <div className="h-full w-full flex items-center justify-center"><p>Initializing Map...</p></div>
   }
 );
 
+// Simple Progress Bar Component (can be moved to its own file)
+const LoadingProgressBar = () => (
+  <div className="absolute top-0 left-0 right-0 h-[3px] bg-red-600 animate-pulse z-10">
+    {/* You could add more complex animation/styles here */}
+  </div>
+);
+
 export default function VoterMapPage() {
+  const [isMapLoading, setIsMapLoading] = useState(false);
+
   return (
-    <div className="h-full w-full">
-      {/* The dynamically loaded map component will render here */}
-      <DynamicMapView />
+    <div className="relative h-full w-full">
+      {isMapLoading && <LoadingProgressBar />}
+      <DynamicMapView onLoadingChange={setIsMapLoading} />
     </div>
   );
 } 
