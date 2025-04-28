@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// Dynamically import the MapView component
-const DynamicMapView = dynamic(
-  () => import('@/components/ga/voter/map/MapView'),
+// Dynamically import the NEW Mapbox MapView component
+const DynamicMapboxMapView = dynamic(
+  () => import('@/components/ga/voter/map/MapboxMapView'),
   {
     ssr: false, // Important: MapView relies on browser APIs, disable SSR
     loading: () => <div className="h-full w-full flex items-center justify-center"><p>Initializing Map...</p></div>
@@ -25,7 +25,7 @@ export default function VoterMapPage() {
   return (
     <div className="relative h-full w-full">
       {isMapLoading && <LoadingProgressBar />}
-      <DynamicMapView onLoadingChange={setIsMapLoading} />
+      <DynamicMapboxMapView onLoadingChange={setIsMapLoading} />
     </div>
   );
 } 

@@ -67,10 +67,10 @@ async function fetchWorkerSlice(
       // Console log is now inside getCachedBatch
     } else {
       // === Cache Miss - Query DB ===
-      console.log(`Worker ${workerIndex}: CACHE MISS. Fetching DB batch: LIMIT ${WORKER_BATCH_SIZE} OFFSET ${dbOffset}`); // Keep miss log here
+    //   console.log(`Worker ${workerIndex}: CACHE MISS. Fetching DB batch: LIMIT ${WORKER_BATCH_SIZE} OFFSET ${dbOffset}`); // Keep miss log here
       try {
          rows = await sql.unsafe<MapDataRow[]>(batchQuery);
-         console.log(`Worker ${workerIndex}: DB Batch returned ${rows.length} records.`);
+        //  console.log(`Worker ${workerIndex}: DB Batch returned ${rows.length} records.`);
          // Store successful DB result in batch cache
          setCachedBatch(batchQuery, rows); // Use default TTL
       } catch (dbError) {
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       whereClause += ` AND (${conditionsOnly})`;
     }
   }
-  console.log(`Constructed WHERE clause: ${whereClause}`);
+//   console.log(`Constructed WHERE clause: ${whereClause}`);
 
   const baseQuery = `
     SELECT
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
 
       // --- Launch Parallel Workers ---
       const workerPromises: Promise<number>[] = [];
-      console.log(`Launching ${CONCURRENCY_LEVEL} parallel workers with batch size ${WORKER_BATCH_SIZE} (Batch Caching Enabled)...`);
+    //   console.log(`Launching ${CONCURRENCY_LEVEL} parallel workers with batch size ${WORKER_BATCH_SIZE} (Batch Caching Enabled)...`);
       for (let i = 0; i < CONCURRENCY_LEVEL; i++) {
         workerPromises.push(
           fetchWorkerSlice(i, baseQuery, controller, encoder)
@@ -189,11 +189,11 @@ export async function GET(request: NextRequest) {
         });
 
         if (anyWorkerFailed) {
-           console.log(`One or more workers failed. Total records processed by successful workers: ${totalProcessed}`);
+        //    console.log(`One or more workers failed. Total records processed by successful workers: ${totalProcessed}`);
            // Send error event *after* all workers have finished attempting their work
            sendEvent(controller, encoder, 'error', { message: 'An error occurred during data fetching in one or more workers.' });
         } else {
-           console.log(`All workers finished successfully. Total records processed (DB or Cache): ${totalProcessed}`);
+        //    console.log(`All workers finished successfully. Total records processed (DB or Cache): ${totalProcessed}`);
            // Send end event *after* all workers have finished successfully
            sendEvent(controller, encoder, 'end', { totalRecordsProcessed: totalProcessed });
         }

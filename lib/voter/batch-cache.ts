@@ -15,13 +15,13 @@ const DEFAULT_TTL_SECONDS = 3600; // Cache for 1 hour (TTL itself not implemente
  */
 export function getCachedBatch<T>(sql: string): T[] | null {
   if (cache.has(sql)) {
-    console.log(`CACHE HIT (Batch): ${sql.substring(0, 100)}...`);
+//   console.log(`CACHE HIT (Batch): ${sql.substring(0, 100)}...`);
     // Retrieve as unknown[] and then assert/cast to T[]
     // This assumes the caller knows the correct type T
     const cachedValue = cache.get(sql);
     return (cachedValue as T[] | undefined) ?? null;
   }
-  console.log(`CACHE MISS (Batch): ${sql.substring(0, 100)}...`);
+//   console.log(`CACHE MISS (Batch): ${sql.substring(0, 100)}...`);
   return null;
 }
 
@@ -37,7 +37,7 @@ export function setCachedBatch<T>(
   value: T[], // Value provided is already typed T[]
   ttlSeconds: number = DEFAULT_TTL_SECONDS
 ) {
-  console.log(`CACHE SET (Batch, TTL ${ttlSeconds}s not implemented): ${sql.substring(0, 100)}...`);
+//   console.log(`CACHE SET (Batch, TTL ${ttlSeconds}s not implemented): ${sql.substring(0, 100)}...`);
   // Store the typed value; it conforms to unknown[]
   cache.set(sql, value);
   // TODO: Implement actual TTL logic if needed (e.g., using setTimeout to schedule deletion)
@@ -48,7 +48,7 @@ export function setCachedBatch<T>(
  * @param sql The exact SQL query string (cache key) to invalidate.
  */
 export function invalidateCachedBatch(sql: string) {
-  console.log(`CACHE INVALIDATE (Batch, Placeholder): ${sql.substring(0, 100)}...`);
+//   console.log(`CACHE INVALIDATE (Batch, Placeholder): ${sql.substring(0, 100)}...`);
   cache.delete(sql);
 }
 
@@ -56,6 +56,6 @@ export function invalidateCachedBatch(sql: string) {
  * Placeholder function to clear the entire batch cache.
  */
 export function clearBatchCache() {
-  console.log('CACHE CLEAR (Batch, Placeholder): Clearing entire cache.');
+//   console.log('CACHE CLEAR (Batch, Placeholder): Clearing entire cache.');
   cache.clear();
 } 
