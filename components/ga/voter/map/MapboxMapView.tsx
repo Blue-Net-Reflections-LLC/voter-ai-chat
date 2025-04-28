@@ -1,135 +1,220 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import Map, { Source, Layer, type MapRef, type ViewStateChangeEvent } from 'react-map-gl/mapbox'; // Core map components
-// import type { CircleLayer } from 'mapbox-gl'; // Import CircleLayer type from mapbox-gl types <-- Deprecated
-import type { CircleLayerSpecification } from 'mapbox-gl'; // Use CircleLayerSpecification
-import type { Feature, Point, FeatureCollection } from 'geojson'; // Import FeatureCollection
+import React, { useRef, useEffect, useCallback } from 'react';
+import Map, { Source, Layer, type MapRef, type ViewStateChangeEvent } from 'react-map-gl/mapbox';
+import type { CircleLayerSpecification } from 'mapbox-gl';
+import type { Feature, Point, FeatureCollection } from 'geojson';
+import { useMapState } from '@/context/MapStateContext'; // Import the context hook
+import { useDebounceCallback } from 'usehooks-ts'; // Corrected import hook name
 
-// Define a type for our specific Voter Address Feature properties
+// Define types for features (Keep these local or move to context if preferred)
 interface VoterAddressProperties {
-  address: string;
-  // Add other potential properties if needed
+  address?: string;
+  aggregationLevel?: 'county' | 'city' | 'zip' | 'address';
+  count?: number;
+  label?: string;
 }
-
-// Define the specific Feature type we expect
 type VoterAddressFeature = Feature<Point, VoterAddressProperties>;
 
+// Define precise type for style object (Keep local)
+type ReactMapGlCircleLayerStyle = Omit<CircleLayerSpecification, 'id' | 'type' | 'source'>;
+
+// Define component props (Remove onLoadingChange)
 interface MapboxMapViewProps {
-  onLoadingChange?: (isLoading: boolean) => void; // Keep prop for progress bar
   // Add other props as needed (e.g., map style)
 }
 
-// Define SSE Connection Status type
-type SseStatus = 'connecting' | 'open' | 'closed';
-
-// Define a more precise type for the style object passed to react-map-gl Layer
-// It omits properties handled directly by the Layer component props (id, type, source)
-type ReactMapGlCircleLayerStyle = Omit<CircleLayerSpecification, 'id' | 'type' | 'source'>;
-
-const MapboxMapView: React.FC<MapboxMapViewProps> = ({ onLoadingChange }) => {
-  // Ref uses MapRef from react-map-gl/mapbox
+// Component using the context
+const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   const mapRef = useRef<MapRef>(null);
 
-  const [viewState, setViewState] = useState({
-    longitude: -82.9,
-    latitude: 32.7,
-    zoom: 6.5 // Adjusted initial zoom slightly
-  });
+  // Get state and setters from context
+  const {
+    viewState,
+    setViewState,
+    voterFeatures,
+    setVoterFeatures,
+    sseStatus, // Keep for potential UI feedback
+    setSseStatus,
+    setIsLoading, // Use context setter for loading state
+    apiParams,
+    setApiParams,
+  } = useMapState();
 
-  // State for SSE connection status
-  const [sseStatus, setSseStatus] = useState<SseStatus>('connecting');
-  // State to store received voter address features
-  const [voterFeatures, setVoterFeatures] = useState<VoterAddressFeature[]>([]);
+  // --- Debounced function to update API params --- //
+  const debouncedSetApiParams = useDebounceCallback((newZoom: number, newBounds: mapboxgl.LngLatBounds | null) => {
+      setApiParams({ zoom: newZoom, bounds: newBounds });
+  }, 500); // Adjust debounce time as needed (e.g., 500ms)
 
+  // --- Map Event Handlers --- //
+  const handleLoad = useCallback(() => {
+    if (mapRef.current) {
+        const map = mapRef.current.getMap();
+        // Set initial API params once map is loaded
+        // Use current map state rather than initial state, in case it was modified
+        setApiParams({
+            zoom: map.getZoom(), 
+            bounds: map.getBounds()
+        });
+    }
+  }, [setApiParams]); // Only depends on the setter
+
+  const handleIdle = useCallback(() => {
+    if (mapRef.current) {
+      const map = mapRef.current.getMap();
+      const newZoom = map.getZoom();
+      const newBounds = map.getBounds();
+      // Debounce the update to avoid excessive calls during interaction
+      debouncedSetApiParams(newZoom, newBounds);
+    }
+  }, [debouncedSetApiParams]); // Corrected dependency
+
+  // --- Data Fetching Effect --- //
   useEffect(() => {
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!mapboxToken) {
         console.warn("Mapbox token (NEXT_PUBLIC_MAPBOX_TOKEN) not configured!");
     }
-    console.log("MapboxMapView component mounted - Initializing SSE");
 
-    // Correct API endpoint from design doc
-    const eventSource = new EventSource('/api/ga/voter/map-data');
+    // Don't fetch if bounds haven't been set yet (wait for onLoad)
+    if (!apiParams.bounds) {
+      console.log("Map bounds not yet available, skipping initial SSE fetch.");
+      return; 
+    }
+
+    console.log("API Params changed or initial load with bounds, fetching SSE data:", apiParams);
+    setIsLoading(true); // Set loading state via context
+    setVoterFeatures([]); // Clear previous features
+
+    // Construct API URL with filters, bounds, and zoom
+    const url = new URL('/api/ga/voter/map-data', window.location.origin); 
+    url.searchParams.append('zoom', apiParams.zoom.toFixed(2));
+    url.searchParams.append('minLng', apiParams.bounds.getWest().toString());
+    url.searchParams.append('minLat', apiParams.bounds.getSouth().toString());
+    url.searchParams.append('maxLng', apiParams.bounds.getEast().toString());
+    url.searchParams.append('maxLat', apiParams.bounds.getNorth().toString());
+
+    // TODO: Add actual user filters from filter context later
+    // url.searchParams.append('status', filters.status); 
+    // url.searchParams.append('race', filters.race);
+
+    const eventSource = new EventSource(url.toString());
     setSseStatus('connecting');
+
+    let featureBuffer: VoterAddressFeature[] = []; // Temporary buffer for incoming features
+
+    // Debounced function to update React state from buffer
+    const debouncedUpdateFeatures = () => {
+        if (featureBuffer.length > 0) {
+            setVoterFeatures(prev => [...prev, ...featureBuffer]);
+            featureBuffer = []; // Clear buffer after update
+        }
+    };
+    const throttledUpdate = setTimeout(debouncedUpdateFeatures, 100); // Throttle updates (e.g., every 100ms)
 
     eventSource.onopen = () => {
       console.log("SSE Connection Opened");
       setSseStatus('open');
-      // Maybe trigger onLoadingChange(false) here if loading was tied to SSE?
     };
 
     eventSource.onmessage = (event) => {
       try {
         const newFeature = JSON.parse(event.data) as VoterAddressFeature;
-        // Basic validation (check for geometry and type)
-        if (newFeature && newFeature.geometry && newFeature.geometry.type === 'Point' && newFeature.properties) {
-            // console.log("Received voter feature:", newFeature.properties.address);
-            // Update state - append new feature immutably
-            setVoterFeatures(prevFeatures => [...prevFeatures, newFeature]);
+        if (newFeature?.geometry?.type === 'Point' && newFeature.properties) {
+          featureBuffer.push(newFeature); // Add to buffer
+          // Schedule update (throttling handles frequency)
         } else {
-            console.warn("Received invalid feature data:", event.data);
+          console.warn("Received invalid feature data:", event.data);
         }
       } catch (error) {
         console.error("Error parsing SSE message data:", error);
       }
     };
 
+    // Custom 'end' event listener
+    eventSource.addEventListener('end', () => {
+        console.log("SSE Stream Ended by Server");
+        clearTimeout(throttledUpdate); // Clear any pending throttled update
+        debouncedUpdateFeatures(); // Update with any remaining features in buffer
+        setIsLoading(false); // Clear loading state via context
+        setSseStatus('closed');
+        eventSource.close();
+        // TODO: Implement fitBounds after data load
+        // if (mapRef.current && voterFeatures.length > 0) { ... fit bounds logic ... }
+    });
+
     eventSource.onerror = (error) => {
       console.error("SSE Error:", error);
+      clearTimeout(throttledUpdate);
+      setIsLoading(false); // Clear loading state via context
       setSseStatus('closed');
-      eventSource.close(); // Close connection on error
-      // Maybe trigger onLoadingChange(false) here and show an error message?
+      eventSource.close();
     };
 
-    // Cleanup on unmount
+    // Cleanup: close EventSource when effect re-runs or component unmounts
     return () => {
-      console.log("MapboxMapView component unmounting - Closing SSE");
+      console.log("Closing SSE connection (Cleanup)");
+      clearTimeout(throttledUpdate);
       eventSource.close();
       setSseStatus('closed');
+      // Optionally reset loading state if effect is cleaning up due to param change before 'end' or 'error'
+      // setIsLoading(false); 
     };
-  }, []); // Empty dependency array ensures this runs only once on mount
+    // Depend on apiParams (and later, user filters)
+  }, [apiParams, setVoterFeatures, setSseStatus, setIsLoading]); 
 
-  // Create FeatureCollection for the Source component
-  const voterFeatureCollection: FeatureCollection<Point, VoterAddressProperties> = {
-    type: 'FeatureCollection',
-    features: voterFeatures
-  };
-
-  // Define layer style for the circles using the precise type
+  // --- Layer Styling --- //
   const voterLayerStyle: ReactMapGlCircleLayerStyle = {
-    // id and type are props of the <Layer> component, not part of this style object
-    // source is handled by nesting <Layer> within <Source>
     paint: {
-      'circle-radius': 4, // Adjust size as needed
-      'circle-color': '#1e90ff', // Dodger blue, adjust color as needed
-      'circle-opacity': 0.7, // Slightly transparent
+      'circle-radius': [
+          'interpolate',
+          ['linear'],
+          ['get', 'count'],
+          1, 4, // If count is 1, radius is 4
+          100, 8, // If count is 100, radius is 8
+          1000, 15, // If count is 1000, radius is 15
+          10000, 25 // If count is 10000, radius is 25
+      ],
+      'circle-color': [
+          'match',
+          ['get', 'aggregationLevel'],
+          'county', '#fbb03b', // Orange for county
+          'city', '#223b53', // Dark blue for city
+          'zip', '#e55e5e', // Red for zip
+          'address', '#1e90ff', // Dodger blue for address
+          '#cccccc' // Default grey
+      ],
+      'circle-opacity': 0.7,
       'circle-stroke-width': 1,
-      'circle-stroke-color': '#ffffff' // White outline
+      'circle-stroke-color': '#ffffff'
     }
   };
 
-  // TODO: Use sseStatus to display connection status to the user?
-  // console.log("SSE Status:", sseStatus, "Features:", voterFeatures.length);
+  // Create FeatureCollection for the Source component from context state
+  const voterFeatureCollection: FeatureCollection<Point, VoterAddressProperties> = {
+    type: 'FeatureCollection',
+    features: voterFeatures // Use features from context
+  };
 
   return (
     <div style={{ height: '100%', width: '100%' }} >
       <Map
-        ref={mapRef} // Use the correctly typed ref
-        mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} 
-        {...viewState} 
-        onMove={(evt: ViewStateChangeEvent) => setViewState(evt.viewState)} 
-        style={{ width: '100%', height: '100%' }} // Move width/height back to style
-        mapStyle="mapbox://styles/mapbox/dark-v11" // Example dark style
-        // mapStyle="mapbox://styles/mapbox/streets-v12" // Example light style
+        ref={mapRef}
+        mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+        {...viewState} // Use viewState from context
+        onMove={(evt: ViewStateChangeEvent) => setViewState(evt.viewState)} // Update context viewState
+        onLoad={handleLoad} // Set initial API params on load
+        onIdle={handleIdle} // Update API params when map movement stops
+        style={{ width: '100%', height: '100%' }}
+        mapStyle="mapbox://styles/mapbox/dark-v11"
       >
-          <Source 
-            id="voter-addresses" 
+          <Source
+            id="voter-addresses"
             type="geojson"
-            data={voterFeatureCollection} 
+            data={voterFeatureCollection} // Feed data from context
           >
-            {/* Pass the specific style properties, id, and type to Layer */}
-            <Layer id="voter-points" type="circle" {...voterLayerStyle} /> 
+            <Layer id="voter-points" type="circle" {...voterLayerStyle} />
+            {/* TODO: Add layer for text labels on aggregated points */}
           </Source>
       </Map>
     </div>

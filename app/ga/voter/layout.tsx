@@ -6,6 +6,7 @@ import { VoterFilterProvider } from './VoterFilterProvider';
 import FilterPanel from './list/components/FilterPanel';
 import TabNavigation from "./TabNavigation";
 import { VoterListProvider } from "./VoterListContext";
+import { MapStateProvider } from '@/context/MapStateContext';
 
 export const metadata: Metadata = {
   title: 'Voter List | Georgia Voter Registry',
@@ -33,26 +34,28 @@ export default function VoterLayout({
         <Suspense>
           <VoterListProvider>
             <VoterFilterProvider>
-              {/* Flex container for sidebar and main content */}
-              <div className="flex flex-1 w-full min-h-0">
-                {/* Fixed Sidebar - Ensure top style is correctly applied */}
-                <aside 
-                  className="w-1/4 min-w-[300px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
-                  style={{ top: FIXED_HEADER_NAV_HEIGHT }}
-                >
-                  <div className="h-full overflow-y-auto pb-4"> {/* Make inner div scrollable */}
-                    <FilterPanel />
-                  </div>
-                </aside>
-                {/* Scrollable Main content area - Ensure height and margin are correct */}
-                <main 
-                  className="flex-1 overflow-y-auto ml-[25%] w-[75%]"
-                  style={{ height: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})` }}
-                >
-                  {children}
-                </main>
-              </div>
-              <Toaster />
+              <MapStateProvider>
+                {/* Flex container for sidebar and main content */}
+                <div className="flex flex-1 w-full min-h-0">
+                  {/* Fixed Sidebar - Ensure top style is correctly applied */}
+                  <aside 
+                    className="w-1/4 min-w-[300px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
+                    style={{ top: FIXED_HEADER_NAV_HEIGHT }}
+                  >
+                    <div className="h-full overflow-y-auto pb-4"> {/* Make inner div scrollable */}
+                      <FilterPanel />
+                    </div>
+                  </aside>
+                  {/* Scrollable Main content area - Ensure height and margin are correct */}
+                  <main 
+                    className="flex-1 overflow-y-auto ml-[25%] w-[75%]"
+                    style={{ height: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})` }}
+                  >
+                    {children}
+                  </main>
+                </div>
+                <Toaster />
+              </MapStateProvider>
             </VoterFilterProvider>
           </VoterListProvider>
         </Suspense>
