@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/voter/db'; // Ensure this path is correct
 import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause';
+import { ZOOM_COUNTY_LEVEL, ZOOM_CITY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
 
 // --- Constants ---
 const VOTER_TABLE = 'ga_voter_registration_list';
@@ -8,11 +9,6 @@ const COUNTY_TABLE = 'tl_2024_us_county';
 const PLACE_TABLE = 'tl_2024_13_place';
 const ZCTA_TABLE = 'tl_2024_us_zcta520';
 const SCHEMA_NAME = process.env.PG_VOTERDATA_SCHEMA || 'public'; // Use environment variable or default
-
-// --- Define Zoom Levels ---
-const ZOOM_COUNTY_LEVEL = 5;
-const ZOOM_CITY_LEVEL = 9;
-const ZOOM_ZIP_LEVEL = 12;
 
 // --- Interfaces ---
 interface MapDataRow {

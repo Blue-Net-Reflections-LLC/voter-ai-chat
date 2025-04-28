@@ -7,6 +7,9 @@ import mapboxgl, { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
 import type { Feature, Point, FeatureCollection } from 'geojson';
 import { useMapState } from '@/context/MapStateContext'; // Import the context hook
 import { useDebounceCallback } from 'usehooks-ts'; // Corrected import hook name
+import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider'; // Import filter context
+import type { FilterState } from '@/app/ga/voter/list/types'; // Import FilterState type
+import { ZOOM_COUNTY_LEVEL, ZOOM_CITY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
 
 // Define types for features (Keep these local or move to context if preferred)
 interface VoterAddressProperties {
@@ -28,6 +31,9 @@ interface MapboxMapViewProps {
 // Component using the context
 const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   const mapRef = useRef<MapRef>(null);
+  const isInitialLoadRef = useRef<boolean>(true); // Ref to track initial load
+  const prevFiltersRef = useRef<FilterState | null>(null); // Ref for previous filters
+  const prevApiParamsRef = useRef<{ zoom: number; bounds: mapboxgl.LngLatBounds | null } | null>(null); // Ref for previous API params
 
   // Get state and setters from context
   const {
@@ -42,6 +48,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     isFittingBounds,
     setIsFittingBounds
   } = useMapState();
+
+  // Get state from contexts
+  const { filters } = useVoterFilterContext(); // Get current filters
 
   // --- Debounced function to update API params --- //
   const debouncedSetApiParams = useDebounceCallback((newZoom: number, newBounds: mapboxgl.LngLatBounds | null) => {
@@ -95,48 +104,71 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     }
   }, [isFittingBounds, debouncedSetApiParams]); // Add isFittingBounds to dependency
 
-  // --- Data Fetching Effect (Refactored for fetch) --- //
+  // --- Data Fetching Effect --- //
   useEffect(() => {
-    // Don't fetch if bounds aren't set yet (wait for onLoad)
     if (!apiParams.bounds) {
-      console.log("Map bounds not yet available, skipping initial fetch.");
+      // console.log("Map bounds not yet available, skipping initial fetch.");
       return;
     }
 
-    const controller = new AbortController(); // Abort controller for fetch
+    // Determine if filters changed since last fetch triggered by this effect
+    const filtersString = JSON.stringify(filters);
+    const prevFiltersString = JSON.stringify(prevFiltersRef.current);
+    const filtersChanged = filtersString !== prevFiltersString;
+
+    // Determine if map view changed since last fetch triggered by this effect
+    const apiParamsString = JSON.stringify(apiParams);
+    const prevApiParamsString = JSON.stringify(prevApiParamsRef.current);
+    const mapParamsChanged = apiParamsString !== prevApiParamsString;
+
+    // Only proceed if map view changed OR filters changed
+    if (!mapParamsChanged && !filtersChanged && !isInitialLoadRef.current) {
+      // console.log("Skipping fetch: Neither map params nor filters changed significantly.");
+      return;
+    }
+
+    const controller = new AbortController();
     const signal = controller.signal;
 
     const fetchData = async () => {
-      console.log("API Params changed, fetching data:", apiParams);
+      console.log(`Fetching data. Filters changed: ${filtersChanged}, Map params changed: ${mapParamsChanged}, Initial: ${isInitialLoadRef.current}`);
       setIsLoading(true);
-      setVoterFeatures([]); // Clear previous features immediately
+      setVoterFeatures([]);
 
-      // Construct API URL
+      // Construct URL (Pass filters)
       const url = new URL('/api/ga/voter/map-data', window.location.origin);
       url.searchParams.append('zoom', apiParams.zoom.toFixed(2));
-      url.searchParams.append('minLng', apiParams.bounds!.getWest().toString()); // Use non-null assertion
+      url.searchParams.append('minLng', apiParams.bounds!.getWest().toString());
       url.searchParams.append('minLat', apiParams.bounds!.getSouth().toString());
       url.searchParams.append('maxLng', apiParams.bounds!.getEast().toString());
       url.searchParams.append('maxLat', apiParams.bounds!.getNorth().toString());
-      // TODO: Add sidebar filters here later
+
+      // --- Add Filters to URL Params --- TODO: Use buildQueryParams from VoterFilterProvider?
+      Object.entries(filters).forEach(([key, value]) => {
+          if (Array.isArray(value) && value.length > 0) {
+              value.forEach(v => url.searchParams.append(key, v)); // Use key directly for now
+          } else if (typeof value === 'string' && value) {
+              url.searchParams.set(key, value);
+          } else if (typeof value === 'boolean' && value) {
+              url.searchParams.set(key, 'true');
+          }
+      });
+      // -------------------------------------
 
       try {
-        const response = await fetch(url.toString(), { signal }); // Pass abort signal
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        const response = await fetch(url.toString(), { signal });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const geojsonData: FeatureCollection<Point, VoterAddressProperties> = await response.json();
-
         console.log(`Fetch successful, received ${geojsonData.features.length} features.`);
-
-        // Update state with fetched features
         setVoterFeatures(geojsonData.features);
         setIsLoading(false);
 
-        // --- Fit Bounds Logic (TEMPORARILY DISABLED) --- //
-        /*
-        if (mapRef.current && geojsonData.features.length > 0) {
-             console.log(`Fitting bounds to ${geojsonData.features.length} features.`);
+        // --- Conditional Fit Bounds Logic --- //
+        const shouldFitBounds = isInitialLoadRef.current || filtersChanged;
+        console.log(`Should fit bounds? Initial=${isInitialLoadRef.current}, FiltersChanged=${filtersChanged} -> ${shouldFitBounds}`);
+
+        if (shouldFitBounds && mapRef.current && geojsonData.features.length > 0) {
+             console.log(`Fitting bounds/view to ${geojsonData.features.length} features.`);
             try {
                 const bounds = geojsonData.features.reduce((bounds, feature) => {
                     if (feature?.geometry?.coordinates) {
@@ -146,22 +178,56 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                 }, new LngLatBounds());
 
                 if (!bounds.isEmpty()) {
-                    setIsFittingBounds(true);
-                    mapRef.current.fitBounds(bounds, {
-                        padding: 60, maxZoom: 16, duration: 1000
-                    });
-                    setTimeout(() => setIsFittingBounds(false), 1100);
+                    const cameraOptions = mapRef.current.cameraForBounds(bounds, { padding: 60 });
+                    if (cameraOptions) {
+                        let targetZoom = cameraOptions.zoom ?? viewState.zoom;
+                        const targetCenter = cameraOptions.center ?? {lng: viewState.longitude, lat: viewState.latitude };
+                        const currentZoomInt = Math.floor(viewState.zoom);
+                        const targetZoomInt = Math.floor(targetZoom);
+
+                        // --- Threshold Capping Logic --- //
+                        const ZOOM_THRESHOLDS = [ZOOM_COUNTY_LEVEL, ZOOM_CITY_LEVEL, ZOOM_ZIP_LEVEL];
+                        let crossedThreshold = false;
+                        for (const threshold of ZOOM_THRESHOLDS) {
+                            if (viewState.zoom < threshold && targetZoom >= threshold) {
+                                console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} crosses threshold ${threshold}. Capping zoom.`);
+                                targetZoom = threshold - 0.1; // Set zoom just below the threshold
+                                crossedThreshold = true;
+                                break; // Stop checking thresholds
+                            }
+                        }
+                        if (!crossedThreshold && targetZoom > 16) { // Also cap max zoom if needed
+                            console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} exceeds maxZoom 16. Capping zoom.`);
+                            targetZoom = 16;
+                        }
+                        // -------------------------------- //
+
+                        setIsFittingBounds(true);
+                        console.log(`Flying to center: ${JSON.stringify(targetCenter)}, capped zoom: ${targetZoom.toFixed(2)}`);
+                        mapRef.current.flyTo({
+                            center: targetCenter,
+                            zoom: targetZoom,
+                            duration: 1000 // Smooth animation
+                        });
+                        setTimeout(() => setIsFittingBounds(false), 1100); // Slightly longer than duration
+                    } else {
+                        console.warn("Could not calculate camera options for bounds.");
+                    }
+                } else {
+                     console.warn("Cannot fit view: Calculated bounds are empty.");
                 }
             } catch (error) {
-                console.error("Error during fitBounds:", error);
+                console.error("Error during fitBounds/flyTo calculation or execution:", error);
                 setIsFittingBounds(false);
             }
-        } else {
-            console.log("Skipping fitBounds: No features loaded or map not ready.");
+        } else if (shouldFitBounds) { 
+             console.log("Skipping fit view: No features loaded or map not ready.");
         }
-        */
-        console.log("Auto fitBounds after fetch is disabled."); // Log that it's disabled
-        // -------------------------------------------------- //
+        // ---------------------------------- //
+
+        // Update refs *after* successful fetch and potential fitBounds trigger
+        prevFiltersRef.current = JSON.parse(filtersString); // Store deep copy
+        isInitialLoadRef.current = false; // No longer initial load
 
       } catch (error: any) {
         if (error.name === 'AbortError') {
@@ -176,15 +242,15 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
     fetchData();
 
-    // Cleanup function to abort fetch if params change before completion
+    // Update previous API params ref immediately before cleanup
+    prevApiParamsRef.current = JSON.parse(apiParamsString); // Store deep copy
+
     return () => {
       console.log("Aborting previous fetch (cleanup)");
       controller.abort();
-      // Optionally reset loading state if needed, though typically handled by the new fetch start
-      // setIsLoading(false);
     };
-    // Depend only on apiParams (and later sidebar filters)
-  }, [apiParams, setVoterFeatures, setIsLoading, setIsFittingBounds]);
+  // Add filters to dependency array
+  }, [apiParams, filters, setVoterFeatures, setIsLoading, setIsFittingBounds, viewState.zoom, viewState.longitude, viewState.latitude]);
 
   // --- Layer Styling --- //
   const voterLayerStyle: ReactMapGlCircleLayerStyle = {
