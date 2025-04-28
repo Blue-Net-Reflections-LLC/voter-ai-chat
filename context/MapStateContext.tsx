@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, type Dispatch, type SetStateAction, type ReactNode } from 'react';
 import type { ViewState } from 'react-map-gl/mapbox';
-import type { Feature, Point, FeatureCollection } from 'geojson';
+import type { Feature, Point, FeatureCollection, Geometry } from 'geojson';
 import type mapboxgl from 'mapbox-gl'; // Import mapboxgl for LngLatBounds type
 
 // Define types from MapboxMapView for features and status
@@ -13,23 +13,22 @@ interface VoterAddressProperties {
   label?: string;
   // Add other potential properties from backend aggregation
 }
-type VoterAddressFeature = Feature<Point, VoterAddressProperties>;
+// Use generic Geometry type
+type VoterAddressFeature = Feature<Geometry, VoterAddressProperties>;
 
 // Define the shape of the state managed by the context
 interface MapState {
   viewState: ViewState;
   setViewState: Dispatch<SetStateAction<ViewState>>;
-  voterFeatures: VoterAddressFeature[];
-  setVoterFeatures: Dispatch<SetStateAction<VoterAddressFeature[]>>;
+  voterFeatures: VoterAddressFeature[]; // Use the updated type here
+  setVoterFeatures: Dispatch<SetStateAction<VoterAddressFeature[]>>; // And here
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
-  apiParams: {
-    zoom: number;
-    bounds: mapboxgl.LngLatBounds | null;
-  };
-  setApiParams: Dispatch<SetStateAction<{ zoom: number; bounds: mapboxgl.LngLatBounds | null }>>;
   isFittingBounds: boolean;
   setIsFittingBounds: Dispatch<SetStateAction<boolean>>;
+  // Keep apiParams if still needed by other parts or for future use
+  apiParams: { zoom: number; bounds: mapboxgl.LngLatBounds | null };
+  setApiParams: Dispatch<SetStateAction<{ zoom: number; bounds: mapboxgl.LngLatBounds | null }>>;
 }
 
 // Create the context with a default undefined value

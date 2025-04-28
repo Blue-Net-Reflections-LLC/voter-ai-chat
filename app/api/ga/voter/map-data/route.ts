@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/voter/db'; // Ensure this path is correct
 import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause';
-import { ZOOM_COUNTY_LEVEL, ZOOM_CITY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
+import { ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
 
 // --- Constants ---
 const VOTER_TABLE = 'ga_voter_registration_list';
@@ -17,6 +17,7 @@ interface MapDataRow {
   label: string | null;
   aggregation_level: 'county' | 'city' | 'zip' | 'address';
   voter_ids?: string[] | null;
+  id?: string; // Add optional id field for polygons
 }
 
 // --- Main GET Handler (Refactored for standard fetch) ---
@@ -52,25 +53,16 @@ export async function GET(request: NextRequest) {
     if (zoom < ZOOM_COUNTY_LEVEL) {
       aggregationLevel = 'county';
       queryString = `
-        SELECT ST_AsGeoJSON(ST_PointOnSurface(c.geom)) as geometry, 1 as count, c."NAME" as label, 'county' as aggregation_level
+        SELECT ST_AsGeoJSON(c.geom) as geometry, 1 as count, c."NAME" as label, 'county' as aggregation_level, c."GEOID" as id
         FROM public.${COUNTY_TABLE} c
         WHERE c."STATEFP" = '13' ${intersectsClause('c')}
         AND EXISTS (SELECT 1 FROM ${SCHEMA_NAME}.${VOTER_TABLE} v WHERE v.county_fips = c."GEOID" ${intersectsClause('v')} AND ${sidebarFilterConditions})
         ORDER BY label
       `;
-    } else if (zoom < ZOOM_CITY_LEVEL) {
-      aggregationLevel = 'city';
-       queryString = `
-        SELECT ST_AsGeoJSON(ST_PointOnSurface(p.geom)) as geometry, 1 as count, p."NAME" as label, 'city' as aggregation_level
-        FROM public.${PLACE_TABLE} p
-        WHERE p."STATEFP" = '13' ${intersectsClause('p')}
-        AND EXISTS (SELECT 1 FROM ${SCHEMA_NAME}.${VOTER_TABLE} v WHERE v.place_name = p."NAME" ${intersectsClause('v')} AND ${sidebarFilterConditions})
-        ORDER BY label
-      `;
     } else if (zoom < ZOOM_ZIP_LEVEL) {
       aggregationLevel = 'zip';
        queryString = `
-        SELECT ST_AsGeoJSON(ST_PointOnSurface(z.geom)) as geometry, 1 as count, z."ZCTA5CE20" as label, 'zip' as aggregation_level
+        SELECT ST_AsGeoJSON(z.geom) as geometry, 1 as count, z."ZCTA5CE20" as label, 'zip' as aggregation_level, z."ZCTA5CE20" as id
         FROM public.${ZCTA_TABLE} z
         WHERE TRUE ${intersectsClause('z')}
         AND EXISTS (SELECT 1 FROM ${SCHEMA_NAME}.${VOTER_TABLE} v WHERE v.zcta = z."ZCTA5CE20" AND ${sidebarFilterConditions})
@@ -108,6 +100,7 @@ export async function GET(request: NextRequest) {
         }
         return {
             type: 'Feature' as const, // Explicitly type as 'Feature'
+            id: row.id ?? undefined, // Include the id if it exists (for polygons)
             geometry: geometry,
             properties: {
                 count: row.count,

@@ -4,12 +4,12 @@ import React, { useRef, useEffect, useCallback, useState } from 'react';
 import Map, { Source, Layer, type MapRef, type ViewStateChangeEvent } from 'react-map-gl/mapbox';
 import type { CircleLayerSpecification } from 'mapbox-gl';
 import mapboxgl, { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
-import type { Feature, Point, FeatureCollection } from 'geojson';
+import type { Feature, Point, FeatureCollection, Geometry } from 'geojson'; // Import Geometry type
 import { useMapState } from '@/context/MapStateContext'; // Import the context hook
 import { useDebounceCallback } from 'usehooks-ts'; // Corrected import hook name
 import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider'; // Import filter context
 import type { FilterState } from '@/app/ga/voter/list/types'; // Import FilterState type
-import { ZOOM_COUNTY_LEVEL, ZOOM_CITY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
+import { ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
 
 // Define types for features (Keep these local or move to context if preferred)
 interface VoterAddressProperties {
@@ -18,7 +18,8 @@ interface VoterAddressProperties {
   count?: number;
   label?: string;
 }
-type VoterAddressFeature = Feature<Point, VoterAddressProperties>;
+// Use generic Geometry for features, as they can now be Points or Polygons/MultiPolygons
+type VoterAddressFeature = Feature<Geometry, VoterAddressProperties>;
 
 // Define precise type for style object (Keep local)
 type ReactMapGlCircleLayerStyle = Omit<CircleLayerSpecification, 'id' | 'type' | 'source'>;
@@ -188,7 +189,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
       const response = await fetch(url.toString(), { signal });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const geojsonData: FeatureCollection<Point, VoterAddressProperties> = await response.json();
+      const geojsonData: FeatureCollection<Geometry, VoterAddressProperties> = await response.json();
       // console.log(`Fetch successful, received ${geojsonData.features.length} features.`);
       
       // Store current filters to prevent redundant fetches
@@ -205,11 +206,39 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       if (shouldFitBounds && mapRef.current && geojsonData.features.length > 0) {
         // console.log(`Fitting bounds/view to ${geojsonData.features.length} features.`);
         try {
-          const bounds = geojsonData.features.reduce((bounds, feature) => {
-            if (feature?.geometry?.coordinates) {
-              return bounds.extend(feature.geometry.coordinates as [number, number]);
+          const bounds = geojsonData.features.reduce((currentBounds, feature) => {
+            if (!feature || !feature.geometry) return currentBounds;
+            
+            const geom = feature.geometry;
+            
+            // Function to extend bounds for a single coordinate pair
+            const extendBounds = (coord: number[]) => {
+              if (Array.isArray(coord) && coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1])) {
+                currentBounds.extend(coord as [number, number]);
+              }
+            };
+
+            // Function to iterate through nested coordinate arrays
+            const processCoords = (coords: any[]) => {
+              if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+                // Reached an array of points [lng, lat]
+                coords.forEach(extendBounds);
+              } else if (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
+                 // Need to go deeper
+                 coords.forEach(processCoords);
+              }
+            };
+
+            if (geom.type === 'Point') {
+              extendBounds(geom.coordinates);
+            } else if (geom.type === 'Polygon' || geom.type === 'MultiPoint') {
+              processCoords(geom.coordinates);
+            } else if (geom.type === 'MultiPolygon') {
+              geom.coordinates.forEach(processCoords); // Process each polygon within the MultiPolygon
             }
-            return bounds;
+            // Add other geometry types (LineString, MultiLineString) if needed
+
+            return currentBounds;
           }, new LngLatBounds());
 
           if (!bounds.isEmpty()) {
@@ -218,8 +247,8 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
               let targetZoom = cameraOptions.zoom ?? viewState.zoom;
               const targetCenter = cameraOptions.center ?? {lng: viewState.longitude, lat: viewState.latitude };
               
-              // Threshold Capping Logic
-              const ZOOM_THRESHOLDS = [ZOOM_COUNTY_LEVEL, ZOOM_CITY_LEVEL, ZOOM_ZIP_LEVEL];
+              // Threshold Capping Logic (Removed City Level)
+              const ZOOM_THRESHOLDS = [ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL]; // Removed City Level
               let crossedThreshold = false;
               for (const threshold of ZOOM_THRESHOLDS) {
                 if (viewState.zoom < threshold && targetZoom >= threshold) {
@@ -303,35 +332,75 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     };
   }, []);
 
-  // --- Layer Styling --- //
-  const voterLayerStyle: ReactMapGlCircleLayerStyle = {
+  // --- Layer Styling (Keep address point styling) --- //
+  const voterAddressPointStyle: ReactMapGlCircleLayerStyle = {
     paint: {
       'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['get', 'count'],
-          1, 4, // If count is 1, radius is 4
-          100, 8, // If count is 100, radius is 8
-          1000, 15, // If count is 1000, radius is 15
-          10000, 25 // If count is 10000, radius is 25
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        ZOOM_ZIP_LEVEL, 2, // At zoom 11 (start), radius is 2
+        13.99, 2,          // Just before zoom 14, radius is still 2
+        14, 4,             // At zoom 14, radius becomes 4
+        // Radius stays 4 for higher zooms
       ],
-      'circle-color': [
-          'match',
-          ['get', 'aggregationLevel'],
-          'county', '#fbb03b', // Orange for county
-          'city', '#223b53', // Dark blue for city
-          'zip', '#e55e5e', // Red for zip
-          'address', '#1e90ff', // Dodger blue for address
-          '#cccccc' // Default grey
-      ],
-      'circle-opacity': 0.7,
-      'circle-stroke-width': 1,
-      'circle-stroke-color': '#ffffff'
+      'circle-color': '#e55e5e', // Red color
+      'circle-opacity': 0.7, // Keep opacity
+      // Removed stroke properties
     }
   };
 
+  // --- Polygon Fill Styles --- //
+  // Define a color palette for zip codes
+  const zipColorPalette = [
+    '#a6cee3', '#1f78b4', '#b2df8a', '#33a02c', '#fb9a99', 
+    '#e31a1c', '#fdbf6f', '#ff7f00', '#cab2d6', '#6a3d9a'
+    // Add more colors if needed
+  ];
+  
+  const countyPolygonStyle: any = {
+    paint: {
+      'fill-color': '#fbb03b', // Orange for county
+      'fill-opacity': 0.3,
+      'fill-outline-color': '#ffffff', // White outline
+      'fill-outline-width': 1 // Added width for visibility
+    }
+  };
+  
+  const zipPolygonStyle: any = {
+    paint: {
+      // Use a match expression based on the feature ID (modulo palette size)
+      // Note: ['id'] accesses the top-level GeoJSON feature id we added in the backend
+      'fill-color': [
+        'match',
+        ['%', ['to-number', ['id']], zipColorPalette.length], // Calculate id % palette.length
+        ...zipColorPalette.flatMap((color, index) => [index, color]), // Create pairs [0, color1], [1, color2], ...
+        '#cccccc' // Default fallback color
+      ],
+      'fill-opacity': 0.4, // Slightly increased opacity
+      'fill-outline-color': '#ffffff',
+      'fill-outline-width': 1 // Added width for visibility
+    }
+  };
+
+  // --- Label Layer Style --- //
+  const zipLabelStyle: any = {
+      layout: {
+          'text-field': ['get', 'label'], // Display the ZCTA from properties.label
+          'text-size': 10,
+          'text-allow-overlap': false,
+          'symbol-placement': 'point' // Place label at the polygon's centroid (or representative point)
+      },
+      paint: {
+          'text-color': '#ffffff', // White text
+          'text-halo-color': '#000000', // Black halo
+          'text-halo-width': 1
+      }
+  };
+
   // Create FeatureCollection for the Source component from context state
-  const voterFeatureCollection: FeatureCollection<Point, VoterAddressProperties> = {
+  // Type should now be FeatureCollection<Geometry, ...>
+  const voterFeatureCollection: FeatureCollection<Geometry, VoterAddressProperties> = {
     type: 'FeatureCollection',
     features: voterFeatures // Use features from context
   };
@@ -353,8 +422,44 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             type="geojson"
             data={voterFeatureCollection} // Feed data from context
           >
-            <Layer id="voter-points" type="circle" {...voterLayerStyle} />
-            {/* TODO: Add layer for text labels on aggregated points */}
+            {/* Address Points Layer (visible only at high zoom) */}
+            <Layer 
+              id="voter-points" 
+              type="circle" 
+              minzoom={ZOOM_ZIP_LEVEL} // Only show when zoomed past zip level
+              filter={['==', ['get', 'aggregationLevel'], 'address']}
+              {...voterAddressPointStyle} 
+            />
+            
+            {/* County Polygons Layer */}
+            <Layer 
+              id="county-polygons"
+              type="fill"
+              maxzoom={ZOOM_COUNTY_LEVEL} // Visible up to county level zoom
+              filter={['==', ['get', 'aggregationLevel'], 'county']}
+              {...countyPolygonStyle}
+            />
+            
+            {/* Zip Polygons Layer */}
+            <Layer 
+              id="zip-polygons"
+              type="fill"
+              minzoom={ZOOM_COUNTY_LEVEL} // Adjusted minzoom to start after county
+              maxzoom={ZOOM_ZIP_LEVEL}
+              filter={['==', ['get', 'aggregationLevel'], 'zip']}
+              {...zipPolygonStyle}
+            />
+            
+            {/* Zip Labels Layer */}            
+            <Layer
+              id="zip-labels"
+              type="symbol"
+              minzoom={ZOOM_COUNTY_LEVEL} // Adjusted minzoom to start after county
+              maxzoom={ZOOM_ZIP_LEVEL}
+              filter={['==', ['get', 'aggregationLevel'], 'zip']}
+              {...zipLabelStyle}            
+            />
+            
           </Source>
       </Map>
     </div>
