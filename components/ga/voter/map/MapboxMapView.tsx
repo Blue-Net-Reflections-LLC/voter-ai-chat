@@ -78,12 +78,12 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       const zoomLevelChanged = currentZoomInt !== newZoomInt;
 
       if (boundsChanged || zoomLevelChanged) {
-        console.log('Significant view change detected, updating API params.');
+        // console.log('Significant view change detected, updating API params.');
         setApiParams({ zoom: newZoom, bounds: newBounds });
         
         // Only trigger bounds fetch if not in initial load and not fitting bounds
         if (!isInitialLoadRef.current && !isFittingBounds) {
-          console.log('Adding bounds change to fetch queue');
+          // console.log('Adding bounds change to fetch queue');
           setFetchTrigger({ type: 'bounds', timestamp: Date.now() });
         }
       }
@@ -111,7 +111,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   // --- Map Load Event Handler ---
   const handleLoad = useCallback(() => {
     if (mapRef.current) {
-      console.log("Map loaded");
+      // console.log("Map loaded");
       const map = mapRef.current.getMap();
       
       // Update API params on load (don't trigger a fetch directly)
@@ -124,7 +124,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       setMapReady(true);
       
       if (isInitialLoadRef.current) {
-        console.log('Queueing initial fetch on map load');
+        // console.log('Queueing initial fetch on map load');
         setFetchTrigger({ type: 'initial', timestamp: Date.now() });
       }
     }
@@ -139,7 +139,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       const filtersChanged = filtersString !== prevFiltersString;
       
       if (filtersChanged) {
-        console.log('Filters changed, adding to fetch queue');
+        // console.log('Filters changed, adding to fetch queue');
         setFetchTrigger({ type: 'filter', timestamp: Date.now() });
       }
     }
@@ -147,7 +147,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
   // --- Main fetch function ---
   const fetchData = useCallback(async (fetchType: 'initial' | 'filter' | 'bounds') => {
-    console.log(`FETCH STARTED [Type: ${fetchType}]`);
+    // console.log(`FETCH STARTED [Type: ${fetchType}]`);
     
     // Abort any in-progress fetch
     if (controllerRef.current) {
@@ -189,7 +189,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       const response = await fetch(url.toString(), { signal });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const geojsonData: FeatureCollection<Point, VoterAddressProperties> = await response.json();
-      console.log(`Fetch successful, received ${geojsonData.features.length} features.`);
+      // console.log(`Fetch successful, received ${geojsonData.features.length} features.`);
       
       // Store current filters to prevent redundant fetches
       prevFiltersRef.current = JSON.parse(JSON.stringify(filters));
@@ -200,10 +200,10 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
       // FIT BOUNDS on initial load OR filter change
       const shouldFitBounds = fetchType === 'initial' || fetchType === 'filter';
-      console.log(`Should fit bounds? ${shouldFitBounds} (${fetchType})`);
+      // console.log(`Should fit bounds? ${shouldFitBounds} (${fetchType})`);
 
       if (shouldFitBounds && mapRef.current && geojsonData.features.length > 0) {
-        console.log(`Fitting bounds/view to ${geojsonData.features.length} features.`);
+        // console.log(`Fitting bounds/view to ${geojsonData.features.length} features.`);
         try {
           const bounds = geojsonData.features.reduce((bounds, feature) => {
             if (feature?.geometry?.coordinates) {
@@ -223,19 +223,19 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
               let crossedThreshold = false;
               for (const threshold of ZOOM_THRESHOLDS) {
                 if (viewState.zoom < threshold && targetZoom >= threshold) {
-                  console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} crosses threshold ${threshold}. Capping zoom.`);
+                  // console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} crosses threshold ${threshold}. Capping zoom.`);
                   targetZoom = threshold - 0.1; // Set zoom just below the threshold
                   crossedThreshold = true;
                   break; // Stop checking thresholds
                 }
               }
               if (!crossedThreshold && targetZoom > 16) { // Also cap max zoom if needed
-                console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} exceeds maxZoom 16. Capping zoom.`);
+                // console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} exceeds maxZoom 16. Capping zoom.`);
                 targetZoom = 16;
               }
 
               setIsFittingBounds(true);
-              console.log(`Flying to center: ${JSON.stringify(targetCenter)}, capped zoom: ${targetZoom.toFixed(2)}`);
+              // console.log(`Flying to center: ${JSON.stringify(targetCenter)}, capped zoom: ${targetZoom.toFixed(2)}`);
               mapRef.current.flyTo({
                 center: targetCenter,
                 zoom: targetZoom,
@@ -268,7 +268,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        console.log("Fetch aborted.");
+        // console.log("Fetch aborted.");
       } else {
         console.error("Error fetching map data:", error);
         setIsLoading(false);
@@ -282,7 +282,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   useEffect(() => {
     // Only process fetch queue when map is ready and we have a trigger
     if (mapReady && fetchTrigger.type) {
-      console.log(`Processing fetch queue: ${fetchTrigger.type}`);
+      // console.log(`Processing fetch queue: ${fetchTrigger.type}`);
       
       // Execute the fetch
       fetchData(fetchTrigger.type);
@@ -296,7 +296,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   useEffect(() => {
     return () => {
       if (controllerRef.current) {
-        console.log("Cleaning up fetch controller on unmount");
+        // console.log("Cleaning up fetch controller on unmount");
         controllerRef.current.abort();
         controllerRef.current = null;
       }
