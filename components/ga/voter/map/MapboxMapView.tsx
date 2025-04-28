@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import Map, { Source, Layer, type MapRef, type ViewStateChangeEvent } from 'react-map-gl/mapbox';
 import type { CircleLayerSpecification } from 'mapbox-gl';
+import mapboxgl, { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
 import type { Feature, Point, FeatureCollection } from 'geojson';
 import { useMapState } from '@/context/MapStateContext'; // Import the context hook
 import { useDebounceCallback } from 'usehooks-ts'; // Corrected import hook name
@@ -34,17 +35,38 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     setViewState,
     voterFeatures,
     setVoterFeatures,
-    sseStatus, // Keep for potential UI feedback
-    setSseStatus,
-    setIsLoading, // Use context setter for loading state
+    isLoading, // Get loading state from context
+    setIsLoading,
     apiParams,
     setApiParams,
+    isFittingBounds,
+    setIsFittingBounds
   } = useMapState();
 
   // --- Debounced function to update API params --- //
   const debouncedSetApiParams = useDebounceCallback((newZoom: number, newBounds: mapboxgl.LngLatBounds | null) => {
-      setApiParams({ zoom: newZoom, bounds: newBounds });
-  }, 500); // Adjust debounce time as needed (e.g., 500ms)
+      if (newBounds) {
+          const currentZoomInt = Math.floor(apiParams.zoom);
+          const newZoomInt = Math.floor(newZoom);
+          
+          // Compare bounds with a small tolerance or simpler method
+          const boundsChanged = 
+              !apiParams.bounds || 
+              Math.abs(apiParams.bounds.getWest() - newBounds.getWest()) > 0.0001 ||
+              Math.abs(apiParams.bounds.getSouth() - newBounds.getSouth()) > 0.0001 ||
+              Math.abs(apiParams.bounds.getEast() - newBounds.getEast()) > 0.0001 ||
+              Math.abs(apiParams.bounds.getNorth() - newBounds.getNorth()) > 0.0001;
+              
+          const zoomLevelChanged = currentZoomInt !== newZoomInt;
+
+          if (boundsChanged || zoomLevelChanged) {
+              console.log('Significant view change detected, updating API params.');
+              setApiParams({ zoom: newZoom, bounds: newBounds });
+          } else {
+            // console.log('Minor view change, skipping API param update.');
+          }
+      }
+  }, 500);
 
   // --- Map Event Handlers --- //
   const handleLoad = useCallback(() => {
@@ -60,108 +82,109 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   }, [setApiParams]); // Only depends on the setter
 
   const handleIdle = useCallback(() => {
+    // Prevent updating params if we are programmatically fitting bounds
+    if (isFittingBounds) {
+      // console.log('handleIdle skipped: currently fitting bounds');
+      return;
+    }
     if (mapRef.current) {
       const map = mapRef.current.getMap();
       const newZoom = map.getZoom();
       const newBounds = map.getBounds();
-      // Debounce the update to avoid excessive calls during interaction
       debouncedSetApiParams(newZoom, newBounds);
     }
-  }, [debouncedSetApiParams]); // Corrected dependency
+  }, [isFittingBounds, debouncedSetApiParams]); // Add isFittingBounds to dependency
 
-  // --- Data Fetching Effect --- //
+  // --- Data Fetching Effect (Refactored for fetch) --- //
   useEffect(() => {
-    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!mapboxToken) {
-        console.warn("Mapbox token (NEXT_PUBLIC_MAPBOX_TOKEN) not configured!");
-    }
-
-    // Don't fetch if bounds haven't been set yet (wait for onLoad)
+    // Don't fetch if bounds aren't set yet (wait for onLoad)
     if (!apiParams.bounds) {
-      console.log("Map bounds not yet available, skipping initial SSE fetch.");
-      return; 
+      console.log("Map bounds not yet available, skipping initial fetch.");
+      return;
     }
 
-    console.log("API Params changed or initial load with bounds, fetching SSE data:", apiParams);
-    setIsLoading(true); // Set loading state via context
-    setVoterFeatures([]); // Clear previous features
+    const controller = new AbortController(); // Abort controller for fetch
+    const signal = controller.signal;
 
-    // Construct API URL with filters, bounds, and zoom
-    const url = new URL('/api/ga/voter/map-data', window.location.origin); 
-    url.searchParams.append('zoom', apiParams.zoom.toFixed(2));
-    url.searchParams.append('minLng', apiParams.bounds.getWest().toString());
-    url.searchParams.append('minLat', apiParams.bounds.getSouth().toString());
-    url.searchParams.append('maxLng', apiParams.bounds.getEast().toString());
-    url.searchParams.append('maxLat', apiParams.bounds.getNorth().toString());
+    const fetchData = async () => {
+      console.log("API Params changed, fetching data:", apiParams);
+      setIsLoading(true);
+      setVoterFeatures([]); // Clear previous features immediately
 
-    // TODO: Add actual user filters from filter context later
-    // url.searchParams.append('status', filters.status); 
-    // url.searchParams.append('race', filters.race);
+      // Construct API URL
+      const url = new URL('/api/ga/voter/map-data', window.location.origin);
+      url.searchParams.append('zoom', apiParams.zoom.toFixed(2));
+      url.searchParams.append('minLng', apiParams.bounds!.getWest().toString()); // Use non-null assertion
+      url.searchParams.append('minLat', apiParams.bounds!.getSouth().toString());
+      url.searchParams.append('maxLng', apiParams.bounds!.getEast().toString());
+      url.searchParams.append('maxLat', apiParams.bounds!.getNorth().toString());
+      // TODO: Add sidebar filters here later
 
-    const eventSource = new EventSource(url.toString());
-    setSseStatus('connecting');
-
-    let featureBuffer: VoterAddressFeature[] = []; // Temporary buffer for incoming features
-
-    // Debounced function to update React state from buffer
-    const debouncedUpdateFeatures = () => {
-        if (featureBuffer.length > 0) {
-            setVoterFeatures(prev => [...prev, ...featureBuffer]);
-            featureBuffer = []; // Clear buffer after update
-        }
-    };
-    const throttledUpdate = setTimeout(debouncedUpdateFeatures, 100); // Throttle updates (e.g., every 100ms)
-
-    eventSource.onopen = () => {
-      console.log("SSE Connection Opened");
-      setSseStatus('open');
-    };
-
-    eventSource.onmessage = (event) => {
       try {
-        const newFeature = JSON.parse(event.data) as VoterAddressFeature;
-        if (newFeature?.geometry?.type === 'Point' && newFeature.properties) {
-          featureBuffer.push(newFeature); // Add to buffer
-          // Schedule update (throttling handles frequency)
-        } else {
-          console.warn("Received invalid feature data:", event.data);
+        const response = await fetch(url.toString(), { signal }); // Pass abort signal
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-      } catch (error) {
-        console.error("Error parsing SSE message data:", error);
+        const geojsonData: FeatureCollection<Point, VoterAddressProperties> = await response.json();
+
+        console.log(`Fetch successful, received ${geojsonData.features.length} features.`);
+
+        // Update state with fetched features
+        setVoterFeatures(geojsonData.features);
+        setIsLoading(false);
+
+        // --- Fit Bounds Logic (TEMPORARILY DISABLED) --- //
+        /*
+        if (mapRef.current && geojsonData.features.length > 0) {
+             console.log(`Fitting bounds to ${geojsonData.features.length} features.`);
+            try {
+                const bounds = geojsonData.features.reduce((bounds, feature) => {
+                    if (feature?.geometry?.coordinates) {
+                        return bounds.extend(feature.geometry.coordinates as [number, number]);
+                    }
+                    return bounds;
+                }, new LngLatBounds());
+
+                if (!bounds.isEmpty()) {
+                    setIsFittingBounds(true);
+                    mapRef.current.fitBounds(bounds, {
+                        padding: 60, maxZoom: 16, duration: 1000
+                    });
+                    setTimeout(() => setIsFittingBounds(false), 1100);
+                }
+            } catch (error) {
+                console.error("Error during fitBounds:", error);
+                setIsFittingBounds(false);
+            }
+        } else {
+            console.log("Skipping fitBounds: No features loaded or map not ready.");
+        }
+        */
+        console.log("Auto fitBounds after fetch is disabled."); // Log that it's disabled
+        // -------------------------------------------------- //
+
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log("Fetch aborted.");
+        } else {
+          console.error("Error fetching map data:", error);
+          setIsLoading(false);
+          setVoterFeatures([]); // Clear features on error
+        }
       }
     };
 
-    // Custom 'end' event listener
-    eventSource.addEventListener('end', () => {
-        console.log("SSE Stream Ended by Server");
-        clearTimeout(throttledUpdate); // Clear any pending throttled update
-        debouncedUpdateFeatures(); // Update with any remaining features in buffer
-        setIsLoading(false); // Clear loading state via context
-        setSseStatus('closed');
-        eventSource.close();
-        // TODO: Implement fitBounds after data load
-        // if (mapRef.current && voterFeatures.length > 0) { ... fit bounds logic ... }
-    });
+    fetchData();
 
-    eventSource.onerror = (error) => {
-      console.error("SSE Error:", error);
-      clearTimeout(throttledUpdate);
-      setIsLoading(false); // Clear loading state via context
-      setSseStatus('closed');
-      eventSource.close();
-    };
-
-    // Cleanup: close EventSource when effect re-runs or component unmounts
+    // Cleanup function to abort fetch if params change before completion
     return () => {
-      console.log("Closing SSE connection (Cleanup)");
-      clearTimeout(throttledUpdate);
-      eventSource.close();
-      setSseStatus('closed');
-      // Optionally reset loading state if effect is cleaning up due to param change before 'end' or 'error'
-      // setIsLoading(false); 
+      console.log("Aborting previous fetch (cleanup)");
+      controller.abort();
+      // Optionally reset loading state if needed, though typically handled by the new fetch start
+      // setIsLoading(false);
     };
-    // Depend on apiParams (and later, user filters)
-  }, [apiParams, setVoterFeatures, setSseStatus, setIsLoading]); 
+    // Depend only on apiParams (and later sidebar filters)
+  }, [apiParams, setVoterFeatures, setIsLoading, setIsFittingBounds]);
 
   // --- Layer Styling --- //
   const voterLayerStyle: ReactMapGlCircleLayerStyle = {

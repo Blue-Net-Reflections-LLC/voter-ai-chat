@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import dynamic from 'next/dynamic';
+import { useMapState } from '@/context/MapStateContext';
 
 // Dynamically import the NEW Mapbox MapView component
 const DynamicMapboxMapView = dynamic(
@@ -20,12 +21,12 @@ const LoadingProgressBar = () => (
 );
 
 export default function VoterMapPage() {
-  const [isMapLoading, setIsMapLoading] = useState(false);
+  const { isLoading } = useMapState();
 
   return (
     <div className="relative h-full w-full">
-      {isMapLoading && <LoadingProgressBar />}
-      <DynamicMapboxMapView onLoadingChange={setIsMapLoading} />
+      {isLoading && <LoadingProgressBar />}
+      <DynamicMapboxMapView />
     </div>
   );
 } 

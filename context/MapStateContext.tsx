@@ -14,7 +14,6 @@ interface VoterAddressProperties {
   // Add other potential properties from backend aggregation
 }
 type VoterAddressFeature = Feature<Point, VoterAddressProperties>;
-type SseStatus = 'connecting' | 'open' | 'closed';
 
 // Define the shape of the state managed by the context
 interface MapState {
@@ -22,16 +21,15 @@ interface MapState {
   setViewState: Dispatch<SetStateAction<ViewState>>;
   voterFeatures: VoterAddressFeature[];
   setVoterFeatures: Dispatch<SetStateAction<VoterAddressFeature[]>>;
-  sseStatus: SseStatus;
-  setSseStatus: Dispatch<SetStateAction<SseStatus>>;
   isLoading: boolean;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
-  // State for API parameters derived from map view
   apiParams: {
     zoom: number;
     bounds: mapboxgl.LngLatBounds | null;
   };
   setApiParams: Dispatch<SetStateAction<{ zoom: number; bounds: mapboxgl.LngLatBounds | null }>>;
+  isFittingBounds: boolean;
+  setIsFittingBounds: Dispatch<SetStateAction<boolean>>;
 }
 
 // Create the context with a default undefined value
@@ -57,24 +55,24 @@ const defaultInitialViewState: ViewState = {
 export const MapStateProvider: React.FC<MapStateProviderProps> = ({ children, initialViewState }) => {
   const [viewState, setViewState] = useState<ViewState>({ ...defaultInitialViewState, ...initialViewState });
   const [voterFeatures, setVoterFeatures] = useState<VoterAddressFeature[]>([]);
-  const [sseStatus, setSseStatus] = useState<SseStatus>('closed'); // Default to closed initially
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [apiParams, setApiParams] = useState<{ zoom: number; bounds: mapboxgl.LngLatBounds | null }>({
-    zoom: viewState.zoom, // Initialize zoom from viewState
-    bounds: null, // Bounds determined after map loads
+    zoom: viewState.zoom,
+    bounds: null,
   });
+  const [isFittingBounds, setIsFittingBounds] = useState<boolean>(false);
 
   const value = {
     viewState,
     setViewState,
     voterFeatures,
     setVoterFeatures,
-    sseStatus,
-    setSseStatus,
     isLoading,
     setIsLoading,
     apiParams,
     setApiParams,
+    isFittingBounds,
+    setIsFittingBounds,
   };
 
   return <MapStateContext.Provider value={value}>{children}</MapStateContext.Provider>;
