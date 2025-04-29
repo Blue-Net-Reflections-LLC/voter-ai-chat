@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import Map, { Source, Layer, type MapRef, type ViewStateChangeEvent } from 'react-map-gl/mapbox';
+import Map, { Source, Layer, Popup, type MapRef, type ViewStateChangeEvent, type MapMouseEvent } from 'react-map-gl/mapbox';
 import type { CircleLayerSpecification } from 'mapbox-gl';
 import mapboxgl, { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
 import type { Feature, Point, FeatureCollection, Geometry } from 'geojson'; // Import Geometry type
+import Link from 'next/link'; // Added Link for voter detail navigation
 import { useMapState } from '@/context/MapStateContext'; // Import the context hook
 import { useDebounceCallback } from 'usehooks-ts'; // Corrected import hook name
 import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider'; // Import filter context
@@ -14,7 +15,7 @@ import { ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Impo
 // Define types for features (Keep these local or move to context if preferred)
 interface VoterAddressProperties {
   address?: string;
-  aggregationLevel?: 'county' | 'city' | 'zip' | 'address';
+  aggregationLevel?: 'county' | 'zip' | 'address'; // Removed 'city'
   count?: number;
   label?: string;
 }
@@ -27,6 +28,26 @@ type ReactMapGlCircleLayerStyle = Omit<CircleLayerSpecification, 'id' | 'type' |
 // Define component props (Remove onLoadingChange)
 interface MapboxMapViewProps {
   // Add other props as needed (e.g., map style)
+}
+
+// Define type for the detail API response (or import if defined elsewhere)
+interface VoterDetail {
+  registrationNumber: string;
+  firstName: string;
+  lastName: string;
+}
+interface VoterDetailResponse {
+  address: string;
+  voters: VoterDetail[];
+}
+
+// Extended PopupInfo to include hover state
+interface PopupInfo {
+  longitude: number;
+  latitude: number;
+  address: string;
+  voters: VoterDetail[];
+  isLoading: boolean;
 }
 
 // Component using the context
@@ -45,6 +66,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   // Local state for tracking if a map is ready for fetching
   const [mapReady, setMapReady] = useState(false);
 
+  // --- Popup State --- 
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
+  
   // Get state and setters from context
   const {
     viewState,
@@ -61,7 +85,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
   // Get state from contexts
   const { filters } = useVoterFilterContext(); // Get current filters
-
+  
   // --- Update API Params Function ---
   // This ONLY updates the apiParams in context, it DOES NOT trigger fetches directly
   const updateApiParams = useCallback((newZoom: number, newBounds: mapboxgl.LngLatBounds | null) => {
@@ -140,6 +164,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       const filtersChanged = filtersString !== prevFiltersString;
       
       if (filtersChanged) {
+        // Close any open popup when filters change
+        setPopupInfo(null);
+        
         // console.log('Filters changed, adding to fetch queue');
         setFetchTrigger({ type: 'filter', timestamp: Date.now() });
       }
@@ -164,6 +191,11 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     const controller = new AbortController();
     controllerRef.current = controller;
     const signal = controller.signal;
+    
+    // Close popup when fetching new data (for bounds changes)
+    if (fetchType === 'bounds') {
+      setPopupInfo(null);
+    }
     
     setIsLoading(true);
     setVoterFeatures([]);
@@ -402,8 +434,86 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   // Type should now be FeatureCollection<Geometry, ...>
   const voterFeatureCollection: FeatureCollection<Geometry, VoterAddressProperties> = {
     type: 'FeatureCollection',
-    features: voterFeatures // Use features from context
+    // Cast voterFeatures to the correct local type definition
+    features: voterFeatures as unknown as Feature<Geometry, VoterAddressProperties>[] 
   };
+
+  // --- Function to fetch voter details for popup --- 
+  const fetchVoterDetailsForPopup = useCallback(async (address: string, lngLat: mapboxgl.LngLat) => {
+    // Set initial popup state (loading)
+    setPopupInfo({
+      longitude: lngLat.lng,
+      latitude: lngLat.lat,
+      address: 'Loading...', // Placeholder
+      voters: [],
+      isLoading: true,
+    });
+
+    try {
+      const url = new URL('/api/ga/voter/details-at-location', window.location.origin);
+      url.searchParams.append('address', address);
+      
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      const data: VoterDetailResponse = await response.json();
+
+      // Update popup with fetched data
+      setPopupInfo({
+        longitude: lngLat.lng,
+        latitude: lngLat.lat,
+        address: data.address, // Use address from API response
+        voters: data.voters,
+        isLoading: false,
+      });
+
+    } catch (error) {
+      console.error("Error fetching voter details for popup:", error);
+      // Optionally show an error message in the popup or close it
+      setPopupInfo(prev => prev ? { 
+        ...prev, 
+        address: "Error loading details.", 
+        isLoading: false 
+      } : null);
+    }
+  }, []);
+
+  // --- Handler for clicking on a voter point --- 
+  const handleVoterClick = useCallback(async (event: MapMouseEvent) => {
+    console.log('Map clicked at:', event.lngLat); // Log any map click
+    console.log('Clicked features:', event.features); // Log features under cursor
+
+    if (!event.features || event.features.length === 0) {
+      console.log('No features found at click point.');
+      return; // No feature clicked
+    }
+
+    // Only proceed if the clicked feature is from the voter-points layer
+    const voterPointFeature = event.features.find(f => f.layer?.id === 'voter-points');
+    if (!voterPointFeature) {
+      console.log('Clicked feature is not from the voter-points layer.');
+      return;
+    }
+    
+    // Cast to the correct type *after* confirming it exists
+    const clickedFeature = voterPointFeature as VoterAddressFeature;
+    const properties = clickedFeature.properties;
+    const address = properties?.label;
+    const lngLat = event.lngLat;
+
+    if (!address) {
+      console.warn('Clicked feature does not have a label (address) property.');
+      return;
+    }
+    if (!lngLat) {
+      console.warn('Could not get coordinates for clicked feature.');
+      return;
+    }
+
+    // Call the fetch function (removed isHover parameter)
+    fetchVoterDetailsForPopup(address, lngLat);
+  }, [fetchVoterDetailsForPopup]);
 
   return (
     <div style={{ height: '100%', width: '100%' }} >
@@ -413,7 +523,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         {...viewState} // Use viewState from context
         onMove={(evt: ViewStateChangeEvent) => setViewState(evt.viewState)} // Update context viewState
         onLoad={handleLoad} // Set initial API params on load
-        onIdle={handleIdle} // Update API params when map movement stops
+        onIdle={handleIdle} // Update API params when movement stops
+        onClick={handleVoterClick} // Onclick handler for map features
+        interactiveLayerIds={['voter-points']} // Specify interactive layers
         style={{ width: '100%', height: '100%' }}
         mapStyle="mapbox://styles/mapbox/dark-v11"
       >
@@ -461,6 +573,124 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             />
             
           </Source>
+
+          {/* --- Popup Rendering --- */}
+          {popupInfo && (
+            <Popup
+              longitude={popupInfo.longitude}
+              latitude={popupInfo.latitude}
+              anchor="top"
+              onClose={() => setPopupInfo(null)}
+              closeOnClick={false}
+              closeButton={true}
+              style={{ zIndex: 10 }}
+              className="voter-map-popup"
+            >
+              <div style={{ maxWidth: '300px', color: '#333' }}>
+                {/* Format address on two lines */}
+                <div style={{ 
+                  margin: '0 0 12px 0',
+                  borderBottom: '1px solid #ccc',
+                  paddingBottom: '8px',
+                  paddingRight: '5px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ marginRight: '5px', color: '#555' }}>📍</span>
+                    <div>
+                      {/* Split address into components */}
+                      {(() => {
+                        const parts = popupInfo.address.split(',');
+                        if (parts.length >= 2) {
+                          return (
+                            <>
+                              <div style={{ fontWeight: 'bold', fontSize: '1.1em', color: '#000' }}>
+                                {parts[0].trim()}
+                              </div>
+                              <div style={{ fontSize: '0.9em', color: '#555' }}>
+                                {parts.slice(1).join(',').trim()}
+                              </div>
+                            </>
+                          );
+                        } else {
+                          return <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>{popupInfo.address}</div>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rest of popup content */}
+                {popupInfo.isLoading ? (
+                  <p style={{ color: '#555' }}>Loading voters...</p>
+                ) : popupInfo.voters.length > 0 ? (
+                  <>
+                    <div style={{ 
+                      margin: '0 0 10px 0', 
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '0.9em',
+                      fontWeight: 'bold',
+                      color: '#1a56db',
+                      backgroundColor: '#e1effe',
+                      padding: '4px 8px',
+                      borderRadius: '4px'
+                    }}>
+                      <span style={{ marginRight: '5px' }}>👥</span>
+                      <span>{popupInfo.voters.length} {popupInfo.voters.length === 1 ? 'voter' : 'voters'} at this address</span>
+                    </div>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {popupInfo.voters.map((voter) => (
+                        <li key={voter.registrationNumber} style={{ marginBottom: '6px' }}>
+                          <Link href={`/ga/voter/${voter.registrationNumber}`}>
+                            <span style={{ 
+                              color: '#d33',
+                              textDecoration: 'none', 
+                              cursor: 'pointer',
+                              fontWeight: 'medium',
+                              padding: '2px 0',
+                              display: 'block'
+                            }}>
+                              <span style={{ marginRight: '5px' }}>👤</span>
+                              {voter.firstName} {voter.lastName}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p style={{ color: '#666' }}>No voters found at this address.</p>
+                )}
+              </div>
+            </Popup>
+          )}
+
+          {/* Simplified popup styling */}
+          <style jsx global>{`
+            .voter-map-popup .mapboxgl-popup-close-button {
+              color: #666;
+              background: none;
+              font-size: 18px;
+              padding: 0;
+              width: 18px;
+              height: 18px;
+              line-height: 16px;
+              right: 5px;
+              top: 4px;
+              z-index: 2;
+            }
+            
+            .voter-map-popup .mapboxgl-popup-content {
+              padding: 15px;
+              border-radius: 8px;
+              box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+              position: relative;
+            }
+
+            .voter-map-popup .mapboxgl-popup-tip {
+              border-bottom-color: white; /* For top anchored popup */
+            }
+          `}</style>
       </Map>
     </div>
   );
