@@ -71,12 +71,48 @@ export async function GET(request: NextRequest) {
     } else { // Address Level
       aggregationLevel = 'address';
       queryString = `
-        SELECT ST_AsGeoJSON(t.geom) as geometry, COUNT(t.voter_registration_number) as count,
-               CONCAT_WS(' ', NULLIF(t.residence_street_number, ''), NULLIF(t.residence_pre_direction, ''), NULLIF(t.residence_street_name, ''), NULLIF(t.residence_street_type, ''), NULLIF(t.residence_post_direction, ''), NULLIF(t.residence_apt_unit_number, '')) as label,
-               'address' as aggregation_level, JSON_AGG(t.voter_registration_number) as voter_ids
+        SELECT 
+          ST_AsGeoJSON(t.geom) as geometry, 
+          COUNT(t.voter_registration_number) as count,
+          -- Create a full address label from components, handling nulls
+          CONCAT_WS(' ', NULLIF(t.residence_street_number, ''), 
+                         NULLIF(t.residence_pre_direction, ''), 
+                         NULLIF(t.residence_street_name, ''), 
+                         NULLIF(t.residence_street_type, ''), 
+                         NULLIF(t.residence_post_direction, ''),
+                         CASE WHEN t.residence_apt_unit_number IS NOT NULL AND t.residence_apt_unit_number != '' 
+                              THEN CONCAT('# ', t.residence_apt_unit_number) 
+                              ELSE NULL END) as street_address,
+          t.residence_city,
+          t.residence_zipcode,
+          -- Add a full formatted address as 'label' for frontend compatibility
+          CONCAT(
+            CONCAT_WS(' ', NULLIF(t.residence_street_number, ''), 
+                        NULLIF(t.residence_pre_direction, ''), 
+                        NULLIF(t.residence_street_name, ''), 
+                        NULLIF(t.residence_street_type, ''), 
+                        NULLIF(t.residence_post_direction, ''),
+                        CASE WHEN t.residence_apt_unit_number IS NOT NULL AND t.residence_apt_unit_number != '' 
+                             THEN CONCAT('# ', t.residence_apt_unit_number) 
+                             ELSE NULL END),
+            ', ', t.residence_city, ', GA ', t.residence_zipcode
+          ) as label,
+          'address' as aggregation_level, 
+          JSON_AGG(t.voter_registration_number) as voter_ids
         FROM ${SCHEMA_NAME}.${VOTER_TABLE} t
         WHERE t.geom IS NOT NULL ${intersectsClause('t')} AND ${sidebarFilterConditions}
-        GROUP BY t.geom, label ORDER BY label
+        GROUP BY 
+          -- Group by all distinct address components to prevent over-grouping
+          t.geom, 
+          t.residence_street_number,
+          t.residence_pre_direction,
+          t.residence_street_name, 
+          t.residence_street_type,
+          t.residence_post_direction,
+          t.residence_apt_unit_number,
+          t.residence_city,
+          t.residence_zipcode
+        ORDER BY street_address
       `;
     }
 
