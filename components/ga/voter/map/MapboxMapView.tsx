@@ -8,7 +8,7 @@ import type { Feature, Point, FeatureCollection, Geometry } from 'geojson'; // I
 import Link from 'next/link'; // Added Link for voter detail navigation
 import { useMapState } from '@/context/MapStateContext'; // Import the context hook
 import { useDebounceCallback } from 'usehooks-ts'; // Corrected import hook name
-import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider'; // Import filter context
+import { useVoterFilterContext, buildQueryParams } from '@/app/ga/voter/VoterFilterProvider'; // Import filter context and helper
 import type { FilterState } from '@/app/ga/voter/list/types'; // Import FilterState type
 import { ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
 
@@ -84,7 +84,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   } = useMapState();
 
   // Get state from contexts
-  const { filters } = useVoterFilterContext(); // Get current filters
+  const { filters, residenceAddressFilters, filtersHydrated } = useVoterFilterContext(); // Get current filters and address filters
   
   // --- Update API Params Function ---
   // This ONLY updates the apiParams in context, it DOES NOT trigger fetches directly
@@ -173,6 +173,15 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     }
   }, [filters, mapReady]);
 
+  // --- Watch address filters and queue fetch when they change ---
+  useEffect(() => {
+    if (mapReady && !isInitialLoadRef.current) {
+      // Close any open popup when address filters change
+      setPopupInfo(null);
+      setFetchTrigger({ type: 'filter', timestamp: Date.now() });
+    }
+  }, [residenceAddressFilters, mapReady]);
+
   // --- Main fetch function ---
   const fetchData = useCallback(async (fetchType: 'initial' | 'filter' | 'bounds') => {
     // console.log(`FETCH STARTED [Type: ${fetchType}]`);
@@ -216,6 +225,16 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           url.searchParams.set(key, value);
         } else if (typeof value === 'boolean' && value) {
           url.searchParams.set(key, 'true');
+        }
+      });
+
+      // Use buildQueryParams from VoterFilterProvider to handle address filters
+      const params = buildQueryParams(filters, residenceAddressFilters);
+      params.forEach((value, key) => {
+        if (Array.isArray(value)) {
+          value.forEach(v => url.searchParams.append(key, v));
+        } else {
+          url.searchParams.append(key, value);
         }
       });
 
@@ -337,7 +356,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         controllerRef.current = null;
       }
     }
-  }, [apiParams, filters, setVoterFeatures, setIsLoading, setIsFittingBounds, viewState, setApiParams]);
+  }, [apiParams, filters, residenceAddressFilters, setVoterFeatures, setIsLoading, setIsFittingBounds, viewState, setApiParams]);
 
   // --- SINGLE EFFECT: Process fetch queue --- 
   useEffect(() => {
