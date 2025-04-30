@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Import Section Components
 import { VoterInfoSection } from "@/components/ga/voter/profile-sections/VoterInfoSection";
 import { LocationSection } from "@/components/ga/voter/profile-sections/LocationSection";
-import { DistrictsParticipationTabs } from "@/components/ga/voter/profile-sections/DistrictsParticipationTabs";
+import { DistrictsSection } from "@/components/ga/voter/profile-sections/DistrictsSection";
+import { VotingHistorySection } from "@/components/ga/voter/profile-sections/VotingHistorySection";
 import { CensusSection } from "@/components/ga/voter/profile-sections/CensusSection";
 
 // Helper hook for fetching voter profile section data
@@ -153,7 +154,7 @@ export default function VoterProfilePage() {
   return (
     <div className="container py-4 max-w-5xl mx-auto">
       {/* Back Button and Header */}
-      <div className="mb-4 flex items-center">
+      <div className="mb-8 flex items-center" id="page-top">
         <Button
           variant="ghost"
           className="p-0 mr-2 hover:bg-accent" // Added hover effect
@@ -167,30 +168,63 @@ export default function VoterProfilePage() {
         </h1>
       </div>
 
-      {/* Render Section Components */}
-      <VoterInfoSection data={infoData} loading={infoLoading} error={infoError} />
+      {/* Section Navigation - traditional sticky positioning */}
+      <div className="sticky top-0 z-50 bg-background border-b shadow-sm py-3 mb-6 -mx-4 px-4">
+        <nav className="flex space-x-6 overflow-x-auto no-scrollbar">
+          <a href="#voter-info" className="text-sm font-medium hover:text-primary whitespace-nowrap">Voter Info</a>
+          <a href="#location" className="text-sm font-medium hover:text-primary whitespace-nowrap">Location</a>
+          <a href="#voting-history" className="text-sm font-medium hover:text-primary whitespace-nowrap">Voting History</a>
+          <a href="#districts" className="text-sm font-medium hover:text-primary whitespace-nowrap">Districts</a>
+          <a href="#census" className="text-sm font-medium hover:text-primary whitespace-nowrap">Census Data</a>
+        </nav>
+      </div>
 
-      <LocationSection
-        locationData={locationData}
-        locationLoading={locationLoading}
-        locationError={locationError}
-        otherVotersData={otherVotersData?.otherVoters || []}
-        otherVotersLoading={otherVotersLoading}
-        otherVotersError={otherVotersError}
-      />
+      {/* Inline style for no-scrollbar */}
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
 
-      <DistrictsParticipationTabs
-        districtsData={districtsData}
-        districtsLoading={districtsLoading}
-        districtsError={districtsError}
-        participationData={participationData}
-        participationLoading={participationLoading}
-        participationError={participationError}
-        // Pass representatives data here later
-      />
+      {/* Render Section Components with IDs for navigation */}
+      <div id="voter-info">
+        <VoterInfoSection data={infoData} loading={infoLoading} error={infoError} />
+      </div>
 
-      <CensusSection data={censusData} loading={censusLoading} error={censusError} />
+      <div id="location">
+        <LocationSection
+          locationData={locationData}
+          locationLoading={locationLoading}
+          locationError={locationError}
+          otherVotersData={otherVotersData?.otherVoters || []}
+          otherVotersLoading={otherVotersLoading}
+          otherVotersError={otherVotersError}
+        />
+      </div>
 
+      <div id="voting-history">
+        <VotingHistorySection
+          participationData={participationData}
+          participationLoading={participationLoading}
+          participationError={participationError}
+        />
+      </div>
+
+      <div id="districts">
+        <DistrictsSection
+          districtsData={districtsData}
+          districtsLoading={districtsLoading}
+          districtsError={districtsError}
+        />
+      </div>
+
+      <div id="census">
+        <CensusSection data={censusData} loading={censusLoading} error={censusError} />
+      </div>
     </div>
   );
 } 
