@@ -18,6 +18,8 @@ Location
 - Voter Resident Address
 - Voter Mailing Address
 - A static map image showing the voter's zoomed-in location (if available). *Future: Add link to interactive map page.*
+  - **Static Map Implementation:** The map will be generated using the Mapbox Static Images API. The frontend component will construct the URL using the voter's longitude and latitude (obtained from the `geom` field via the profile API). A suitable zoom level (e.g., 15), map dimensions (e.g., 300x200), the `dark-v11` style, and a marker overlay (e.g., `pin-s+e55e5e({lon},{lat})`) will be included. The public Mapbox access token (`NEXT_PUBLIC_MAPBOX_TOKEN`) will be appended. The final URL will be used as the `src` for an `<img>` tag.
+  - **Note:** The backend API must extract longitude and latitude from the `geom` field (using `ST_X(geom)` and `ST_Y(geom)`) and include them in the response.
 - List of other voters at the resident address (names and registration numbers with links to their profiles).
 - Included in redistricting (Yes/No flag, potentially listing affected districts if applicable).
 
@@ -65,7 +67,7 @@ Location
 | County Name                     | `county_name`                                                 |     `[ ]`      |
 | Voter Resident Address          | `residence_street_number`, `residence_pre_direction`, etc.    |     `[ ]`      |
 | Voter Mailing Address           | `mailing_street_number`, `_name`, `_apt_unit_number`, `_city`, `_zipcode`, `_state`, `_country` | `[ ]` |
-| Static Map Image                | *Frontend Placeholder / Future Mapbox Static API call*        |      N/A       |
+| Static Map Image                | *Mapbox Static Images API (See Implementation Note above)*    |      N/A       |
 | Other Voters at Address         | Query `ga_voter_registration_list` on address components      |     `[ ]`      |
 | Included in Redistricting     | `redistricting_cong_affected`, `_senate_`, `_house_` flags  |     `[ ]`      |
 | **Precincts & Districts**       |                                                               |                |
@@ -73,11 +75,26 @@ Location
 | County Precinct Description     | `county_precinct_description`                                 |     `[ ]`      |
 | Municipal Precinct              | `municipal_precinct`                                          |     `[ ]`      |
 | Congressional District          | `congressional_district`                                      |     `[ ]`      |
-|   - Representative(s)           | *Live Backend Call (e.g., LegiEquity)*                        |     `[ ]`      |
+|   - Representative(s)           | *Live Backend Call (e.g., LegiEquity /api/impact)*            |     `[ ]`      |
+|     - Name (linked)             | `name` field from LegiEquity response, link to `/sponsor/{id}/{slug}` | `[ ]` |
+|     - Party                     | `party_name` field from LegiEquity response                 |     `[ ]`      |
+|     - District                  | `district` field from LegiEquity response                   |     `[ ]`      |
+|     - Chamber                   | `chamber` field from LegiEquity response                    |     `[ ]`      |
+|     - Role                      | `role` field from LegiEquity response                       |     `[ ]`      |
 | State Senate District           | `state_senate_district`                                       |     `[ ]`      |
-|   - Representative(s)           | *Live Backend Call (e.g., LegiEquity)*                        |     `[ ]`      |
+|   - Representative(s)           | *Live Backend Call (e.g., LegiEquity /api/impact)*            |     `[ ]`      |
+|     - Name (linked)             | `name` field from LegiEquity response, link to `/sponsor/{id}/{slug}` | `[ ]` |
+|     - Party                     | `party_name` field from LegiEquity response                 |     `[ ]`      |
+|     - District                  | `district` field from LegiEquity response                   |     `[ ]`      |
+|     - Chamber                   | `chamber` field from LegiEquity response                    |     `[ ]`      |
+|     - Role                      | `role` field from LegiEquity response                       |     `[ ]`      |
 | State House District            | `state_house_district`                                        |     `[ ]`      |
-|   - Representative(s)           | *Live Backend Call (e.g., LegiEquity)*                        |     `[ ]`      |
+|   - Representative(s)           | *Live Backend Call (e.g., LegiEquity /api/impact)*            |     `[ ]`      |
+|     - Name (linked)             | `name` field from LegiEquity response, link to `/sponsor/{id}/{slug}` | `[ ]` |
+|     - Party                     | `party_name` field from LegiEquity response                 |     `[ ]`      |
+|     - District                  | `district` field from LegiEquity response                   |     `[ ]`      |
+|     - Chamber                   | `chamber` field from LegiEquity response                    |     `[ ]`      |
+|     - Role                      | `role` field from LegiEquity response                       |     `[ ]`      |
 | Judicial District               | `judicial_district`                                           |     `[ ]`      |
 | Municipality                    | `municipality`                                                |     `[ ]`      |
 | **Voter Participation**         | (Data retrieved from `voting_events` JSONB in `ga_voter_registration_list`, derived from `GA_VOTER_HISTORY`) | |
@@ -138,7 +155,7 @@ Schemas used for the voter data:
  - Related external data should be fetched by the backend API during the request:
    - **Representatives:** Fetched via live calls to an external service (e.g., LegiEquity) based on the voter's districts.
    - **Census Data:** Fetched via live calls to the Census API using the voter's stored Census Tract ID.
- - The frontend will make a single call to the primary endpoint to retrieve all necessary data for the profile page.
+ - The frontend will initiate asynchronous requests to fetch data for the different profile sections upon page load.
  
 +## Task List
 +### 1. Backend API (`/api/ga/voter/profile/[registration-number]`)
@@ -152,7 +169,7 @@ Schemas used for the voter data:
   - [ ] Include county code and name.
 +- [ ] Task: Fetch voter participation history (`voting_events` JSONB) and format it.
 +- [ ] Task: Fetch list of other voters at the same residence address.
-  - [ ] Query `ga_voter_registration_list` based on shared address components (carefully handle components like apt number).
+  - [ ] Query `ga_voter_registration_list` based on shared address components (`residence_street_number`, `residence_pre_direction`, `residence_street_name`, `residence_street_type`, `residence_post_direction`, `residence_city`, `residence_zipcode`, and potentially `residence_apt_unit_number` - handle nulls/variations carefully).
   - [ ] Include only `registration_number`, `first_name`, `last_name` for the other voters.
 +- [ ] Task: Integrate live call to fetch Representative data (placeholder for external service call based on districts).
 +- [ ] Task: Integrate live call to fetch Census data (placeholder for Census API call using `ucgid` from voter record).
@@ -161,31 +178,36 @@ Schemas used for the voter data:
 +
 +### 2. Frontend Page Structure
 +- [ ] Task: Create the page file (`app/ga/voter/profile/[registration_number]/page.tsx`).
-+- [ ] Task: Implement basic page component structure.
-+- [ ] Task: Fetch data from the backend API based on the `registration_number` param.
++- [ ] Task: Implement basic page component structure (skeleton/placeholders).
++- [ ] Task: Implement asynchronous data fetching for all profile sections based on the `registration_number` param.
++   - [ ] Consider separate hooks or state management for each major data section (Info, Location, Districts, Participation, Census, Reps, Other Voters) to allow independent loading.
 +- [ ] Task: Ensure the `FilterPanel` is *not* rendered on this page (likely handled by layout modifications or conditional rendering).
 +- [ ] Task: Implement the "Back" button/link with correct navigation logic.
-+- [ ] Task: Display loading and error states.
++- [ ] Task: Display loading states (e.g., skeletons) for each section while data is fetching.
++- [ ] Task: Display error states for sections if fetching fails.
 +- [ ] Task: Set up the main layout for the profile content area.
 +
 +### 3. Frontend Data Sections
-+- [ ] Task: **Voter Information Section:** Display core voter details (Name as header, reg number, status, dates, demographics).
++- [ ] Task: **Voter Information Section:** Display core voter details once loaded.
 +- [ ] Task: **Location Section:**
-  - [ ] Display county, residence address, mailing address.
-  - [ ] Display static map image (placeholder initially, can integrate with a service like Mapbox Static Images API later if needed).
-  - [ ] Display list of other voters at the address with links.
-  - [ ] Display redistricting info.
+  - [ ] Display county, residence address, mailing address once loaded.
+  - [ ] Construct Mapbox Static Images API URL once coordinates are loaded.
+  - [ ] Display the static map `<img>` tag once the URL is constructed.
+  - [ ] Display list of other voters once loaded.
+  - [ ] Display redistricting info once loaded.
 +- [ ] Task: **Precincts & Districts Section:**
-  - [ ] Display all precinct and district names/codes.
-  - [ ] Display fetched representative names under their respective districts.
-  - [ ] Consider using Accordions/Tabs for organization.
+  - [ ] Display all precinct and district names/codes once core voter data is loaded.
+  - [ ] Under each relevant district (Congressional, State Senate, State House), display representative details:
+    - [ ] Display `name` linked to `https://legiequity.us/sponsor/{id}/{slugified-name}`.
+    - [ ] Display `party_name`, `district`, `chamber`, `role`.
+  - [ ] Consider using Accordions/Tabs for organization; display rep data once fetched.
 +- [ ] Task: **Voter Participation Section:**
-  - [ ] Display participation history in a table or list format (reverse chronological).
+  - [ ] Display participation history once loaded in a table or list format (reverse chronological).
   - [ ] Consider using an Accordion/Tab.
 +- [ ] Task: **Census Data Section:**
-  - [ ] Display fetched Census metrics (Income, Education).
-  - [ ] Handle cases where Census data might not be available.
-  - [ ] Consider using an Accordion/Tab.
+  - [ ] Display fetched Census metrics once loaded.
+  - [ ] Handle cases where Census data might not be available or the API call fails.
+  - [ ] Display Census data within its section once fetched (the entire section's loading is already async).
 +
 +### 4. Quickview Modal
 +- [ ] Task: Create a reusable `VoterQuickview` component.
@@ -201,5 +223,10 @@ Schemas used for the voter data:
 +- [ ] Task: Ensure responsiveness across different screen sizes.
 +- [ ] Task: Review layout and data presentation for clarity.
 +- [ ] Task: Add appropriate icons where needed.
+ 
++## Performance Note:
++To optimize response time, the backend API should fetch external data (Representatives, Census) asynchronously or in parallel with the primary database queries where feasible.
++ - The frontend will initiate asynchronous requests to fetch data for the different profile sections upon page load.
++ - **Performance Note:** The backend API should still be optimized (e.g., parallel/async internal calls for external data) to ensure each section's data can be returned quickly when requested by the frontend.
  
  
