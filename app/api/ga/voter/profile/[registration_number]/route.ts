@@ -24,8 +24,8 @@ const AVAILABLE_SECTIONS = Object.keys(SECTION_HANDLERS);
 export async function GET(request: NextRequest, context: { params: { registration_number: string } }) {
   const { registration_number } = await context.params;
 
-  if (!registration_number || registration_number.length !== 8) {
-    return NextResponse.json({ error: 'Valid registration number (8 digits) is required' }, { status: 400 });
+  if (!registration_number || !/^\d+$/.test(registration_number)) {
+    return NextResponse.json({ error: 'Valid numeric registration number is required' }, { status: 400 });
   }
 
   try {

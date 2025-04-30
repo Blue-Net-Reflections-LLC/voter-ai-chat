@@ -1,3 +1,5 @@
+'use client'; // Make this layout a client component
+
 import React, { Suspense } from "react";
 import { Metadata } from 'next';
 import VoterHeader from "./VoterHeader";
@@ -7,11 +9,14 @@ import FilterPanel from './list/components/FilterPanel';
 import TabNavigation from "./TabNavigation";
 import { VoterListProvider } from "./VoterListContext";
 import { MapStateProvider } from '@/context/MapStateContext';
+import { usePathname } from 'next/navigation';
 
-export const metadata: Metadata = {
+// Note: Metadata export might not work reliably in a 'use client' layout.
+// Consider moving it to a parent server component layout if needed.
+/* export const metadata: Metadata = {
   title: 'Voter List | Georgia Voter Registry',
   description: 'View and manage the list of registered voters in Georgia',
-};
+}; */
 
 // Estimate combined height of fixed elements (Header + Nav)
 const FIXED_HEADER_NAV_HEIGHT = '100px'; // User specified height
@@ -21,6 +26,9 @@ export default function VoterLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname(); // Get pathname using the hook
+  const isProfilePage = pathname.startsWith('/ga/voter/profile/');
+
   return (
     <>
       {/* Fixed Header and Nav */}
@@ -37,18 +45,20 @@ export default function VoterLayout({
               <MapStateProvider>
                 {/* Flex container for sidebar and main content */}
                 <div className="flex flex-1 w-full min-h-0">
-                  {/* Fixed Sidebar - Ensure top style is correctly applied */}
-                  <aside 
-                    className="w-1/4 min-w-[300px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
-                    style={{ top: FIXED_HEADER_NAV_HEIGHT }}
-                  >
-                    <div className="h-full overflow-y-auto pb-4"> {/* Make inner div scrollable */}
-                      <FilterPanel />
-                    </div>
-                  </aside>
-                  {/* Scrollable Main content area - Ensure height and margin are correct */}
+                  {/* Conditionally render sidebar */}
+                  {!isProfilePage && (
+                    <aside 
+                      className="w-1/4 min-w-[300px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
+                      style={{ top: FIXED_HEADER_NAV_HEIGHT }}
+                    >
+                      <div className="h-full overflow-y-auto pb-4"> {/* Make inner div scrollable */}
+                        <FilterPanel />
+                      </div>
+                    </aside>
+                  )}
+                  {/* Scrollable Main content area - Adjust width/margin based on sidebar visibility */}
                   <main 
-                    className="flex-1 overflow-y-auto ml-[25%] w-[75%]"
+                    className={`flex-1 overflow-y-auto ${isProfilePage ? 'w-full' : 'ml-[25%] w-[75%]'}`}
                     style={{ height: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})` }}
                   >
                     {children}

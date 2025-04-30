@@ -16,6 +16,10 @@ export async function getVoterInfo(registration_number: string) {
   }
 
   const v = result[0];
+  // Calculate age from birth year
+  const currentYear = new Date().getFullYear();
+  const age = v.birth_year ? currentYear - v.birth_year : null;
+  
   return {
     registrationNumber: v.voter_registration_number,
     registrationDate: v.registration_date,
@@ -26,6 +30,7 @@ export async function getVoterInfo(registration_number: string) {
     lastName: v.last_name,
     suffix: v.suffix,
     birthYear: v.birth_year,
+    age: age,
     race: v.race,
     gender: v.gender,
     lastModifiedDate: v.last_modified_date,
