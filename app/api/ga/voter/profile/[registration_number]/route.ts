@@ -3,6 +3,9 @@ import { getVoterInfo } from '@/lib/voter-profile/getVoterInfo';
 import { getLocation } from '@/lib/voter-profile/getLocation';
 import { getDistricts } from '@/lib/voter-profile/getDistricts';
 import { getParticipation } from '@/lib/voter-profile/getParticipation';
+import { getOtherVoters } from '@/lib/voter-profile/getOtherVoters';
+import { getRepresentatives } from '@/lib/voter-profile/getRepresentatives';
+import { getCensusData } from '@/lib/voter-profile/getCensusData';
 
 // Define available section handlers
 const SECTION_HANDLERS: Record<string, (regNum: string) => Promise<any>> = {
@@ -10,6 +13,9 @@ const SECTION_HANDLERS: Record<string, (regNum: string) => Promise<any>> = {
   location: getLocation,
   districts: getDistricts,
   participation: getParticipation,
+  otherVoters: getOtherVoters,
+  representatives: getRepresentatives,
+  census: getCensusData,
 };
 
 // List of implemented sections for documentation

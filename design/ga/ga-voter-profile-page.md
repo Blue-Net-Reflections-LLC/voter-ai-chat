@@ -20,7 +20,12 @@ Location
 - A static map image showing the voter's zoomed-in location (if available). *Future: Add link to interactive map page.*
   - **Static Map Implementation:** The map will be generated using the Mapbox Static Images API. The frontend component will construct the URL using the voter's longitude and latitude (obtained from the `geom` field via the profile API). A suitable zoom level (e.g., 15), map dimensions (e.g., 300x200), the `dark-v11` style, and a marker overlay (e.g., `pin-s+e55e5e({lon},{lat})`) will be included. The public Mapbox access token (`NEXT_PUBLIC_MAPBOX_TOKEN`) will be appended. The final URL will be used as the `src` for an `<img>` tag.
   - **Note:** The backend API must extract longitude and latitude from the `geom` field (using `ST_X(geom)` and `ST_Y(geom)`) and include them in the response.
-- List of other voters at the resident address (names and registration numbers with links to their profiles).
+- List of other voters at the resident address:
+  - Full Name (with link to their profile)
+  - Registration Number
+  - Status (Active/Inactive)
+  - Gender
+  - Age (calculated from birth_year)
 - Included in redistricting (Yes/No flag, potentially listing affected districts if applicable).
 
 - Precincts & Districts
@@ -68,7 +73,7 @@ Location
 | Voter Resident Address          | `residence_street_number`, `residence_pre_direction`, etc.    |     `[ ]`      |
 | Voter Mailing Address           | `mailing_street_number`, `_name`, `_apt_unit_number`, `_city`, `_zipcode`, `_state`, `_country` | `[ ]` |
 | Static Map Image                | *Mapbox Static Images API (See Implementation Note above)*    |      N/A       |
-| Other Voters at Address         | Query `ga_voter_registration_list` on address components      |     `[ ]`      |
+| Other Voters at Address         | Query `ga_voter_registration_list` on address components, returning: registration_number, first_name, middle_name, last_name, suffix, status, gender, birth_year (for age calculation) |     `[x]`      |
 | Included in Redistricting     | `redistricting_cong_affected`, `_senate_`, `_house_` flags  |     `[ ]`      |
 | **Precincts & Districts**       |                                                               |                |
 | County Precinct                 | `county_precinct`                                             |     `[ ]`      |
@@ -157,76 +162,76 @@ Schemas used for the voter data:
    - **Census Data:** Fetched via live calls to the Census API using the voter's stored Census Tract ID.
  - The frontend will initiate asynchronous requests to fetch data for the different profile sections upon page load.
  
-+## Task List
-+### 1. Backend API (`/api/ga/voter/profile/[registration-number]`)
-+- [ ] Task: Create the API route file (`app/api/ga/voter/profile/[registration_number]/route.ts`).
-+- [ ] Task: Implement basic route handler to accept GET requests with `registration_number`.
-+- [ ] Task: Fetch core voter information (`ga_voter_registration_list`) based on registration number.
-  - [ ] Include basic fields (name, status, birth year, race, gender, registration date, modified date, creation date).
-  - [ ] Include residence and mailing address fields.
-  - [ ] Include precinct and district fields (county precinct, muni precinct, congressional, state senate, state house, judicial).
-  - [ ] Include municipality.
-  - [ ] Include county code and name.
-+- [ ] Task: Fetch voter participation history (`voting_events` JSONB) and format it.
-+- [ ] Task: Fetch list of other voters at the same residence address.
-  - [ ] Query `ga_voter_registration_list` based on shared address components (`residence_street_number`, `residence_pre_direction`, `residence_street_name`, `residence_street_type`, `residence_post_direction`, `residence_city`, `residence_zipcode`, and potentially `residence_apt_unit_number` - handle nulls/variations carefully).
-  - [ ] Include only `registration_number`, `first_name`, `last_name` for the other voters.
-+- [ ] Task: Integrate live call to fetch Representative data (placeholder for external service call based on districts).
-+- [ ] Task: Integrate live call to fetch Census data (placeholder for Census API call using `ucgid` from voter record).
-+- [ ] Task: Structure the API response JSON (e.g., nested objects for `voterInfo`, `location`, `districts`, `participation`, `otherVoters`, `representatives`, `census`).
-+- [ ] Task: Add error handling (e.g., voter not found, external API errors).
-+
-+### 2. Frontend Page Structure
-+- [ ] Task: Create the page file (`app/ga/voter/profile/[registration_number]/page.tsx`).
-+- [ ] Task: Implement basic page component structure (skeleton/placeholders).
-+- [ ] Task: Implement asynchronous data fetching for all profile sections based on the `registration_number` param.
-+   - [ ] Consider separate hooks or state management for each major data section (Info, Location, Districts, Participation, Census, Reps, Other Voters) to allow independent loading.
-+- [ ] Task: Ensure the `FilterPanel` is *not* rendered on this page (likely handled by layout modifications or conditional rendering).
-+- [ ] Task: Implement the "Back" button/link with correct navigation logic.
-+- [ ] Task: Display loading states (e.g., skeletons) for each section while data is fetching.
-+- [ ] Task: Display error states for sections if fetching fails.
-+- [ ] Task: Set up the main layout for the profile content area.
-+
-+### 3. Frontend Data Sections
-+- [ ] Task: **Voter Information Section:** Display core voter details once loaded.
-+- [ ] Task: **Location Section:**
+## Task List
+### 1. Backend API (`/api/ga/voter/profile/[registration-number]`)
+- [x] Task: Create the API route file (`app/api/ga/voter/profile/[registration_number]/route.ts`).
+- [x] Task: Implement basic route handler to accept GET requests with `registration_number`.
+- [x] Task: Fetch core voter information (`ga_voter_registration_list`) based on registration number.
+  - [x] Include basic fields (name, status, birth year, race, gender, registration date, modified date, creation date).
+  - [x] Include residence and mailing address fields.
+  - [x] Include precinct and district fields (county precinct, muni precinct, congressional, state senate, state house, judicial).
+  - [x] Include municipality.
+  - [x] Include county code and name.
+- [x] Task: Fetch voter participation history (`voting_events` JSONB) and format it.
+- [x] Task: Fetch list of other voters at the same residence address.
+  - [x] Query `ga_voter_registration_list` based on shared address components (`residence_street_number`, `residence_pre_direction`, `residence_street_name`, `residence_street_type`, `residence_post_direction`, `residence_city`, `residence_zipcode`, and potentially `residence_apt_unit_number` - handle nulls/variations carefully).
+  - [x] Include `registration_number`, `first_name`, `middle_name`, `last_name`, `suffix`, `status`, `gender`, `birth_year` for the other voters to display full name, status, gender, and calculated age.
+- [x] Task: Integrate live call to fetch Representative data (placeholder implementation with district-based data, to be enhanced with LegiEquity API).
+- [x] Task: Integrate live call to fetch Census data (placeholder implementation with tract-based data, to be enhanced with Census API).
+- [x] Task: Structure the API response JSON (e.g., nested objects for `voterInfo`, `location`, `districts`, `participation`, `otherVoters`, `representatives`, `census`).
+- [x] Task: Add error handling (e.g., voter not found, external API errors).
+
+### 2. Frontend Page Structure
+- [ ] Task: Create the page file (`app/ga/voter/profile/[registration_number]/page.tsx`).
+- [ ] Task: Implement basic page component structure (skeleton/placeholders).
+- [ ] Task: Implement asynchronous data fetching for all profile sections based on the `registration_number` param.
+  - [ ] Consider separate hooks or state management for each major data section (Info, Location, Districts, Participation, Census, Reps, Other Voters) to allow independent loading.
+- [ ] Task: Ensure the `FilterPanel` is *not* rendered on this page (likely handled by layout modifications or conditional rendering).
+- [ ] Task: Implement the "Back" button/link with correct navigation logic.
+- [ ] Task: Display loading states (e.g., skeletons) for each section while data is fetching.
+- [ ] Task: Display error states for sections if fetching fails.
+- [ ] Task: Set up the main layout for the profile content area.
+
+### 3. Frontend Data Sections
+- [ ] Task: **Voter Information Section:** Display core voter details once loaded.
+- [ ] Task: **Location Section:**
   - [ ] Display county, residence address, mailing address once loaded.
   - [ ] Construct Mapbox Static Images API URL once coordinates are loaded.
   - [ ] Display the static map `<img>` tag once the URL is constructed.
   - [ ] Display list of other voters once loaded.
   - [ ] Display redistricting info once loaded.
-+- [ ] Task: **Precincts & Districts Section:**
+- [ ] Task: **Precincts & Districts Section:**
   - [ ] Display all precinct and district names/codes once core voter data is loaded.
   - [ ] Under each relevant district (Congressional, State Senate, State House), display representative details:
     - [ ] Display `name` linked to `https://legiequity.us/sponsor/{id}/{slugified-name}`.
     - [ ] Display `party_name`, `district`, `chamber`, `role`.
   - [ ] Consider using Accordions/Tabs for organization; display rep data once fetched.
-+- [ ] Task: **Voter Participation Section:**
+- [ ] Task: **Voter Participation Section:**
   - [ ] Display participation history once loaded in a table or list format (reverse chronological).
   - [ ] Consider using an Accordion/Tab.
-+- [ ] Task: **Census Data Section:**
+- [ ] Task: **Census Data Section:**
   - [ ] Display fetched Census metrics once loaded.
   - [ ] Handle cases where Census data might not be available or the API call fails.
   - [ ] Display Census data within its section once fetched (the entire section's loading is already async).
-+
-+### 4. Quickview Modal
-+- [ ] Task: Create a reusable `VoterQuickview` component.
-+- [ ] Task: Implement the modal structure (e.g., using ShadCN Dialog).
-+- [ ] Task: Display the specified subset of Voter Info and Location data within the modal.
-+- [ ] Task: Add the link to the full profile page.
-+- [ ] Task: Implement trigger logic for List page (hover/click).
-+- [ ] Task: Modify Map popup: Change name click behavior to open Quickview instead of navigating.
-+- [ ] Task: Ensure close functionality works (click outside, 'x' button, Close button).
-+
-+### 5. Styling & Refinement
-+- [ ] Task: Apply consistent styling using Tailwind/ShadCN.
-+- [ ] Task: Ensure responsiveness across different screen sizes.
-+- [ ] Task: Review layout and data presentation for clarity.
-+- [ ] Task: Add appropriate icons where needed.
+
+### 4. Quickview Modal
+- [ ] Task: Create a reusable `VoterQuickview` component.
+- [ ] Task: Implement the modal structure (e.g., using ShadCN Dialog).
+- [ ] Task: Display the specified subset of Voter Info and Location data within the modal.
+- [ ] Task: Add the link to the full profile page.
+- [ ] Task: Implement trigger logic for List page (hover/click).
+- [ ] Task: Modify Map popup: Change name click behavior to open Quickview instead of navigating.
+- [ ] Task: Ensure close functionality works (click outside, 'x' button, Close button).
+
+### 5. Styling & Refinement
+- [ ] Task: Apply consistent styling using Tailwind/ShadCN.
+- [ ] Task: Ensure responsiveness across different screen sizes.
+- [ ] Task: Review layout and data presentation for clarity.
+- [ ] Task: Add appropriate icons where needed.
  
-+## Performance Note:
-+To optimize response time, the backend API should fetch external data (Representatives, Census) asynchronously or in parallel with the primary database queries where feasible.
-+ - The frontend will initiate asynchronous requests to fetch data for the different profile sections upon page load.
-+ - **Performance Note:** The backend API should still be optimized (e.g., parallel/async internal calls for external data) to ensure each section's data can be returned quickly when requested by the frontend.
+## Performance Note:
+To optimize response time, the backend API should fetch external data (Representatives, Census) asynchronously or in parallel with the primary database queries where feasible.
+ - The frontend will initiate asynchronous requests to fetch data for the different profile sections upon page load.
+ - **Performance Note:** The backend API should still be optimized (e.g., parallel/async internal calls for external data) to ensure each section's data can be returned quickly when requested by the frontend.
  
  
