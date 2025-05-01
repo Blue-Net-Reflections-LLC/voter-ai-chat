@@ -112,9 +112,9 @@ Location
 |   - Provisional                 | `provisional` key within JSON object (Y/N)                    |     `[x]`      |
 | **Census Data**                 |                                                               |                |
 | Income, Education, etc.         | *Live Backend Call (Census API using `ucgid`)*                |     `[x]`      |
-
+    
 ## Presentation
-- We need to discuss how to layout the datapoints
+- We need to discuss how to layout the datapoints 
  - Route will be `/ga/voter/profile/[registration-number]` (optional fullname slug can be added for SEO/readability but is not required for lookup).
  - The page will render in the main section and vertical scrolling is allowed.
  - It will include the voter section tabs (List, Stats, Map) for navigation between views.
@@ -132,7 +132,7 @@ Location
    - Quick View should be a modal dialog (e.g., ShadCN Dialog) over a gray overlay.
    - Users can close the quick view by clicking outside the dialog, clicking the 'x' icon in the upper right corner, or clicking an explicit "Close" button.
    - Reuse Tailwind and ShadCN components.
-
+   
 
 ## Schemas and Datasources
 Schemas used for the voter data:

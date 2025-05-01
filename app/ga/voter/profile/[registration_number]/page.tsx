@@ -115,6 +115,12 @@ export default function VoterProfilePage() {
   } = useVoterProfileSection(registrationNumber, 'districts'); // Fetch districts
 
   const {
+    data: representativesData,
+    loading: representativesLoading,
+    error: representativesError
+  } = useVoterProfileSection(registrationNumber, 'representatives'); // Fetch representatives
+
+  const {
     data: participationData,
     loading: participationLoading,
     error: participationError
@@ -219,6 +225,9 @@ export default function VoterProfilePage() {
           districtsData={districtsData}
           districtsLoading={districtsLoading}
           districtsError={districtsError}
+          representativesData={representativesData}
+          representativesLoading={representativesLoading}
+          representativesError={representativesError}
         />
       </div>
 
