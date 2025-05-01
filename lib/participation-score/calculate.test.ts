@@ -118,30 +118,114 @@ describe('calculateParticipationScore', () => {
     expect(calculateParticipationScore(data)).toBe(1.5);
   });
 
+   // --- Frequency Tests (Active Voter, Recent Votes) ---
+
+  it('Active voter, multiple recent votes (3 votes, 1 year ago)', () => {
+    const data: VoterScoreData = {
+      status: 'Active',
+      historyEvents: [
+        createMockEvent(1, 'GENERAL'),
+        createMockEvent(1, 'GENERAL'), // Date doesn't have to be exact same day, just same recency bracket
+        createMockEvent(1, 'GENERAL')
+      ]
+    };
+    // Expected: Base(2.0) + Recency(4.0) + Freq(3*0.5 = 1.5)*Diversity(1.0) = 2.0 + 4.0 + 1.5 = 7.5
+    expect(calculateParticipationScore(data)).toBe(7.5);
+  });
+
+  it('Active voter, enough recent votes to hit frequency cap (10 votes, 1 year ago)', () => {
+    const history = Array(10).fill(0).map(() => createMockEvent(1, 'GENERAL'));
+    const data: VoterScoreData = {
+      status: 'Active',
+      historyEvents: history
+    };
+    // Expected: Base(2.0) + Recency(4.0) + Freq(capped at 4.0)*Diversity(1.0) = 2.0 + 4.0 + 4.0 = 10.0
+    expect(calculateParticipationScore(data)).toBe(10.0);
+  });
+
+  // --- Diversity Tests (Active Voter, Recent Votes) ---
+
+  it('Active voter, multiple recent votes including diverse type (2 General, 1 Special Election, 1 year ago)', () => {
+    const data: VoterScoreData = {
+      status: 'Active',
+      historyEvents: [
+        createMockEvent(1, 'GENERAL'),
+        createMockEvent(1, 'SPECIAL ELECTION'), // Use a valid non-general type from options
+        createMockEvent(1, 'GENERAL')
+      ]
+    };
+    const freqPoints = 3 * 0.5; // = 1.5
+    const diversityMultiplier = 1.1;
+    // Expected: Base(2.0) + Recency(4.0) + Freq(1.5)*Diversity(1.1) = 2.0 + 4.0 + 1.65 = 7.65 -> rounded 7.7
+    expect(calculateParticipationScore(data)).toBe(7.7);
+  });
+
+   it('Active voter, multiple recent votes hitting frequency cap including diverse type (10 votes, 1 Primary, 1 year ago)', () => {
+    const history = Array(9).fill(0).map(() => createMockEvent(1, 'GENERAL'));
+    history.push(createMockEvent(1, 'SPECIAL ELECTION')); // Add diverse type
+    const data: VoterScoreData = {
+      status: 'Active',
+      historyEvents: history
+    };
+    const freqPoints = 4.0; // Capped
+    const diversityMultiplier = 1.1;
+     // Expected: Base(2.0) + Recency(4.0) + Freq(4.0)*Diversity(1.1) = 2.0 + 4.0 + 4.4 = 10.4 -> clamped 10.0
+    expect(calculateParticipationScore(data)).toBe(10.0);
+  });
+
+
+  // --- Cap Tests ---
+
+  it('Active voter, score clamped at MAX_SCORE (10.0)', () => {
+     // Simulate conditions that would exceed 10 before clamp (e.g., high freq + diversity)
+     const history = Array(10).fill(0).map(() => createMockEvent(1, 'GENERAL'));
+     history.push(createMockEvent(1, 'PRIMARY RUNOFF')); // Add diverse type
+     const data: VoterScoreData = {
+      status: 'Active',
+      historyEvents: history
+    };
+     // Base(2.0) + Recency(4.0) + Freq(capped 4.0)*Diversity(1.1) = 2.0 + 4.0 + 4.4 = 10.4
+     // Should be clamped to 10.0
+     expect(calculateParticipationScore(data)).toBe(10.0);
+  });
+
+  it('Inactive voter, score capped at MAX_SCORE_INACTIVE (4.9) even with high potential score', () => {
+    // Same high-scoring history as above, but inactive status
+    const history = Array(10).fill(0).map(() => createMockEvent(1, 'GENERAL'));
+    history.push(createMockEvent(1, 'SPECIAL ELECTION RUNOFF')); // Add diverse type
+    const data: VoterScoreData = {
+     status: 'Inactive',
+     historyEvents: history
+   };
+    // Base(1.0) + Recency(4.0) + Freq(capped 4.0)*Diversity(1.1) = 1.0 + 4.0 + 4.4 = 9.4
+    // Should be capped for Inactive at 4.9
+    expect(calculateParticipationScore(data)).toBe(4.9);
+ });
+
    // --- Input Validation Tests ---
 
   it('should throw invariant error for missing voterData', () => {
-    // @ts-expect-error - Testing invalid input
+    // @ts-expect-error - Testing invalid input (null)
     expect(() => calculateParticipationScore(null)).toThrow('voterData is required');
-    // @ts-expect-error - Testing invalid input
+    // @ts-expect-error - Testing invalid input (undefined)
     expect(() => calculateParticipationScore(undefined)).toThrow('voterData is required');
   });
 
   it('should throw invariant error for invalid status', () => {
-    const data = { status: 'Pending', historyEvents: [] };
-     // @ts-expect-error - Testing invalid input
+    // Use 'as any' to bypass TypeScript type check for the test
+    const data = { status: 'Pending', historyEvents: [] } as any;
     expect(() => calculateParticipationScore(data)).toThrow('voterData.status must be \'Active\' or \'Inactive\'');
   });
 
   it('should throw invariant error for missing historyEvents', () => {
-    // @ts-expect-error - Testing invalid input
-    const data = { status: 'Active' };
+     // Use 'as any' to bypass TypeScript type check for the test
+    const data = { status: 'Active' } as any;
     expect(() => calculateParticipationScore(data)).toThrow('voterData.historyEvents must be an array');
   });
 
    it('should throw invariant error for non-array historyEvents', () => {
-    // @ts-expect-error - Testing invalid input
-    const data = { status: 'Active', historyEvents: 'not-an-array' };
+     // Use 'as any' to bypass TypeScript type check for the test
+    const data = { status: 'Active', historyEvents: 'not-an-array' } as any;
     expect(() => calculateParticipationScore(data)).toThrow('voterData.historyEvents must be an array');
   });
 
