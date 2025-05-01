@@ -500,18 +500,13 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
   // --- Handler for clicking on a voter point --- 
   const handleVoterClick = useCallback(async (event: MapMouseEvent) => {
-    console.log('Map clicked at:', event.lngLat); // Log any map click
-    console.log('Clicked features:', event.features); // Log features under cursor
-
     if (!event.features || event.features.length === 0) {
-      console.log('No features found at click point.');
       return; // No feature clicked
     }
 
     // Only proceed if the clicked feature is from the voter-points layer
     const voterPointFeature = event.features.find(f => f.layer?.id === 'voter-points');
     if (!voterPointFeature) {
-      console.log('Clicked feature is not from the voter-points layer.');
       return;
     }
     
