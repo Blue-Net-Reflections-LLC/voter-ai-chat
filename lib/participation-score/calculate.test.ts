@@ -49,8 +49,8 @@ describe('calculateParticipationScore', () => {
       status: 'Active',
       historyEvents: [createMockEvent(1, 'GENERAL')]
     };
-    // Expected: Base(2.0) + Recency(4.0) + Freq(1*0.5)*Diversity(1.0) = 2.0 + 4.0 + 0.5 = 6.5
-    expect(calculateParticipationScore(data)).toBe(6.5);
+    // Expected: Base(2.0) + Recency(4.0) + Freq(1.3*ln(2)≈0.9)*Div(1.0) = 6.9
+    expect(calculateParticipationScore(data)).toBe(6.9);
   });
 
    it('Inactive voter, 1 recent vote (1 year ago)', () => {
@@ -58,8 +58,7 @@ describe('calculateParticipationScore', () => {
       status: 'Inactive',
       historyEvents: [createMockEvent(1, 'GENERAL')]
     };
-    // Expected: Base(1.0) + Recency(4.0) + Freq(1*0.5)*Diversity(1.0) = 1.0 + 4.0 + 0.5 = 5.5
-    // Capped for Inactive at 4.9
+    // Expected: Base(1.0) + Recency(4.0) + Freq(≈0.9)*Div(1.0) = 5.9 -> Capped 4.9
     expect(calculateParticipationScore(data)).toBe(4.9);
   });
 
@@ -68,8 +67,8 @@ describe('calculateParticipationScore', () => {
       status: 'Active',
       historyEvents: [createMockEvent(4, 'GENERAL')]
     };
-     // Expected: Base(2.0) + Recency(2.0) + Freq(1*0.5)*Diversity(1.0) = 2.0 + 2.0 + 0.5 = 4.5
-    expect(calculateParticipationScore(data)).toBe(4.5);
+     // Expected: Base(2.0) + Recency(2.0) + Freq(≈0.9)*Div(1.0) = 4.9
+    expect(calculateParticipationScore(data)).toBe(4.9);
   });
 
   it('Inactive voter, 1 mid-recency vote (4 years ago)', () => {
@@ -77,8 +76,8 @@ describe('calculateParticipationScore', () => {
       status: 'Inactive',
       historyEvents: [createMockEvent(4, 'GENERAL')]
     };
-     // Expected: Base(1.0) + Recency(2.0) + Freq(1*0.5)*Diversity(1.0) = 1.0 + 2.0 + 0.5 = 3.5
-    expect(calculateParticipationScore(data)).toBe(3.5);
+     // Expected: Base(1.0) + Recency(2.0) + Freq(≈0.9)*Div(1.0) = 3.9
+    expect(calculateParticipationScore(data)).toBe(3.9);
   });
 
   it('Active voter, 1 old vote (7 years ago)', () => {
@@ -86,8 +85,8 @@ describe('calculateParticipationScore', () => {
       status: 'Active',
       historyEvents: [createMockEvent(7, 'GENERAL')]
     };
-    // Expected: Base(2.0) + Recency(1.0) + Freq(1*0.5)*Diversity(1.0) = 2.0 + 1.0 + 0.5 = 3.5
-    expect(calculateParticipationScore(data)).toBe(3.5);
+    // Expected: Base(2.0) + Recency(1.0) + Freq(≈0.9)*Div(1.0) = 3.9
+    expect(calculateParticipationScore(data)).toBe(3.9);
   });
 
   it('Inactive voter, 1 old vote (7 years ago)', () => {
@@ -95,8 +94,8 @@ describe('calculateParticipationScore', () => {
       status: 'Inactive',
       historyEvents: [createMockEvent(7, 'GENERAL')]
     };
-    // Expected: Base(1.0) + Recency(1.0) + Freq(1*0.5)*Diversity(1.0) = 1.0 + 1.0 + 0.5 = 2.5
-    expect(calculateParticipationScore(data)).toBe(2.5);
+    // Expected: Base(1.0) + Recency(1.0) + Freq(≈0.9)*Div(1.0) = 2.9
+    expect(calculateParticipationScore(data)).toBe(2.9);
   });
 
   it('Active voter, 1 very old vote (> 8 years ago)', () => {
@@ -104,9 +103,8 @@ describe('calculateParticipationScore', () => {
       status: 'Active',
       historyEvents: [createMockEvent(9, 'GENERAL')]
     };
-    // Expected: Base(2.0) + Recency(0.0) + Freq(1*0.5)*Diversity(1.0) = 2.0 + 0.0 + 0.5 = 2.5
-    // Note: The history event is passed, but recency points should be 0
-    expect(calculateParticipationScore(data)).toBe(2.5);
+    // Expected: Base(2.0) + Recency(0.0) + Freq(≈0.9)*Div(1.0) = 2.9
+    expect(calculateParticipationScore(data)).toBe(2.9);
   });
 
    it('Inactive voter, 1 very old vote (> 8 years ago)', () => {
@@ -114,8 +112,8 @@ describe('calculateParticipationScore', () => {
       status: 'Inactive',
       historyEvents: [createMockEvent(9, 'GENERAL')]
     };
-    // Expected: Base(1.0) + Recency(0.0) + Freq(1*0.5)*Diversity(1.0) = 1.0 + 0.0 + 0.5 = 1.5
-    expect(calculateParticipationScore(data)).toBe(1.5);
+    // Expected: Base(1.0) + Recency(0.0) + Freq(≈0.9)*Div(1.0) = 1.9
+    expect(calculateParticipationScore(data)).toBe(1.9);
   });
 
    // --- Frequency Tests (Active Voter, Recent Votes) ---
@@ -125,22 +123,22 @@ describe('calculateParticipationScore', () => {
       status: 'Active',
       historyEvents: [
         createMockEvent(1, 'GENERAL'),
-        createMockEvent(1, 'GENERAL'), // Date doesn't have to be exact same day, just same recency bracket
+        createMockEvent(1, 'GENERAL'),
         createMockEvent(1, 'GENERAL')
       ]
     };
-    // Expected: Base(2.0) + Recency(4.0) + Freq(3*0.5 = 1.5)*Diversity(1.0) = 2.0 + 4.0 + 1.5 = 7.5
-    expect(calculateParticipationScore(data)).toBe(7.5);
+    // Expected: Base(2.0) + Recency(4.0) + Freq(1.3*ln(4)≈1.8)*Div(1.0) = 7.8
+    expect(calculateParticipationScore(data)).toBe(7.8);
   });
 
-  it('Active voter, enough recent votes to hit frequency cap (10 votes, 1 year ago)', () => {
+  it('Active voter, enough recent votes to approach frequency cap (10 votes, 1 year ago)', () => {
     const history = Array(10).fill(0).map(() => createMockEvent(1, 'GENERAL'));
     const data: VoterScoreData = {
       status: 'Active',
       historyEvents: history
     };
-    // Expected: Base(2.0) + Recency(4.0) + Freq(capped at 4.0)*Diversity(1.0) = 2.0 + 4.0 + 4.0 = 10.0
-    expect(calculateParticipationScore(data)).toBe(10.0);
+    // Expected: Base(2.0) + Recency(4.0) + Freq(1.3*ln(11)≈3.12)*Div(1.0) = 9.12 -> 9.1
+    expect(calculateParticipationScore(data)).toBe(9.1);
   });
 
   // --- Diversity Tests (Active Voter, Recent Votes) ---
@@ -150,55 +148,53 @@ describe('calculateParticipationScore', () => {
       status: 'Active',
       historyEvents: [
         createMockEvent(1, 'GENERAL'),
-        createMockEvent(1, 'SPECIAL ELECTION'), // Use a valid non-general type from options
+        createMockEvent(1, 'SPECIAL ELECTION'),
         createMockEvent(1, 'GENERAL')
       ]
     };
-    const freqPoints = 3 * 0.5; // = 1.5
-    const diversityMultiplier = 1.1;
-    // Expected: Base(2.0) + Recency(4.0) + Freq(1.5)*Diversity(1.1) = 2.0 + 4.0 + 1.65 = 7.65 -> rounded 7.7
-    expect(calculateParticipationScore(data)).toBe(7.7);
+    // Freq points = 1.3*ln(4) ≈ 1.80
+    // Expected: Base(2.0) + Recency(4.0) + Freq(1.80)*Div(1.1) = 2.0 + 4.0 + 1.98 = 7.98 -> 8.0
+    expect(calculateParticipationScore(data)).toBe(8.0);
   });
 
-   it('Active voter, multiple recent votes hitting frequency cap including diverse type (10 votes, 1 Primary, 1 year ago)', () => {
+   it('Active voter, multiple recent votes approaching frequency cap including diverse type (10 votes, 1 Special Election, 1 year ago)', () => {
     const history = Array(9).fill(0).map(() => createMockEvent(1, 'GENERAL'));
-    history.push(createMockEvent(1, 'SPECIAL ELECTION')); // Add diverse type
+    history.push(createMockEvent(1, 'SPECIAL ELECTION'));
     const data: VoterScoreData = {
       status: 'Active',
       historyEvents: history
     };
-    const freqPoints = 4.0; // Capped
-    const diversityMultiplier = 1.1;
-     // Expected: Base(2.0) + Recency(4.0) + Freq(4.0)*Diversity(1.1) = 2.0 + 4.0 + 4.4 = 10.4 -> clamped 10.0
-    expect(calculateParticipationScore(data)).toBe(10.0);
+    // Freq points = 1.3*ln(11) ≈ 3.12
+    // Expected: Base(2.0) + Recency(4.0) + Freq(3.12)*Div(1.1) = 2.0 + 4.0 + 3.43 = 9.43 -> 9.4
+    expect(calculateParticipationScore(data)).toBe(9.4);
   });
 
 
   // --- Cap Tests ---
 
   it('Active voter, score clamped at MAX_SCORE (10.0)', () => {
-     // Simulate conditions that would exceed 10 before clamp (e.g., high freq + diversity)
-     const history = Array(10).fill(0).map(() => createMockEvent(1, 'GENERAL'));
-     history.push(createMockEvent(1, 'PRIMARY RUNOFF')); // Add diverse type
+     // Use 20 votes w/ diversity to ensure score > 10 before clamp
+     const history = Array(19).fill(0).map(() => createMockEvent(1, 'GENERAL'));
+     history.push(createMockEvent(1, 'PRIMARY RUNOFF'));
      const data: VoterScoreData = {
       status: 'Active',
       historyEvents: history
     };
-     // Base(2.0) + Recency(4.0) + Freq(capped 4.0)*Diversity(1.1) = 2.0 + 4.0 + 4.4 = 10.4
-     // Should be clamped to 10.0
+     // Freq points = 1.3*ln(21) ≈ 3.95
+     // Expected: Base(2.0) + Recency(4.0) + Freq(3.95)*Div(1.1) = 2.0 + 4.0 + 4.345 = 10.345 -> clamped 10.0
      expect(calculateParticipationScore(data)).toBe(10.0);
   });
 
   it('Inactive voter, score capped at MAX_SCORE_INACTIVE (4.9) even with high potential score', () => {
-    // Same high-scoring history as above, but inactive status
-    const history = Array(10).fill(0).map(() => createMockEvent(1, 'GENERAL'));
-    history.push(createMockEvent(1, 'SPECIAL ELECTION RUNOFF')); // Add diverse type
+    // Use 20 votes w/ diversity
+    const history = Array(19).fill(0).map(() => createMockEvent(1, 'GENERAL'));
+    history.push(createMockEvent(1, 'SPECIAL ELECTION RUNOFF'));
     const data: VoterScoreData = {
      status: 'Inactive',
      historyEvents: history
    };
-    // Base(1.0) + Recency(4.0) + Freq(capped 4.0)*Diversity(1.1) = 1.0 + 4.0 + 4.4 = 9.4
-    // Should be capped for Inactive at 4.9
+    // Freq points = 1.3*ln(21) ≈ 3.95
+    // Potential: Base(1.0) + Recency(4.0) + Freq(3.95)*Div(1.1) = 1.0 + 4.0 + 4.345 = 9.345 -> capped 4.9
     expect(calculateParticipationScore(data)).toBe(4.9);
  });
 
@@ -245,6 +241,50 @@ describe('calculateParticipationScore', () => {
     };
     // Expect the updated invariant message
     expect(() => calculateParticipationScore(data)).toThrow('Invalid date value parsed from history event: 2023-13-01');
+  });
+
+  // --- Specific Logarithmic Frequency Tests (Active, Recent) ---
+  // Base = 2.0, Recency = 4.0, Diversity = 1.0 for these
+
+  it('Log Freq: 1 vote', () => {
+      const data: VoterScoreData = { status: 'Active', historyEvents: [createMockEvent(1)] };
+      // Freq = 1.3*ln(2) ≈ 0.9. Score = 2.0 + 4.0 + 0.9 = 6.9
+      expect(calculateParticipationScore(data)).toBe(6.9);
+  });
+
+  it('Log Freq: 3 votes', () => {
+      const history = Array(3).fill(0).map(() => createMockEvent(1));
+      const data: VoterScoreData = { status: 'Active', historyEvents: history };
+      // Freq = 1.3*ln(4) ≈ 1.8. Score = 2.0 + 4.0 + 1.8 = 7.8
+      expect(calculateParticipationScore(data)).toBe(7.8);
+  });
+
+  it('Log Freq: 8 votes', () => {
+      const history = Array(8).fill(0).map(() => createMockEvent(1));
+      const data: VoterScoreData = { status: 'Active', historyEvents: history };
+      // Freq = 1.3*ln(9) ≈ 2.86. Score = 2.0 + 4.0 + 2.86 = 8.86 -> 8.9
+      expect(calculateParticipationScore(data)).toBe(8.9);
+  });
+
+  it('Log Freq: 15 votes', () => {
+      const history = Array(15).fill(0).map(() => createMockEvent(1));
+      const data: VoterScoreData = { status: 'Active', historyEvents: history };
+      // Freq = 1.3*ln(16) ≈ 3.60. Score = 2.0 + 4.0 + 3.6 = 9.6
+      expect(calculateParticipationScore(data)).toBe(9.6);
+  });
+
+  it('Log Freq: 20 votes (approaching cap)', () => {
+      const history = Array(20).fill(0).map(() => createMockEvent(1));
+      const data: VoterScoreData = { status: 'Active', historyEvents: history };
+      // Freq = 1.3*ln(21) ≈ 3.95. Score = 2.0 + 4.0 + 3.95 = 9.95 -> 10.0
+      expect(calculateParticipationScore(data)).toBe(10.0);
+  });
+
+  it('Log Freq: 30 votes (hits cap)', () => {
+      const history = Array(30).fill(0).map(() => createMockEvent(1));
+      const data: VoterScoreData = { status: 'Active', historyEvents: history };
+      // Freq = 1.3*ln(31) ≈ 4.46 -> capped at 4.0. Score = 2.0 + 4.0 + 4.0 = 10.0
+      expect(calculateParticipationScore(data)).toBe(10.0);
   });
 
 }); 

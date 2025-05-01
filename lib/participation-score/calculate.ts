@@ -48,9 +48,9 @@ const RECENCY_POINTS: { [yearsAgoMin: number]: number } = {
 };
 const RECENCY_MAX_YEARS = 8;
 
-// Frequency Scaling (Raw Count -> Points) - Needs refinement
-// Placeholder: Simple linear scaling, capped
-const FREQUENCY_POINTS_PER_EVENT = 0.5;
+// Frequency Scaling (Raw Count -> Points) - Logarithmic
+// const FREQUENCY_POINTS_PER_EVENT = 0.5; // Removed linear scaling
+const FREQUENCY_LOG_FACTOR = 1.3; // Factor for logarithmic scaling
 const MAX_FREQUENCY_POINTS = 4.0; // Max points achievable from frequency alone
 
 // Diversity Multiplier
@@ -123,8 +123,15 @@ export function calculateParticipationScore(voterData: VoterScoreData): number {
 
   // 3. Calculate Frequency Points
   const frequencyCount = sortedHistory.length;
-  // Apply placeholder scaling - refine later
-  let frequencyPoints = Math.min(frequencyCount * FREQUENCY_POINTS_PER_EVENT, MAX_FREQUENCY_POINTS);
+  // Apply logarithmic scaling
+  let frequencyPoints = 0;
+  if (frequencyCount > 0) {
+      frequencyPoints = Math.min(
+          FREQUENCY_LOG_FACTOR * Math.log(frequencyCount + 1),
+          MAX_FREQUENCY_POINTS
+      );
+  }
+  // Note: Math.log is the natural logarithm (ln)
 
   // 4. Calculate Diversity Multiplier
   let diversityMultiplier = 1.0;
