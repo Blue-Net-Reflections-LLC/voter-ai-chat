@@ -21,8 +21,12 @@ const SECTION_HANDLERS: Record<string, (regNum: string) => Promise<any>> = {
 // List of implemented sections for documentation
 const AVAILABLE_SECTIONS = Object.keys(SECTION_HANDLERS);
 
-export async function GET(request: NextRequest, context: { params: { registration_number: string } }) {
-  const { registration_number } = await context.params;
+export async function GET(
+  request: NextRequest, 
+  context: { params: Promise<{ registration_number: string }> }
+) {
+  const params = await context.params;
+  const registration_number = params.registration_number;
 
   if (!registration_number || !/^\d+$/.test(registration_number)) {
     return NextResponse.json({ error: 'Valid numeric registration number is required' }, { status: 400 });

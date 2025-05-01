@@ -48,7 +48,7 @@ export function CensusSection({ data, loading, error }: CensusSectionProps) {
       <CardHeader>
         <CardTitle>Census Data</CardTitle>
         <CardDescription>
-          Demographic information for this voter's Census tract
+          Demographic information for this voter&apos;s Census tract
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -87,7 +87,7 @@ export function CensusSection({ data, loading, error }: CensusSectionProps) {
                       {formatPercentage(censusData.education.higherEducation.percentage)}
                     </p>
                     <p className="text-xs">
-                      Bachelor's degree or higher
+                      Bachelor&#39;s degree or higher
                     </p>
                   </div>
                 )}
@@ -109,14 +109,14 @@ export function CensusSection({ data, loading, error }: CensusSectionProps) {
                   
                   {censusData.education?.associatesDegree && (
                     <li className="flex justify-between">
-                      <span>Associate's Degree</span>
+                      <span>Associate&#39;s Degree</span>
                       <span className="font-medium">{formatPercentage(censusData.education.associatesDegree.percentage)}</span>
                     </li>
                   )}
                   
                   {censusData.education?.bachelorsDegree && (
                     <li className="flex justify-between">
-                      <span>Bachelor's Degree</span>
+                      <span>Bachelor&#39;s Degree</span>
                       <span className="font-medium">{formatPercentage(censusData.education.bachelorsDegree.percentage)}</span>
                     </li>
                   )}
