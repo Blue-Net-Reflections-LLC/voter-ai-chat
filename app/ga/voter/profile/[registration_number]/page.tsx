@@ -158,9 +158,9 @@ export default function VoterProfilePage() {
   }
 
   return (
-    <div className="container py-4 max-w-5xl mx-auto">
+    <div className="container py-2 max-w-5xl mx-auto">
       {/* Back Button and Header */}
-      <div className="mb-8 flex items-center" id="page-top">
+      <div className="mb-4 flex items-center" id="page-top">
         <Button
           variant="ghost"
           className="p-0 mr-2 hover:bg-accent" // Added hover effect

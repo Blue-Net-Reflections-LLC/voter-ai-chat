@@ -10,7 +10,6 @@ export const metadata: Metadata = {
 };
 
 // Estimate combined height of fixed elements (Header + Nav)
-const FIXED_HEADER_NAV_HEIGHT = '100px';
 
 export default function VoterProfileLayout({
   children,
@@ -27,12 +26,7 @@ export default function VoterProfileLayout({
 
       {/* Main content area, only this should scroll */}
       <main 
-        className="w-full px-6 pt-4"
-        style={{
-          paddingTop: FIXED_HEADER_NAV_HEIGHT,
-          minHeight: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})`,
-          overflowY: 'auto',
-        }}
+        className="w-full px-6 pt-0"
       >
         <Suspense>{children}</Suspense>
         <Toaster />

@@ -63,7 +63,7 @@ export function LocationSection({
   return (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle>Location</CardTitle>
+        <CardTitle>Voter Location</CardTitle>
         <CardDescription>
           Address, map, household, and redistricting information
         </CardDescription>

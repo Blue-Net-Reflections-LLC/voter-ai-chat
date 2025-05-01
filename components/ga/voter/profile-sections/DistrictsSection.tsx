@@ -143,7 +143,7 @@ export function DistrictsSection({
           <div className="mt-6 text-red-500">Error loading representatives: {representativesError}</div>
         ) : representativesData?.representatives ? (
           <div className="mt-6">
-            <h4 className="font-medium mb-3">Your Representatives</h4>
+            <h4 className="font-medium mb-3">Representatives</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Congressional Representatives */}
