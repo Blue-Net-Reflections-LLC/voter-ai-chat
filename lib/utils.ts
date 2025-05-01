@@ -268,3 +268,20 @@ const encodeQueryParams = (url: string): string => {
 };
 export default encodeQueryParams;
 
+/**
+ * Calculates age based on a birth year.
+ * @param birthYear The year the person was born.
+ * @returns The calculated age or null if birthYear is invalid.
+ */
+export function calculateAge(birthYear: number | string | null | undefined): number | null {
+  if (birthYear === null || birthYear === undefined) {
+    return null;
+  }
+  const year = typeof birthYear === 'string' ? parseInt(birthYear, 10) : birthYear;
+  if (isNaN(year) || year <= 0) {
+    return null;
+  }
+  const currentYear = new Date().getFullYear();
+  return currentYear - year;
+}
+

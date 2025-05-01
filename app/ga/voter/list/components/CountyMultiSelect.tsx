@@ -30,10 +30,11 @@ export function CountyMultiSelect({ value, setValue, isLoading: propIsLoading, c
   const selected = value.filter((v) => counties?.some(c => c.value === v) || false);
 
   // Helper: render a county checkbox (checked if selected)
-  function renderCountyCheckbox(county: MultiSelectOption, keyPrefix = "") {
+  function renderCountyCheckbox(county: MultiSelectOption, keyPrefix: string, index: number) {
     const checked = value.includes(county.value);
+    const uniqueKey = `${keyPrefix}${county.value}-${index}`;
     return (
-      <label key={keyPrefix + county.value} className={`flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer ${checked ? 'bg-muted' : 'hover:bg-muted'}`}
+      <label key={uniqueKey} className={`flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer ${checked ? 'bg-muted' : 'hover:bg-muted'}`}
         style={{ marginBottom: '2px' }}
       >
         <input
@@ -78,13 +79,13 @@ export function CountyMultiSelect({ value, setValue, isLoading: propIsLoading, c
                   <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide px-1 pb-1">Selected</div>
                   {counties
                     ?.filter(county => value.includes(county.value))
-                    .map(county => renderCountyCheckbox(county, "top-"))}
+                    .map((county, index) => renderCountyCheckbox(county, "top-", index))}
                   <div className="border-t my-2" />
                 </>
               )}
               {filtered
                 .filter(county => !value.includes(county.value))
-                .map(county => renderCountyCheckbox(county, "list-"))}
+                .map((county, index) => renderCountyCheckbox(county, "list-", index))}
               {selected.length === 0 && filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No counties found</div>}
             </>
           )}

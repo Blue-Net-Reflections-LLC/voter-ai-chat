@@ -19,9 +19,9 @@ const tabs = [
   },
   {
     label: "Maps",
-    href: "#",
+    href: "/ga/voter/map",
     icon: Map,
-    enabled: false,
+    enabled: true,
   },
   {
     label: "Charts",

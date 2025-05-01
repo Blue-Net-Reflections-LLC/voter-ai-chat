@@ -8,7 +8,7 @@ import DistrictsSection from "./DistrictsSection";
 import StatsSection from "./StatsSection";
 import DemographicsSection from "./DemographicsSection";
 import VotingHistorySection from "./VotingHistorySection";
-import CensusSection from "./CensusSection";
+// import CensusSection from "./CensusSection";
 
 export default function StatsDashboardPage() {
   return (
@@ -26,7 +26,7 @@ export default function StatsDashboardPage() {
         <VotingHistorySection />
       </StatsSection>
       <StatsSection title="CENSUS">
-        <CensusSection />
+        <div />
       </StatsSection>
     </div>
   );
