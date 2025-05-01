@@ -11,6 +11,7 @@ import { useDebounceCallback } from 'usehooks-ts'; // Corrected import hook name
 import { useVoterFilterContext, buildQueryParams } from '@/app/ga/voter/VoterFilterProvider'; // Import filter context and helper
 import type { FilterState } from '@/app/ga/voter/list/types'; // Import FilterState type
 import { ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
+import { VoterQuickview } from '@/components/ga/voter/quickview/VoterQuickview';
 
 // Define types for features (Keep these local or move to context if preferred)
 interface VoterAddressProperties {
@@ -52,10 +53,11 @@ interface PopupInfo {
 
 // Component using the context
 const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
-  const mapRef = useRef<MapRef>(null);
+  const mapRef = useRef<MapRef | null>(null);
   const isInitialLoadRef = useRef<boolean>(true); // Ref to track initial load (first time ever)
   const prevFiltersRef = useRef<FilterState | null>(null); // Ref for previous filters
   const controllerRef = useRef<AbortController | null>(null); // Store current fetch controller
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Local state for tracking fetch queue
   const [fetchTrigger, setFetchTrigger] = useState<{
@@ -69,6 +71,10 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   // --- Popup State --- 
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
   
+  // Quickview state
+  const [selectedVoter, setSelectedVoter] = useState<string | undefined>(undefined);
+  const [isQuickviewOpen, setIsQuickviewOpen] = useState(false);
+
   // Get state and setters from context
   const {
     viewState,
@@ -655,19 +661,23 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {popupInfo.voters.map((voter) => (
                         <li key={voter.registrationNumber} style={{ marginBottom: '6px' }}>
-                          <Link href={`/ga/voter/${voter.registrationNumber}`}>
-                            <span style={{ 
+                          <div
+                            onClick={() => {
+                              setSelectedVoter(voter.registrationNumber);
+                              setIsQuickviewOpen(true);
+                            }}
+                            style={{ 
                               color: '#d33',
                               textDecoration: 'none', 
                               cursor: 'pointer',
                               fontWeight: 'medium',
                               padding: '2px 0',
                               display: 'block'
-                            }}>
-                              <span style={{ marginRight: '5px' }}>👤</span>
-                              {voter.firstName} {voter.lastName}
-                            </span>
-                          </Link>
+                            }}
+                          >
+                            <span style={{ marginRight: '5px' }}>👤</span>
+                            {voter.firstName} {voter.lastName}
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -706,6 +716,16 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             }
           `}</style>
       </Map>
+      {isQuickviewOpen && selectedVoter && (
+        <VoterQuickview
+          isOpen={isQuickviewOpen}
+          voterId={selectedVoter}
+          onClose={() => {
+            setSelectedVoter(undefined);
+            setIsQuickviewOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Voter } from '../types';
 import { SortField, SortDirection } from '../hooks/useVoterList';
 import { cn } from "@/lib/utils";
+import { VoterQuickview } from "@/components/ga/voter/quickview/VoterQuickview";
 
 interface VoterTableProps {
   voters: Voter[];
@@ -19,20 +20,35 @@ interface VoterTableProps {
   onSort?: (field: SortField) => void;
 }
 
-// Helper to get status display properties
-const getStatusProps = (status: string | undefined | null) => {
-  const upperStatus = status?.toUpperCase();
-  if (upperStatus === 'ACTIVE') {
-    return {
-      text: 'Active',
-      className: "bg-blue-500/10 border border-blue-600/30 text-blue-500"
-    };
-  }
-  // Default to inactive or unknown style
-  return {
-    text: status || 'Unknown', // Display original status or 'Unknown'
-    className: "bg-gray-700/20 border border-gray-600/30 text-gray-400"
+interface SortButtonProps {
+  field: SortField;
+  label: string;
+  currentSort?: {
+    field: SortField;
+    direction: SortDirection;
   };
+  onSort?: (field: SortField) => void;
+}
+
+const SortButton = ({ field, label, currentSort, onSort }: SortButtonProps) => {
+  const active = currentSort?.field === field;
+  const direction = active ? currentSort.direction : null;
+  
+  return (
+    <Button 
+      variant="ghost" 
+      size="sm" 
+      onClick={() => onSort?.(field)} 
+      className="h-6 px-1 font-semibold text-[10px] justify-between"
+    >
+      {label}
+      {active ? (
+        direction === 'asc' ? <ArrowUp className="ml-1 h-3.5 w-3.5" /> : <ArrowDown className="ml-1 h-3.5 w-3.5" />
+      ) : (
+        <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-50" />
+      )}
+    </Button>
+  );
 };
 
 // Skeleton for loading state
@@ -49,36 +65,38 @@ const LoadingSkeleton = () => (
   </>
 );
 
-// Sort button with appropriate icon based on current sort state
-const SortButton = ({ 
-  field, 
-  label, 
-  currentSort, 
-  onSort 
-}: { 
-  field: SortField; 
-  label: string; 
-  currentSort?: { field: SortField; direction: SortDirection }; 
-  onSort?: (field: SortField) => void;
-}) => {
-  const isActive = currentSort?.field === field;
-  const direction = isActive ? currentSort.direction : null;
+// Helper function to determine styling and text for status badges
+const getStatusProps = (status: string | undefined) => {
+  if (!status) {
+    return {
+      className: 'bg-gray-700 text-gray-200',
+      text: 'Unknown'
+    };
+  }
+
+  const statusUpper = status.toUpperCase();
   
-  return (
-    <button
-      className="flex items-center text-white text-xs gap-1 hover:text-blue-300 focus:outline-none"
-      onClick={() => onSort?.(field)}
-    >
-      <span>{label}</span>
-      {direction === 'asc' ? (
-        <ArrowUp className="h-3.5 w-3.5 text-blue-300" />
-      ) : direction === 'desc' ? (
-        <ArrowDown className="h-3.5 w-3.5 text-blue-300" />
-      ) : (
-        <ArrowUpDown className="h-3 w-3 opacity-60" />
-      )}
-    </button>
-  );
+  if (statusUpper === 'ACTIVE') {
+    return {
+      className: 'bg-green-950 text-green-400 border border-green-700',
+      text: 'Active'
+    };
+  } else if (statusUpper === 'INACTIVE') {
+    return {
+      className: 'bg-amber-950 text-amber-300 border border-amber-700',
+      text: 'Inactive'
+    };
+  } else if (statusUpper.includes('CANCEL')) {
+    return {
+      className: 'bg-red-950 text-red-400 border border-red-700',
+      text: statusUpper.includes('PENDING') ? 'Pending Cancel' : 'Canceled'
+    };
+  } else {
+    return {
+      className: 'bg-gray-800 text-gray-300 border border-gray-700',
+      text: status
+    };
+  }
 };
 
 export function VoterTable({ 
@@ -87,6 +105,21 @@ export function VoterTable({
   sort,
   onSort 
 }: VoterTableProps) {
+  // State for the voter quickview
+  const [selectedVoter, setSelectedVoter] = useState<string | undefined>(undefined);
+  const [isQuickviewOpen, setIsQuickviewOpen] = useState(false);
+
+  // Handle row click to open quickview
+  const handleRowClick = (voterId: string) => {
+    setSelectedVoter(voterId);
+    setIsQuickviewOpen(true);
+  };
+
+  // Close quickview
+  const handleCloseQuickview = () => {
+    setIsQuickviewOpen(false);
+  };
+
   return (
     <div className="w-full h-full">
       <Table className="relative border-separate border-spacing-0 w-full h-full" style={{ tableLayout: 'fixed' }}>
@@ -119,7 +152,11 @@ export function VoterTable({
             voters.map((voter) => {
               const statusProps = getStatusProps(voter.status);
               return (
-                <TableRow key={voter.id} className="h-8 border-b border-gray-800 hover:bg-gray-900/20">
+                <TableRow 
+                  key={voter.id} 
+                  className="h-8 border-b border-gray-800 hover:bg-gray-900/20 cursor-pointer"
+                  onClick={() => handleRowClick(voter.id)}
+                >
                   <TableCell style={{ width: '25%' }} className="py-1 px-3 text-xs">{voter.id}</TableCell>
                   <TableCell style={{ width: '35%' }} className="py-1 px-3 text-xs">{voter.firstName} {voter.lastName}</TableCell>
                   <TableCell style={{ width: '20%' }} className="py-1 px-3 text-xs">{voter.county || (voter.address?.city && `${voter.address.city}`)}</TableCell>
@@ -134,6 +171,13 @@ export function VoterTable({
           )}
         </TableBody>
       </Table>
+
+      {/* Voter Quickview Modal */}
+      <VoterQuickview
+        isOpen={isQuickviewOpen}
+        voterId={selectedVoter}
+        onClose={handleCloseQuickview}
+      />
     </div>
   );
 }
