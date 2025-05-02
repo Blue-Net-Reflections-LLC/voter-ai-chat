@@ -9,24 +9,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"; // Import Tooltip components
+import { SCORE_RANGES, ScoreRange } from '@/lib/participation-score/constants';
 
 // --- Configuration for Score Ranges and Labels ---
 // TODO: Make this externally configurable if needed (e.g., via props or context)
-interface ScoreRange {
-  min: number;
-  max: number;
-  label: string;
-  className?: string; // Optional specific styling class for the label/badge
-}
-
-// Updated ranges based on design/ga/participation-score.md
-const SCORE_RANGES: ScoreRange[] = [
-  { min: 1.0, max: 2.9, label: 'Needs Attention', className: 'bg-red-100 text-red-800 border-red-300' },
-  { min: 3.0, max: 4.9, label: 'Needs Review', className: 'bg-orange-100 text-orange-800 border-orange-300' }, // Using orange for review
-  { min: 5.0, max: 6.4, label: 'Participates', className: 'bg-yellow-100 text-yellow-800 border-yellow-300' }, // Using yellow for participates
-  { min: 6.5, max: 9.9, label: 'Power Voter', className: 'bg-green-100 text-green-800 border-green-300' }, // Using green for power
-  { min: 10.0, max: 10.0, label: 'Super Power Voter', className: 'bg-blue-100 text-blue-800 border-blue-300' }, // Using blue for super power
-];
 
 // Find the corresponding label for a given score
 const getScoreLabel = (score: number | null): ScoreRange | null => {

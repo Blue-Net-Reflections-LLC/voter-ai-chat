@@ -116,7 +116,7 @@ export function FilterPanel() {
         <div className="space-y-2">
           <MultiSelect
             label="Participation Score Range"
-            options={SCORE_RANGES.map(range => ({ value: range.key, label: range.label }))}
+            options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
             value={filters.scoreRanges}
             setValue={(value) => updateFilter('scoreRanges', value)}
             compact={true}
