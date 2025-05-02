@@ -161,10 +161,10 @@ export function VoterTable({
               <SortButton field="county" label="County" currentSort={sort} onSort={onSort} />
             </TableHead>
             <TableHead style={{ width: '30%', position: 'sticky', top: 0, zIndex: 2, background: '#18181b' }} className="py-1.5 px-3 text-white font-normal text-left">
-              <span className="h-6 px-1 font-semibold text-[10px]">Resident Address</span>
+              <SortButton field="address" label="Resident Address" currentSort={sort} onSort={onSort} />
             </TableHead>
             <TableHead style={{ width: '10%', position: 'sticky', top: 0, zIndex: 2, background: '#18181b' }} className="py-1.5 px-3 text-white font-normal">
-              <span className="h-6 px-1 font-semibold text-[10px]">Score</span>
+              <SortButton field="score" label="Score" currentSort={sort} onSort={onSort} />
             </TableHead>
             <TableHead style={{ width: '15%', position: 'sticky', top: 0, zIndex: 2, background: '#18181b' }} className="py-1.5 px-3 text-white font-normal">
               <SortButton field="status" label="Status" currentSort={sort} onSort={onSort} />
