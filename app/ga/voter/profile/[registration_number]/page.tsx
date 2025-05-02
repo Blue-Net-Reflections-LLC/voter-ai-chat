@@ -160,21 +160,23 @@ export default function VoterProfilePage() {
   return (
     <div className="container py-2 max-w-5xl mx-auto">
       {/* Back Button and Header */}
-      <div className="mb-4 flex items-center" id="page-top">
+      <div className="mb-4 flex items-center gap-4" id="page-top">
         <Button
           variant="ghost"
-          className="p-0 mr-2 hover:bg-accent" // Added hover effect
+          className="p-0 mr-2 hover:bg-accent flex-shrink-0"
           onClick={handleBack}
-          aria-label="Go back" // Added aria-label
+          aria-label="Go back"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl md:text-3xl font-bold truncate"> {/* Added truncate */}
-          {infoLoading ? <Skeleton className="w-48 h-9" /> : voterName}
-        </h1>
+        <div className="flex-grow min-w-0">
+           <h1 className="text-2xl md:text-3xl font-bold truncate">
+             {infoLoading ? <Skeleton className="w-48 h-9 inline-block" /> : voterName}
+           </h1>
+        </div>
       </div>
 
-      {/* Section Navigation - traditional sticky positioning */}
+      {/* Section Navigation & Score Bar */}
       <div className="sticky top-0 z-50 bg-background border-b shadow-sm py-3 mb-6 -mx-4 px-4">
         <nav className="flex space-x-6 overflow-x-auto no-scrollbar">
           <a href="#voter-info" className="text-sm font-medium hover:text-primary whitespace-nowrap">Voter Info</a>
