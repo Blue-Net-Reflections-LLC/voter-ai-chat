@@ -23,10 +23,11 @@ We need to develop a scoring system to calculate a participation score for any g
 - **Time Window:** The calculation considers voting history within a **rolling 8-year window** from the current date.
 - **Eligibility:** Determining the number of elections a voter *could* have voted in is difficult due to inconsistent registration data. Therefore, the score will focus **solely on the available voting history (events)**, not on a calculated eligibility denominator.
 - **Dynamic Filtering:** The score calculation will be dynamic, based on the filters applied via the `VoterFilterProvider`.
-- **Endpoint:** A dedicated endpoint, `/api/ga/voter/participation-score`, will handle calculations.
-    - It must support both **individual voter scores** (accepting a `registrationNumber`) and **aggregate scores** based on the standard filter set.
-    - Integration with `lib\\voter\\build-where-clause.ts` is required. The `registrationNumber` filter needs to be added to `app\\ga\\voter\\list\\components\\FilterPanel.tsx`.
-    - For aggregate requests (Phase 1), the endpoint will return the **average (mean) score** for the filtered set.
+- **Endpoint:** A dedicated endpoint, `/api/ga/voter/participation-score`, handles score retrieval.
+    - It supports both **individual voter scores** (accepting a `registrationNumber`) and **aggregate scores** based on the standard filter set.
+    - It **retrieves the pre-calculated `participation_score`** from the database.
+    - For individual requests, it returns the stored score.
+    - For aggregate requests, it calculates the **average (mean) of the stored scores** for the filtered set (excluding `NULL` scores).
 - **Asynchronous Return:** The score will always return asynchronously alongside list data, stats, maps, and profile page information.
 - **UI Component:** The score will be presented in a widget/UI component on the list, stats, maps, and profile pages.
     - **Household Score:** For profile pages, a household score will be calculated by averaging the individual scores of all voters identified at the same residence address (similar to the `ResidenceAddressFilter` logic).
@@ -36,7 +37,7 @@ We need to develop a scoring system to calculate a participation score for any g
         - **5.0 - 6.4:** Participates
         - **6.5 - 9.9:** Power Voter
         - **10.0:** Super Power Voter
-- **Calculation Location:** The decision of whether the core calculation logic resides primarily in SQL or the API (TypeScript) requires further analysis once the specific rules and scaling factors are finalized. Flexibility in the chosen approach is key.
+- **Calculation Location:** The core calculation logic resides in a TypeScript function (`lib/participation-score/calculate.ts`). Scores are **pre-calculated** using a script (`lib/ga-voter-registration/import/calculate-ga-scores.ts`) and stored in a `participation_score NUMERIC(3, 1)` column within the `ga_voter_registration_list` table. This script should be run periodically (e.g., semi-annually) after voter registration and history data updates.
 
 ## Schemas and Datasources
 Schemas used for the voter data:
@@ -48,6 +49,7 @@ Schemas used for the voter data:
  - lib\ga-voter-registration\migrations\0010_tile_current_district_geometries.sql
  - lib\ga-voter-registration\migrations\0011_add_voting_events_jsonb.sql
  - lib\ga-voter-registration\migrations\0014_add_geo_boundaries_to_voters.sql # Contains Census Tract ID (ucgid)
+ - lib\ga-voter-registration\migrations\0015_add_participation_score.sql # Adds the pre-calculated score column
 
  Scripts
  - lib\ga-voter-history\import\parse-history-csv.ts
@@ -55,6 +57,7 @@ Schemas used for the voter data:
  - lib\ga-voter-registration\import\update-redistricting-flags.ts
  - lib\ga-voter-registration\import\geocode-addresses.ts
  - lib\ga-voter-registration\import\enrich-voter-boundaries.ts # Populates Census Tract ID
+ - lib\ga-voter-registration\import\calculate-ga-scores.ts # Calculates and stores scores in the DB
 
 
  ## Rules (Examples & Guidelines)
@@ -74,7 +77,7 @@ Schemas used for the voter data:
 
 ## Implementation Plan
 
-**Phase 1: Core Calculation and Aggregate Endpoint**
+**Phase 1: Core Calculation, Pre-processing, and API Endpoint**
 
 - [x] **Task 1: Backend Calculation Logic (TypeScript)**
     - [x] Create `lib/participation-score/calculate.ts`.
@@ -85,16 +88,23 @@ Schemas used for the voter data:
     - [x] Use adjustable constants/config for score parameters.
     - [x] Write comprehensive unit tests for `calculateParticipationScore`.
 
-- [ ] **Task 2: Backend API Endpoint (`/api/ga/voter/participation-score`)**
-    - [ ] Create `app/api/ga/voter/participation-score/route.ts`.
-    - [ ] Integrate `lib/voter/build-where-clause.ts`; add `registrationNumber` query param support.
-    - [ ] Implement data fetching (single voter or filtered set). Optimize queries.
-    - [ ] Implement calculation call (single or iterate/average for aggregate).
-    - [ ] Return JSON response `{ score: number | null }` asynchronously.
-    - [ ] Write integration tests for the endpoint.
+- [x] **Task 1.5: Database Migration and Pre-calculation Script**
+    - [x] Create migration `lib/ga-voter-registration/migrations/0015_add_participation_score.sql` to add `participation_score` column.
+    - [x] Create script `lib/ga-voter-registration/import/calculate-ga-scores.ts` to:
+        - [x] Fetch voters in batches.
+        - [x] Call `calculateParticipationScore`.
+        - [x] Update the `participation_score` column in the database using efficient batch updates.
+    - [x] Add `ga:calculate:participation-score` script to `package.json`.
 
-- [ ] **Task 3: Database Indexing**
-    - [ ] Review/add indexes on `ga_voter_registration_list` (status, reg num) & `ga_voter_history` (reg num, date, type) as needed.
+- [x] **Task 2: Backend API Endpoint (`/api/ga/voter/participation-score`)**
+    - [x] Create/Refactor `app/api/ga/voter/participation-score/route.ts`.
+    - [x] Integrate `lib/voter/build-where-clause.ts`; support `registrationNumber` query param.
+    - [x] Implement data fetching to **retrieve pre-calculated `participation_score`** (single or aggregate AVG).
+    - [x] Return JSON response `{ score: number | null, voterCount: number | null }` asynchronously.
+    - [ ] Write integration tests for the endpoint (Simplified test implemented due to mocking issues).
+
+- [x] **Task 3: Database Indexing**
+    - [x] Review/add indexes on relevant columns, including `participation_score`.
 
 **Phase 2: Frontend Integration**
 

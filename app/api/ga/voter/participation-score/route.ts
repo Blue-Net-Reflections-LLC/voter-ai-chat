@@ -1,101 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  calculateParticipationScore,
-  VoterScoreData,
-  HistoryEvent,
-  calculateAverageScore
-} from '@/lib/participation-score/calculate';
 import { sql } from '@/lib/voter/db'; // Assuming this is the correct path for your DB utility
 import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause';
-// import { pool } from '@/lib/db'; // Placeholder for database connection
-
-// --- Helper Function for Filtered Voters Data ---
-async function fetchFilteredVotersData(whereClause: string): Promise<VoterScoreData[]> {
-  try {
-    console.log(`[DB] Fetching filtered voter data with clause: ${whereClause || '(no clause)'}`);
-    const query = `
-      SELECT
-        status as voter_status,
-        voting_events
-      FROM ga_voter_registration_list
-      ${whereClause};
-    `;
-    const results = await sql.unsafe(query);
-    console.log(`[DB] Found ${results.length} voters matching filters.`);
-    const votersData = results.map(row => {
-      let status: 'Active' | 'Inactive';
-      if (row.voter_status?.toUpperCase() === 'ACTIVE') {
-        status = 'Active';
-      } else {
-        status = 'Inactive';
-      }
-      const historyEvents: HistoryEvent[] = row.voting_events ? row.voting_events : [];
-      return {
-        status: status,
-        historyEvents: historyEvents
-      };
-    });
-    return votersData;
-  } catch (dbError) {
-    console.error(`[DB] Error fetching filtered voter data:`, dbError);
-    throw dbError;
-  }
-}
 
 // --- API Route Handler ---
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
+  const registrationNumber = searchParams.get('registrationNumber');
   console.log('Participation Score Request Params:', Object.fromEntries(searchParams));
+
+  // Get schema name from environment variables
+  const schemaName = process.env.PG_VOTERDATA_SCHEMA;
+  if (!schemaName) {
+    console.error('Missing environment variable: PG_VOTERDATA_SCHEMA');
+    return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+  }
+  const tableName = `${schemaName}.ga_voter_registration_list`;
 
   try {
     let score: number | null = null;
+    let voterCount: number | null = null; // Keep track of count for aggregate
 
-    // Always build the where clause, which now handles registrationNumber exclusively
-    const whereClause = buildVoterListWhereClause(searchParams);
-    console.log('Generated WHERE clause:', whereClause);
+    if (registrationNumber) {
+      console.log(`[DB] Fetching score for single voter: ${registrationNumber}`);
+      // Fetch single pre-calculated score
+      const query = `
+        SELECT participation_score
+        FROM ${tableName}
+        WHERE voter_registration_number = $1;
+      `;
+      const result = await sql.unsafe(query, [registrationNumber]);
 
-    // Prevent query if where clause is empty (no filters/reg num)
-    if (!whereClause) {
-      console.log('No valid filters or registration number provided.');
-      // Return a specific response or handle as appropriate, e.g., 400 Bad Request
-      return NextResponse.json({ error: 'Missing required query parameters.' }, { status: 400 });
-    }
-
-    // Always fetch data based on the where clause
-    const votersData = await fetchFilteredVotersData(whereClause);
-
-    // Determine response based on number of results
-    if (votersData.length === 1) {
-      // If exactly one voter matches (e.g., by registrationNumber or specific filters),
-      // calculate and return their individual score.
-      console.log('Calculating score for single matching voter.');
-      score = calculateParticipationScore(votersData[0]);
-    } else if (votersData.length > 1) {
-      // If multiple voters match the filters, calculate the average score.
-      console.log(`Calculating average score for ${votersData.length} voters.`);
-      score = calculateAverageScore(votersData);
+      if (result.length > 0 && result[0].participation_score !== null) {
+        score = parseFloat(result[0].participation_score);
+        voterCount = 1; // Indicate single voter result
+      } else {
+        console.log(`No score found for voter ${registrationNumber}`);
+      }
     } else {
-      // If no voters match the filters or registrationNumber.
-      console.log('No voters found matching the criteria.');
-      score = null;
+      // Calculate average from pre-calculated scores based on filters
+      const whereClause = buildVoterListWhereClause(searchParams);
+      console.log('Generated WHERE clause for aggregate:', whereClause);
+
+      if (whereClause) {
+        console.log(`[DB] Calculating average score with clause: ${whereClause}`);
+        // Query for the average score and count, excluding NULL scores
+        const query = `
+          SELECT
+            AVG(participation_score) as average_score,
+            COUNT(*) as voter_count
+          FROM ${tableName}
+          ${whereClause}
+            AND participation_score IS NOT NULL;
+        `;
+        const result = await sql.unsafe(query);
+
+        if (result.length > 0 && result[0].average_score !== null) {
+          // Round the average score to one decimal place
+          score = Math.round(parseFloat(result[0].average_score) * 10) / 10;
+          voterCount = parseInt(result[0].voter_count, 10);
+          console.log(`Average score: ${score}, Voter count: ${voterCount}`);
+        } else {
+          console.log('No voters with scores found matching the criteria.');
+        }
+      } else {
+        // No filters provided, and no registration number
+        console.log('No registration number or filters provided for aggregate calculation.');
+        // Consider if an average of *all* voters is desired here, or if it should be an error/null
+        // For now, return null if no filters.
+      }
     }
 
     console.log(`Returning score: ${score}`);
-    // Include voter count in the response for aggregate requests
-    const responseBody = votersData.length > 1 ? { score, voterCount: votersData.length } : { score };
+    // Return score (null if not found/calculated) and voter count for context
+    const responseBody = { score, voterCount };
     return NextResponse.json(responseBody);
 
   } catch (error) {
     let errorMessage = 'Internal Server Error';
     let statusCode = 500;
-    // Check if it's a known error type or has a specific message we want to expose
+
     if (error instanceof Error) {
-        // Example: Customize error message based on specific db errors if needed
-        // For now, a generic message for database/fetch errors
-        errorMessage = 'Failed to fetch voter data.';
+        console.error("Error fetching participation score:", error);
+        errorMessage = `Failed to fetch participation score: ${error.message}`;
     }
-    console.error("Error calculating participation score:", error);
-    // It's often better to return a JSON error object
+    console.error("Raw Error:", error);
     return NextResponse.json({ error: errorMessage }, { status: statusCode });
   }
 }
