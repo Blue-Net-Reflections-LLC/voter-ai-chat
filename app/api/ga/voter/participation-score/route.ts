@@ -63,10 +63,25 @@ export async function GET(request: NextRequest) {
           console.log('No voters with scores found matching the criteria.');
         }
       } else {
-        // No filters provided, and no registration number
-        console.log('No registration number or filters provided for aggregate calculation.');
-        // Consider if an average of *all* voters is desired here, or if it should be an error/null
-        // For now, return null if no filters.
+        // No filters provided, and no registration number - calculate average for ALL voters
+        console.log('[DB] No filters provided, calculating average score for all voters...');
+        const query = `
+          SELECT
+            AVG(participation_score) as average_score,
+            COUNT(*) as voter_count
+          FROM ${tableName}
+          WHERE participation_score IS NOT NULL; -- Exclude voters without a score
+        `;
+        const result = await sql.unsafe(query);
+
+        if (result.length > 0 && result[0].average_score !== null) {
+          // Round the average score to one decimal place
+          score = Math.round(parseFloat(result[0].average_score) * 10) / 10;
+          voterCount = parseInt(result[0].voter_count, 10);
+          console.log(`Overall average score: ${score}, Total voter count with scores: ${voterCount}`);
+        } else {
+          console.log('Could not calculate overall average score (no voters with scores found?).');
+        }
       }
     }
 

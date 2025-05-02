@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import { List, BarChart2, Map, PieChart, Landmark, Info } from "lucide-react";
 import React, { useState, useEffect } from 'react';
 import { useVoterFilterContext, buildQueryParams } from './VoterFilterProvider';
@@ -47,9 +47,10 @@ const tabs = [
   },
 ];
 
-function useAggregateParticipationScore(
-    filters: FilterState | null | undefined, 
-    filtersHydrated: boolean 
+function useParticipationScore(
+    filters: FilterState | null | undefined,
+    filtersHydrated: boolean,
+    registrationNumber: string | null | undefined
 ) {
   const [scoreData, setScoreData] = useState<{ score: number | null, voterCount?: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,24 +59,33 @@ function useAggregateParticipationScore(
   const { residenceAddressFilters } = useVoterFilterContext() || { residenceAddressFilters: [] };
 
   useEffect(() => {
-    if (!filtersHydrated || !filters) {
+    const isIndividualFetch = typeof registrationNumber === 'string' && registrationNumber.length > 0;
+    
+    if (!isIndividualFetch && (!filtersHydrated || !filters)) {
         setScoreData(null);
         setLoading(false);
         setError(null);
         return;
     }
-    
+
     setLoading(true);
     setError(null);
 
     const controller = new AbortController();
     const signal = controller.signal;
 
-    const { page, pageSize, sortBy, sortOrder, ...relevantFilters } = filters;
-    const params = buildQueryParams(relevantFilters as FilterState, residenceAddressFilters);
-    const queryString = params.toString();
-
-    console.log(`[Score Fetch] Fetching score with query: ${queryString}`);
+    let queryString = '';
+    if (isIndividualFetch) {
+      const params = new URLSearchParams();
+      params.set('registrationNumber', registrationNumber as string);
+      queryString = params.toString();
+      console.log(`[Score Fetch] Fetching individual score for: ${registrationNumber}`);
+    } else {
+      const { page, pageSize, sortBy, sortOrder, ...relevantFilters } = filters || {};
+      const params = buildQueryParams(relevantFilters as FilterState, residenceAddressFilters);
+      queryString = params.toString();
+      console.log(`[Score Fetch] Fetching aggregate score with query: ${queryString || '(no filters - overall avg)'}`);
+    }
 
     fetch(`/api/ga/voter/participation-score?${queryString}`, { signal })
       .then(async (res) => {
@@ -86,16 +96,16 @@ function useAggregateParticipationScore(
         return res.json();
       })
       .then(data => {
-        console.log('[Score Fetch] Received score data:', data);
+        console.log(`[Score Fetch] Received ${isIndividualFetch ? 'individual' : 'aggregate'} score data:`, data);
         setScoreData(data);
         setLoading(false);
       })
       .catch(e => {
         if (e.name === 'AbortError') {
-          console.log('Fetch aborted for aggregate participation score');
+          console.log('Fetch aborted for participation score');
           return;
         }
-        console.error('Error fetching aggregate participation score:', e);
+        console.error(`Error fetching ${isIndividualFetch ? 'individual' : 'aggregate'} participation score:`, e);
         setError(e.message || 'An error occurred');
         setScoreData(null);
         setLoading(false);
@@ -104,27 +114,33 @@ function useAggregateParticipationScore(
     return () => {
       controller.abort();
     };
-  }, [filtersHydrated, JSON.stringify(filters), JSON.stringify(residenceAddressFilters)]);
+  }, [filtersHydrated, JSON.stringify(filters), JSON.stringify(residenceAddressFilters), registrationNumber]);
 
   return { scoreData, loading, error };
 }
 
 export default function TabNavigation() {
   const pathname = usePathname();
+  const params = useParams();
   const voterFilterContext = useVoterFilterContext();
   const filters = voterFilterContext?.filters;
   const filtersHydrated = voterFilterContext?.filtersHydrated || false;
+
+  const isProfilePage = pathname.startsWith('/ga/voter/profile/');
+  const registrationNumber = isProfilePage && typeof params.registration_number === 'string' ? params.registration_number : null;
 
   const { 
     scoreData, 
     loading: scoreLoading, 
     error: scoreError 
-  } = useAggregateParticipationScore(filters, filtersHydrated);
+  } = useParticipationScore(filters, filtersHydrated, registrationNumber);
+
+  const scoreLabel = isProfilePage ? "Participation Score" : "Avg. Participation Score";
 
   return (
     <nav className="w-full border-b bg-background px-4 pt-2 pb-1 flex items-center justify-between gap-4">
       <div className="flex items-center gap-2 flex-shrink-0 pr-4 border-r">
-         <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">Avg. Participation Score</span>
+         <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">{scoreLabel}</span>
          
          <ParticipationScoreWidget 
            score={scoreData?.score}

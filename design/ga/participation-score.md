@@ -108,10 +108,11 @@ Schemas used for the voter data:
 
 **Phase 2: Frontend Integration**
 
-- [ ] **Task 4: Filter Panel Update**
-    - [ ] Modify `app/ga/voter/list/components/FilterPanel.tsx`.
-    - [ ] Add "Registration Number" input UI.
-    - [ ] Add `registrationNumber` to `VoterFilterContext` state and functions.
+- [x] **Task 4: Add Participation Score Filter to Sidebar**
+    - [x] Modify `app/ga/voter/list/components/FilterPanel.tsx` to add MultiSelect for `scoreRanges`.
+    - [x] Ensure `scoreRanges` state is handled in `VoterFilterContext`.
+    - [x] Ensure `scoreRanges` param is handled in `buildVoterListWhereClause`.
+    // Note: Original sub-tasks for Registration Number input deferred.
 
 - [ ] **Task 5: Participation Score Widget**
     - [ ] Create `components/voter/ParticipationScoreWidget.tsx`.
