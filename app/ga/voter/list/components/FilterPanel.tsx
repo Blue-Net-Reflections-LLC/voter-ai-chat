@@ -23,6 +23,7 @@ import { ChevronLeft, ChevronRight, FilterX } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
+import { SCORE_RANGES } from '@/lib/participation-score/constants';
 
 export function FilterPanel() {
   const {
@@ -111,6 +112,17 @@ export function FilterPanel() {
         </div>
       )}
       <CardContent className="space-y-3 pt-2 px-3">
+        {/* Participation Score Filter */}
+        <div className="space-y-2">
+          <MultiSelect
+            label="Participation Score Range"
+            options={SCORE_RANGES.map(range => ({ value: range.key, label: range.label }))}
+            value={filters.scoreRanges}
+            setValue={(value) => updateFilter('scoreRanges', value)}
+            compact={true}
+          />
+        </div>
+
         {/* Geographic Filters */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold">Geographic Filters</h3>

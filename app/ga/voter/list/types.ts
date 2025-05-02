@@ -47,6 +47,7 @@ export interface FilterState {
   congressionalDistricts: string[];
   stateSenateDistricts: string[];
   stateHouseDistricts: string[];
+  scoreRanges: string[];
   status: string[];
   party: string[];
   historyParty: string[];

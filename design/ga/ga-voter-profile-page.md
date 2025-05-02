@@ -12,6 +12,7 @@ Voter Information
 - Gender
 - Voter File Last Modified Date
 - Voter Creation Date
+- Participation Score (pre-calculated)
 
 Location
 - County Code + Name
@@ -68,6 +69,7 @@ Location
 | Gender                          | `gender`                                                      |     `[x]`      |
 | Voter File Last Modified Date   | `last_modified_date`                                          |     `[x]`      |
 | Voter Creation Date             | `voter_created_date`                                          |     `[x]`      |
+| Participation Score             | `participation_score` (pre-calculated)                        |     `[x]`      |
 | **Location**                    |                                                               |                |
 | County Code                     | `county_code` (move from Voter Info)                          |     `[x]`      |
 | County Name                     | `county_name` (move from Voter Info)                          |     `[x]`      |
@@ -278,5 +280,20 @@ To optimize response time, the backend API should fetch external data (Represent
 - Implement section-specific data fetching hooks (useVoterSection)
 - Store navigation state to support back button functionality
 - Use skeleton loaders during async data fetching for better UX
+
+## Change Requests
+
+### CR-001: Add Participation Score Filter (Implemented)
+
+- **Date:** [Insert Date]
+- **Request:** Add a filter to the sidebar to allow users to select voters based on their Participation Score range.
+- **Implementation Details:**
+    - Added a new multi-select filter component labeled "Participation Score Range" to the top of the Filter Panel (`app/ga/voter/list/components/FilterPanel.tsx`).
+    - Uses predefined score ranges (Needs Attention, Needs Review, Participates, Power Voter, Elite Voter) defined in `lib/participation-score/constants.ts`.
+    - Filter selections are stored in the `scoreRanges` array within the `VoterFilterContext` state (`app/ga/voter/VoterFilterProvider.tsx`).
+    - URL parameter `scoreRanges` is used for persistence.
+    - The `buildVoterListWhereClause` function (`lib/voter/build-where-clause.ts`) was updated to generate appropriate SQL `WHERE` conditions (e.g., `participation_score BETWEEN X AND Y OR participation_score = 10.0`) based on selected ranges.
+    - Filter is additive (multiple ranges can be selected).
+
  
  

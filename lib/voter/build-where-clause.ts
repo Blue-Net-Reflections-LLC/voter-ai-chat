@@ -2,6 +2,8 @@
  * Shared utility function to build the WHERE clause for the voter list API
  * based on URL search parameters.
  */
+import { SCORE_RANGES } from "@/lib/participation-score/constants"; // Import score range definitions
+
 export function buildVoterListWhereClause(searchParams: URLSearchParams): string {
   // --- Start: Filter parameter extraction ---
   const registrationNumber = searchParams.get('registrationNumber');
@@ -9,6 +11,7 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   const congressionalDistricts = searchParams.getAll('congressionalDistricts');
   const stateSenateDistricts = searchParams.getAll('stateSenateDistricts');
   const stateHouseDistricts = searchParams.getAll('stateHouseDistricts');
+  const scoreRangeKeys = searchParams.getAll('scoreRanges'); // Get selected score range keys
   const statusValues = searchParams.getAll('status');
   const statusReasonParams = searchParams.getAll('statusReason');
   const partyValues = searchParams.getAll('party');
@@ -73,6 +76,26 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   // County Filter (Example)
   if (county) {
     conditions.push(`UPPER(county_name) = UPPER('${county}')`);
+  }
+
+  // Participation Score Range Filter
+  if (scoreRangeKeys.length > 0) {
+    const scoreConditions: string[] = [];
+    scoreRangeKeys.forEach(key => {
+      const range = SCORE_RANGES.find(r => r.key === key);
+      if (range) {
+        if (range.key === 'super') {
+          // Special case for exact 10.0
+          scoreConditions.push(`participation_score = 10.0`);
+        } else {
+          // Use BETWEEN for other ranges
+          scoreConditions.push(`participation_score BETWEEN ${range.min} AND ${range.max}`);
+        }
+      }
+    });
+    if (scoreConditions.length > 0) {
+      conditions.push(`(${scoreConditions.join(' OR ')})`);
+    }
   }
 
   // Status Filter (Corrected Logic)

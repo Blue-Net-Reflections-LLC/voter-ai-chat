@@ -3,12 +3,43 @@ import React, { createContext, useContext, useState } from 'react';
 import { FilterState, ResidenceAddressFilterState } from './list/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-// Initial filter state (copied from useVoterList)
+// Define the FilterState including the new scoreRanges
+/*
+export interface FilterState {
+  county: string[];
+  congressionalDistricts: string[];
+  stateSenateDistricts: string[];
+  stateHouseDistricts: string[];
+  scoreRanges: string[];
+  status: string[];
+  party: string[];
+  historyParty: string[];
+  age: string[];
+  gender: string[];
+  race: string[];
+  income: string[];
+  education: string[];
+  electionType: string[];
+  electionYear: string[];
+  electionDate: string[];
+  ballotStyle: string[];
+  eventParty: string[];
+  voterEventMethod: string;
+  firstName: string;
+  lastName: string;
+  neverVoted: boolean;
+  notVotedSinceYear: string;
+  redistrictingAffectedTypes: string[];
+  statusReason: string[];
+}
+*/
+
 const initialFilterState: FilterState = {
   county: [],
   congressionalDistricts: [],
   stateSenateDistricts: [],
   stateHouseDistricts: [],
+  scoreRanges: [],
   status: [],
   party: [],
   historyParty: [],
@@ -64,6 +95,7 @@ export const FILTER_TO_URL_PARAM_MAP: Record<string, string> = {
   congressionalDistricts: 'congressionalDistricts',
   stateSenateDistricts: 'stateSenateDistricts',
   stateHouseDistricts: 'stateHouseDistricts',
+  scoreRanges: 'scoreRanges',
   status: 'status',
   party: 'party',
   historyParty: 'historyParty',
