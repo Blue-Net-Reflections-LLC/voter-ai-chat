@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExternalLink, X } from "lucide-react";
+import { ParticipationScoreWidget } from "@/components/voter/ParticipationScoreWidget";
+import { Label } from "@/components/ui/label";
 
 interface VoterQuickviewProps {
   isOpen: boolean;
@@ -153,7 +155,10 @@ export function VoterQuickview({ isOpen, voterId, onClose }: VoterQuickviewProps
         ) : (
           <div className="text-sm">
             {/* All fields in horizontal layout with labels on left */}
-            <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
+            <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-baseline">
+              <Label className="text-muted-foreground text-xs pt-0.5">Participation Score</Label>
+              <ParticipationScoreWidget score={infoData?.participationScore} size="small" />
+
               <p className="text-muted-foreground text-xs">Status:</p>
               <p className="font-medium">{infoData?.status || "Unknown"}</p>
               

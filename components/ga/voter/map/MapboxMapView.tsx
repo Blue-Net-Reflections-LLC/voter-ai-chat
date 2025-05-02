@@ -12,6 +12,7 @@ import { useVoterFilterContext, buildQueryParams } from '@/app/ga/voter/VoterFil
 import type { FilterState } from '@/app/ga/voter/list/types'; // Import FilterState type
 import { ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
 import { VoterQuickview } from '@/components/ga/voter/quickview/VoterQuickview';
+import { ParticipationScoreWidget } from '@/components/voter/ParticipationScoreWidget'; // Ensure widget is imported
 
 // Define types for features (Keep these local or move to context if preferred)
 interface VoterAddressProperties {
@@ -49,6 +50,12 @@ interface PopupInfo {
   address: string;
   voters: VoterDetail[];
   isLoading: boolean;
+}
+
+// Add state for in-view stats
+interface InViewStats {
+  score: number | null;
+  voterCount: number | null;
 }
 
 // Component using the context
@@ -92,6 +99,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   // Get state from contexts
   const { filters, residenceAddressFilters, filtersHydrated } = useVoterFilterContext(); // Get current filters and address filters
   
+  // --- State for In-View Stats ---
+  const [inViewScoreData, setInViewScoreData] = useState<InViewStats | null>(null);
+
   // --- Update API Params Function ---
   // This ONLY updates the apiParams in context, it DOES NOT trigger fetches directly
   const updateApiParams = useCallback((newZoom: number, newBounds: mapboxgl.LngLatBounds | null) => {
@@ -172,11 +182,14 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       if (filtersChanged) {
         // Close any open popup when filters change
         setPopupInfo(null);
+        setInViewScoreData(null); // Clear score overlay on filter change
         
         // console.log('Filters changed, adding to fetch queue');
         setFetchTrigger({ type: 'filter', timestamp: Date.now() });
       }
     }
+    // Update ref *after* comparison
+    prevFiltersRef.current = JSON.parse(JSON.stringify(filters)); // Deep copy
   }, [filters, mapReady]);
 
   // --- Watch address filters and queue fetch when they change ---
@@ -184,6 +197,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     if (mapReady && !isInitialLoadRef.current) {
       // Close any open popup when address filters change
       setPopupInfo(null);
+      setInViewScoreData(null); // Clear score overlay
       setFetchTrigger({ type: 'filter', timestamp: Date.now() });
     }
   }, [residenceAddressFilters, mapReady]);
@@ -200,6 +214,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     
     if (!apiParams.bounds) {
       console.warn("Cannot fetch: No bounds available");
+      setIsLoading(false); // Ensure loading state is reset
       return;
     }
     
@@ -207,10 +222,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     controllerRef.current = controller;
     const signal = controller.signal;
     
-    // Close popup when fetching new data (for bounds changes)
-    if (fetchType === 'bounds') {
-      setPopupInfo(null);
-    }
+    // Close popup and clear overlay when fetching new data (for bounds/filter changes)
+    setPopupInfo(null);
+    setInViewScoreData(null);
     
     setIsLoading(true);
     setVoterFeatures([]);
@@ -246,22 +260,26 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
       const response = await fetch(url.toString(), { signal });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const geojsonData: FeatureCollection<Geometry, VoterAddressProperties> = await response.json();
+      
+      // Expect the new response structure
+      const responseData = await response.json(); 
+      const geojsonData: FeatureCollection<Geometry, VoterAddressProperties> = responseData.geoJson;
+      const inViewStats: InViewStats = responseData.inViewStats;
+      
       // console.log(`Fetch successful, received ${geojsonData.features.length} features.`);
-      
-      // Store current filters to prevent redundant fetches
-      prevFiltersRef.current = JSON.parse(JSON.stringify(filters));
-      
-      setVoterFeatures(geojsonData.features);
-      setIsLoading(false);
-      controllerRef.current = null;
+      // console.log(`In-view stats:`, inViewStats);
 
-      // FIT BOUNDS on initial load OR filter change
-      const shouldFitBounds = fetchType === 'initial' || fetchType === 'filter';
-      // console.log(`Should fit bounds? ${shouldFitBounds} (${fetchType})`);
-
-      if (shouldFitBounds && mapRef.current && geojsonData.features.length > 0) {
-        // console.log(`Fitting bounds/view to ${geojsonData.features.length} features.`);
+      // Check if the fetch was aborted before updating state
+      if (signal.aborted) {
+        console.log('Fetch aborted before state update.');
+        return; 
+      }
+      
+      setVoterFeatures(geojsonData.features); // Update map features
+      setInViewScoreData(inViewStats); // Update overlay stats
+      
+      // Fit bounds only on initial load or explicit filter change
+      if ((fetchType === 'initial' || fetchType === 'filter') && geojsonData.features.length > 0) {
         try {
           const bounds = geojsonData.features.reduce((currentBounds, feature) => {
             if (!feature || !feature.geometry) return currentBounds;
@@ -299,53 +317,59 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           }, new LngLatBounds());
 
           if (!bounds.isEmpty()) {
-            const cameraOptions = mapRef.current.cameraForBounds(bounds, { padding: 60 });
-            if (cameraOptions) {
-              let targetZoom = cameraOptions.zoom ?? viewState.zoom;
-              const targetCenter = cameraOptions.center ?? {lng: viewState.longitude, lat: viewState.latitude };
-              
-              // Threshold Capping Logic (Removed City Level)
-              const ZOOM_THRESHOLDS = [ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL]; // Removed City Level
-              let crossedThreshold = false;
-              for (const threshold of ZOOM_THRESHOLDS) {
-                if (viewState.zoom < threshold && targetZoom >= threshold) {
-                  // console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} crosses threshold ${threshold}. Capping zoom.`);
-                  targetZoom = threshold - 0.1; // Set zoom just below the threshold
-                  crossedThreshold = true;
-                  break; // Stop checking thresholds
-                }
-              }
-              if (!crossedThreshold && targetZoom > 16) { // Also cap max zoom if needed
-                // console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} exceeds maxZoom 16. Capping zoom.`);
-                targetZoom = 16;
-              }
-
-              setIsFittingBounds(true);
-              // console.log(`Flying to center: ${JSON.stringify(targetCenter)}, capped zoom: ${targetZoom.toFixed(2)}`);
-              mapRef.current.flyTo({
-                center: targetCenter,
-                zoom: targetZoom,
-                duration: 1000 // Smooth animation
-              });
-              setTimeout(() => {
-                setIsFittingBounds(false);
+            // Add null check for mapRef.current
+            if (mapRef.current) {
+              const cameraOptions = mapRef.current.cameraForBounds(bounds, { padding: 60 });
+              if (cameraOptions) {
+                let targetZoom = cameraOptions.zoom ?? viewState.zoom;
+                const targetCenter = cameraOptions.center ?? {lng: viewState.longitude, lat: viewState.latitude };
                 
-                // Update API params after fitBounds completes to avoid a ping-pong effect
-                if (mapRef.current) {
-                  const map = mapRef.current.getMap();
-                  // Update params but don't queue a fetch (internal update)
-                  setApiParams({
-                    zoom: map.getZoom(),
-                    bounds: map.getBounds()
-                  });
+                // Threshold Capping Logic (Removed City Level)
+                const ZOOM_THRESHOLDS = [ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL]; // Removed City Level
+                let crossedThreshold = false;
+                for (const threshold of ZOOM_THRESHOLDS) {
+                  if (viewState.zoom < threshold && targetZoom >= threshold) {
+                    // console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} crosses threshold ${threshold}. Capping zoom.`);
+                    targetZoom = threshold - 0.1; // Set zoom just below the threshold
+                    crossedThreshold = true;
+                    break; // Stop checking thresholds
+                  }
                 }
-              }, 1100); // Slightly longer than duration
+                if (!crossedThreshold && targetZoom > 16) { // Also cap max zoom if needed
+                  // console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} exceeds maxZoom 16. Capping zoom.`);
+                  targetZoom = 16;
+                }
+
+                setIsFittingBounds(true);
+                // console.log(`Flying to center: ${JSON.stringify(targetCenter)}, capped zoom: ${targetZoom.toFixed(2)}`);
+                // Add null check for mapRef.current
+                mapRef.current?.flyTo({
+                  center: targetCenter,
+                  zoom: targetZoom,
+                  duration: 1000 // Smooth animation
+                });
+                setTimeout(() => {
+                  setIsFittingBounds(false);
+                  
+                  // Update API params after fitBounds completes to avoid a ping-pong effect
+                  if (mapRef.current) {
+                    const map = mapRef.current.getMap();
+                    // Update params but don't queue a fetch (internal update)
+                    setApiParams({
+                      zoom: map.getZoom(),
+                      bounds: map.getBounds()
+                    });
+                  }
+                }, 1100); // Slightly longer than duration
+              }
             }
           }
         } catch (error) {
           console.error("Error during fitBounds/flyTo calculation or execution:", error);
           setIsFittingBounds(false);
         }
+      } else {
+         setIsFittingBounds(false); // Ensure this is reset if not fitting
       }
       
       // No longer initial load
@@ -359,7 +383,17 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         console.error("Error fetching map data:", error);
         setIsLoading(false);
         setVoterFeatures([]);
+        setInViewScoreData(null); // Clear overlay on error
         controllerRef.current = null;
+      }
+    } finally {
+      // Ensure loading state is always reset unless fitting bounds is still active
+      if (!isFittingBounds) {
+          setIsLoading(false);
+      }
+      // Clear the controller ref once fetch completes or is aborted
+      if (controllerRef.current === controller) {
+          controllerRef.current = null;
       }
     }
   }, [apiParams, filters, residenceAddressFilters, setVoterFeatures, setIsLoading, setIsFittingBounds, viewState, setApiParams]);
@@ -535,8 +569,10 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     fetchVoterDetailsForPopup(address, lngLat);
   }, [fetchVoterDetailsForPopup]);
 
+  // ... (onMouseEnter, onMouseLeave handlers remain the same) ...
+
   return (
-    <div style={{ height: '100%', width: '100%' }} >
+    <div className="relative w-full h-full">
       <Map
         ref={mapRef}
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
@@ -726,6 +762,22 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           }}
         />
       )}
+
+      {/* NEW: In-View Score Overlay */}
+      <div className="absolute top-2 right-2 bg-background/80 p-1.5 rounded shadow-md text-xs">
+        <div className="flex items-center gap-1.5">
+           <span className="font-medium">In View:</span>
+           <ParticipationScoreWidget 
+             score={inViewScoreData?.score} 
+             isLoading={isLoading} // Use main loading state for simplicity here
+             size="small" 
+           />
+           <span className="text-muted-foreground">
+             ({inViewScoreData?.voterCount ?? '...'} voters)
+           </span>
+           {/* TODO: Maybe add an error indicator if stats fetch failed? */} 
+        </div>
+      </div>
     </div>
   );
 };

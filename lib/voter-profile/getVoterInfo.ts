@@ -5,7 +5,8 @@ export async function getVoterInfo(registration_number: string) {
     SELECT
       voter_registration_number, registration_date, status, status_reason,
       first_name, middle_name, last_name, suffix, birth_year, race, gender,
-      last_modified_date, voter_created_date
+      last_modified_date, voter_created_date,
+      participation_score
     FROM ga_voter_registration_list
     WHERE voter_registration_number = ${registration_number}
     LIMIT 1;
@@ -35,5 +36,10 @@ export async function getVoterInfo(registration_number: string) {
     gender: v.gender,
     lastModifiedDate: v.last_modified_date,
     creationDate: v.voter_created_date,
+    participationScore: typeof v.participation_score === 'number' 
+                        ? v.participation_score 
+                        : (typeof v.participation_score === 'string' && !isNaN(parseFloat(v.participation_score)) 
+                            ? parseFloat(v.participation_score) 
+                            : null),
   };
 } 

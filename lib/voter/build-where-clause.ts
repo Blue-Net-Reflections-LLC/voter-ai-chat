@@ -2,12 +2,16 @@
  * Shared utility function to build the WHERE clause for the voter list API
  * based on URL search parameters.
  */
+import { SCORE_RANGES } from "@/lib/participation-score/constants"; // Import score range definitions
+
 export function buildVoterListWhereClause(searchParams: URLSearchParams): string {
   // --- Start: Filter parameter extraction ---
+  const registrationNumber = searchParams.get('registrationNumber');
   const county = searchParams.get('county');
   const congressionalDistricts = searchParams.getAll('congressionalDistricts');
   const stateSenateDistricts = searchParams.getAll('stateSenateDistricts');
   const stateHouseDistricts = searchParams.getAll('stateHouseDistricts');
+  const scoreRangeKeys = searchParams.getAll('scoreRanges'); // Get selected score range labels
   const statusValues = searchParams.getAll('status');
   const statusReasonParams = searchParams.getAll('statusReason');
   const partyValues = searchParams.getAll('party');
@@ -59,9 +63,40 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   // --- Start: Build SQL conditions ---
   const conditions = [];
 
+  // --- Handle Registration Number exclusively ---
+  if (registrationNumber && registrationNumber.trim() !== '') {
+    // Basic validation/sanitization might be needed depending on input source
+    // Assuming registrationNumber is reasonably safe here
+    conditions.push(`voter_registration_number = '${registrationNumber.trim()}'`);
+    // If registrationNumber is provided, return ONLY this condition
+    return `WHERE ${conditions[0]}`;
+  }
+
+  // --- If no registrationNumber, proceed with other filters ---
   // County Filter (Example)
   if (county) {
     conditions.push(`UPPER(county_name) = UPPER('${county}')`);
+  }
+
+  // Participation Score Range Filter
+  if (scoreRangeKeys.length > 0) {
+    const scoreConditions: string[] = [];
+    scoreRangeKeys.forEach(selectedLabel => { // Iterate through selected labels
+      // Find the range object by label instead of key
+      const range = SCORE_RANGES.find(r => r.label === selectedLabel); 
+      if (range) {
+         // Use min/max for condition
+         // Handle the exact 10.0 case distinctly if needed, otherwise range works
+        if (range.min === 10.0 && range.max === 10.0) { 
+             scoreConditions.push(`participation_score = ${range.min}`);
+        } else {
+             scoreConditions.push(`(participation_score >= ${range.min} AND participation_score <= ${range.max})`);
+         }
+      }
+    });
+    if (scoreConditions.length > 0) {
+      conditions.push(`(${scoreConditions.join(' OR ')})`);
+    }
   }
 
   // Status Filter (Corrected Logic)

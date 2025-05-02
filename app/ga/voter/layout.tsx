@@ -30,20 +30,21 @@ export default function VoterLayout({
   const isProfilePage = pathname.startsWith('/ga/voter/profile/');
 
   return (
-    <>
-      {/* Fixed Header and Nav */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-background shadow-sm">
-        <VoterHeader />
-        <TabNavigation />
-      </div>
+    // Wrap EVERYTHING in the providers
+    <Suspense> { /* Suspense might need to be outside if providers fetch data */}
+      <VoterListProvider>
+        <VoterFilterProvider>
+          <MapStateProvider>
+            <>
+              {/* Fixed Header and Nav (Now inside providers) */}
+              <div className="fixed top-0 left-0 right-0 z-50 bg-background shadow-sm">
+                <VoterHeader />
+                <TabNavigation /> { /* TabNavigation can now access VoterFilterContext */}
+              </div>
 
-      {/* Apply padding-top via inline style */}
-      <div className={`w-full h-screen flex flex-col`} style={{ paddingTop: FIXED_HEADER_NAV_HEIGHT }}>
-        <Suspense>
-          <VoterListProvider>
-            <VoterFilterProvider>
-              <MapStateProvider>
-                {/* Flex container for sidebar and main content */}
+              {/* Apply padding-top via inline style */}
+              <div className={`w-full h-screen flex flex-col`} style={{ paddingTop: FIXED_HEADER_NAV_HEIGHT }}>
+                 {/* Flex container for sidebar and main content */}
                 <div className="flex flex-1 w-full min-h-0">
                   {/* Conditionally render sidebar */}
                   {!isProfilePage && (
@@ -65,11 +66,11 @@ export default function VoterLayout({
                   </main>
                 </div>
                 <Toaster />
-              </MapStateProvider>
-            </VoterFilterProvider>
-          </VoterListProvider>
-        </Suspense>
-      </div>
-    </>
+              </div>
+            </>
+          </MapStateProvider>
+        </VoterFilterProvider>
+      </VoterListProvider>
+    </Suspense>
   );
 } 

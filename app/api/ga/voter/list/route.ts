@@ -48,12 +48,23 @@ export async function GET(request: NextRequest) {
       'id': 'voter_registration_number',
       'county': 'county_name',
       'status': 'status',
-      'address': 'residence_street_name'
+      'score': 'participation_score',
+      'address': 'residence_street_name' // Sort address primarily by street name
     };
     
     // Use mapped field or default to last_name
     const dbSortField = sortFieldMapping[sortField] || 'last_name';
     const dbSortDirection = sortDirection === 'desc' ? 'DESC' : 'ASC';
+    
+    // Add secondary sort for address: street name then street number (as text)
+    // Add tertiary sort for stability: registration number
+    let orderByClause = `ORDER BY ${dbSortField} ${dbSortDirection}`;
+    if (dbSortField === 'residence_street_name') {
+      // Attempt numeric sort on street number first, then text if error or non-numeric
+      orderByClause += ', NULLIF(regexp_replace(residence_street_number, \'\\D\', \'\', \'g\'), \'\')::numeric NULLS LAST'; 
+      orderByClause += ', residence_street_number NULLS LAST'; // Text fallback
+    }
+    orderByClause += ', voter_registration_number ASC'; // Stable sort fallback
     
     // *** Use shared function to build the WHERE clause ***
     const whereClause = buildVoterListWhereClause(searchParams);
@@ -104,14 +115,15 @@ export async function GET(request: NextRequest) {
         congressional_district,
         state_senate_district,
         state_house_district,
-        date_of_last_contact as last_contact_date
+        date_of_last_contact as last_contact_date,
+        participation_score
       FROM GA_VOTER_REGISTRATION_LIST
       ${whereClause}
-      ORDER BY ${dbSortField} ${dbSortDirection}, last_name ASC
+      ${orderByClause} -- Use the constructed ORDER BY clause
       LIMIT ${pageSize} OFFSET ${offset}
     `;
 
-    // Execute data query
+    // Execute data query (no parameters needed for ORDER BY here)
     const dataResult = await sql.unsafe(dataQueryStr);
     
     // Transform data
@@ -131,6 +143,11 @@ export async function GET(request: NextRequest) {
       registrationDate: row.registration_date,
       lastVoteDate: row.last_vote_date,
       county: row.county,
+      participationScore: typeof row.participation_score === 'number' 
+                          ? row.participation_score 
+                          : (typeof row.participation_score === 'string' && !isNaN(parseFloat(row.participation_score)) 
+                              ? parseFloat(row.participation_score) 
+                              : null),
       address: {
         streetNumber: row.residence_street_number,
         streetName: row.residence_street_name,
