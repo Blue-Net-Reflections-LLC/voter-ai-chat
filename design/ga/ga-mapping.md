@@ -149,3 +149,14 @@ Task List
 - [ ] Task: Code review, cross-browser/device testing.
 - [ ] Task: Update documentation.
 
+## Change Requests
+
+- **CR-001: Display In-View Participation Score & Voter Count (Completed)**
+  - **Requirement:** Display the average Participation Score and the total count of voters currently visible within the map's bounding box, respecting all active sidebar filters.
+  - **Implementation:** 
+    - Modified the `/api/ga/voter/map-data` endpoint to calculate `AVG(participation_score)` and `COUNT(*)` based on the combined sidebar and bounding box filters.
+    - Updated the API response to include an `inViewStats: { score: number|null, voterCount: number|null }` object alongside the `geoJson`.
+    - Updated `MapboxMapView.tsx` to store these stats in local state (`inViewScoreData`).
+    - Added an overlay `div` positioned in the top-right corner of the map to display the `score` (using `ParticipationScoreWidget`) and `voterCount`.
+  - **Status:** Completed.
+
