@@ -43,6 +43,7 @@ interface ParticipationScoreWidgetProps {
   score: number | null | undefined;
   isLoading?: boolean; // Add isLoading prop
   size?: 'small' | 'medium' | 'large';
+  variant?: 'default' | 'compact'; // Add variant prop
   className?: string;
 }
 
@@ -51,13 +52,14 @@ export const ParticipationScoreWidget: React.FC<ParticipationScoreWidgetProps> =
   score,
   isLoading = false, // Default to false
   size = 'medium',
+  variant = 'default', // Default variant
   className,
 }) => {
   const scoreInfo = getScoreLabel(score ?? null);
   const displayScore = score !== null && score !== undefined ? score.toFixed(1) : '--';
 
   // Define size-based classes
-  const scoreSizeClass = size === 'small' ? 'text-lg' : size === 'medium' ? 'text-xl' : 'text-2xl'; // Larger score size
+  const scoreSizeClass = size === 'small' ? 'text-sm' : size === 'medium' ? 'text-xl' : 'text-2xl';
   const labelSizeClass = size === 'small' ? 'text-xs' : size === 'medium' ? 'text-sm' : 'text-base';
   const iconSizeClass = size === 'small' ? 'h-3.5 w-3.5' : size === 'medium' ? 'h-4 w-4' : 'h-5 w-5'; // Size for info icon
 
@@ -78,49 +80,52 @@ export const ParticipationScoreWidget: React.FC<ParticipationScoreWidgetProps> =
         {/* Score Value */}
         <span
           className={cn(
-            'tabular-nums tracking-tight font-bold', // Bolder score
+            'tabular-nums tracking-tight font-semibold', // Slightly less bold
             scoreSizeClass,
-            !scoreInfo ? 'text-muted-foreground' : 'text-foreground' // Dim if no score/label
+            // Apply text color based on score range even in compact mode, default to foreground
+            scoreInfo ? scoreInfo.className?.match(/text-[^-]+-\d+/)?.[0] : 'text-foreground'
           )}
         >
           {displayScore}
         </span>
 
-        {/* Label and Info Tooltip */}
-        <div className={cn('flex items-center gap-1', labelSizeClass)}> 
-          {scoreInfo && score !== null && score !== undefined && (
-            <span
-              className={cn(
-                scoreInfo.className?.replace(/bg-\S+/, '').replace(/border-\S+/, '').trim(), // Keep text color, remove bg/border
-                'font-medium'
-              )}
-            >
-              {scoreInfo.label}
-            </span>
-          )}
-          {/* Fallback label */}
-          {score !== null && score !== undefined && !scoreInfo && (
-            <span className="font-medium text-muted-foreground">Unknown</span>
-          )}
-          {/* N/A state - if score is null/undefined, maybe show nothing or a specific N/A text */}
-          {(score === null || score === undefined) && (
-             <span className="font-medium text-muted-foreground">N/A</span>
-          )}
+        {/* Label and Info Tooltip - Conditionally render based on variant */}
+        {variant === 'default' && (
+          <div className={cn('flex items-center gap-1', labelSizeClass)}> 
+            {scoreInfo && score !== null && score !== undefined && (
+              <span
+                className={cn(
+                  scoreInfo.className?.replace(/bg-\S+/, '').replace(/border-\S+/, '').trim(), // Keep text color, remove bg/border
+                  'font-medium'
+                )}
+              >
+                {scoreInfo.label}
+              </span>
+            )}
+            {/* Fallback label */}
+            {score !== null && score !== undefined && !scoreInfo && (
+              <span className="font-medium text-muted-foreground">Unknown</span>
+            )}
+            {/* N/A state - if score is null/undefined, maybe show nothing or a specific N/A text */}
+            {(score === null || score === undefined) && (
+               <span className="font-medium text-muted-foreground">N/A</span>
+            )}
 
-          {/* Info Tooltip Trigger */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button aria-label="Score information">
-                 <Info className={cn('text-muted-foreground hover:text-foreground', iconSizeClass)} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p className="text-xs max-w-xs">
-                Participation Score (1.0-10.0) based on voting status, recency, frequency, and diversity over the last 8 years.
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+            {/* Info Tooltip Trigger */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button aria-label="Score information">
+                   <Info className={cn('text-muted-foreground hover:text-foreground', iconSizeClass)} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="text-xs max-w-xs">
+                  Participation Score (1.0-10.0) based on voting status, recency, frequency, and diversity over the last 8 years.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );

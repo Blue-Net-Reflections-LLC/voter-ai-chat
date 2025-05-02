@@ -40,6 +40,7 @@ export interface Voter {
     stateHouse?: string;
   };
   lastContactDate?: string;
+  participationScore?: number | null;
 }
 
 export interface FilterState {

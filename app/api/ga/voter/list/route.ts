@@ -104,7 +104,8 @@ export async function GET(request: NextRequest) {
         congressional_district,
         state_senate_district,
         state_house_district,
-        date_of_last_contact as last_contact_date
+        date_of_last_contact as last_contact_date,
+        participation_score
       FROM GA_VOTER_REGISTRATION_LIST
       ${whereClause}
       ORDER BY ${dbSortField} ${dbSortDirection}, last_name ASC
@@ -131,6 +132,11 @@ export async function GET(request: NextRequest) {
       registrationDate: row.registration_date,
       lastVoteDate: row.last_vote_date,
       county: row.county,
+      participationScore: typeof row.participation_score === 'number' 
+                          ? row.participation_score 
+                          : (typeof row.participation_score === 'string' && !isNaN(parseFloat(row.participation_score)) 
+                              ? parseFloat(row.participation_score) 
+                              : null),
       address: {
         streetNumber: row.residence_street_number,
         streetName: row.residence_street_name,
