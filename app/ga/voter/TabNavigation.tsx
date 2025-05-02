@@ -47,7 +47,10 @@ const tabs = [
   },
 ];
 
-function useAggregateParticipationScore(filters: FilterState | null | undefined) {
+function useAggregateParticipationScore(
+    filters: FilterState | null | undefined, 
+    filtersHydrated: boolean 
+) {
   const [scoreData, setScoreData] = useState<{ score: number | null, voterCount?: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +58,7 @@ function useAggregateParticipationScore(filters: FilterState | null | undefined)
   const { residenceAddressFilters } = useVoterFilterContext() || { residenceAddressFilters: [] };
 
   useEffect(() => {
-    if (!filters) {
+    if (!filtersHydrated || !filters) {
         setScoreData(null);
         setLoading(false);
         setError(null);
@@ -72,6 +75,8 @@ function useAggregateParticipationScore(filters: FilterState | null | undefined)
     const params = buildQueryParams(relevantFilters as FilterState, residenceAddressFilters);
     const queryString = params.toString();
 
+    console.log(`[Score Fetch] Fetching score with query: ${queryString}`);
+
     fetch(`/api/ga/voter/participation-score?${queryString}`, { signal })
       .then(async (res) => {
         if (!res.ok) {
@@ -81,7 +86,8 @@ function useAggregateParticipationScore(filters: FilterState | null | undefined)
         return res.json();
       })
       .then(data => {
-        setScoreData(data); 
+        console.log('[Score Fetch] Received score data:', data);
+        setScoreData(data);
         setLoading(false);
       })
       .catch(e => {
@@ -98,7 +104,7 @@ function useAggregateParticipationScore(filters: FilterState | null | undefined)
     return () => {
       controller.abort();
     };
-  }, [JSON.stringify(filters), JSON.stringify(residenceAddressFilters)]);
+  }, [filtersHydrated, JSON.stringify(filters), JSON.stringify(residenceAddressFilters)]);
 
   return { scoreData, loading, error };
 }
@@ -107,12 +113,13 @@ export default function TabNavigation() {
   const pathname = usePathname();
   const voterFilterContext = useVoterFilterContext();
   const filters = voterFilterContext?.filters;
+  const filtersHydrated = voterFilterContext?.filtersHydrated || false;
 
   const { 
     scoreData, 
     loading: scoreLoading, 
     error: scoreError 
-  } = useAggregateParticipationScore(filters);
+  } = useAggregateParticipationScore(filters, filtersHydrated);
 
   return (
     <nav className="w-full border-b bg-background px-4 pt-2 pb-1 flex items-center justify-between gap-4">
