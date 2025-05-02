@@ -11,7 +11,7 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   const congressionalDistricts = searchParams.getAll('congressionalDistricts');
   const stateSenateDistricts = searchParams.getAll('stateSenateDistricts');
   const stateHouseDistricts = searchParams.getAll('stateHouseDistricts');
-  const scoreRangeKeys = searchParams.getAll('scoreRanges'); // Get selected score range keys
+  const scoreRangeKeys = searchParams.getAll('scoreRanges'); // Get selected score range labels
   const statusValues = searchParams.getAll('status');
   const statusReasonParams = searchParams.getAll('statusReason');
   const partyValues = searchParams.getAll('party');
@@ -81,16 +81,17 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   // Participation Score Range Filter
   if (scoreRangeKeys.length > 0) {
     const scoreConditions: string[] = [];
-    scoreRangeKeys.forEach(key => {
-      const range = SCORE_RANGES.find(r => r.key === key);
+    scoreRangeKeys.forEach(selectedLabel => { // Iterate through selected labels
+      // Find the range object by label instead of key
+      const range = SCORE_RANGES.find(r => r.label === selectedLabel); 
       if (range) {
-        if (range.key === 'super') {
-          // Special case for exact 10.0
-          scoreConditions.push(`participation_score = 10.0`);
+         // Use min/max for condition
+         // Handle the exact 10.0 case distinctly if needed, otherwise range works
+        if (range.min === 10.0 && range.max === 10.0) { 
+             scoreConditions.push(`participation_score = ${range.min}`);
         } else {
-          // Use BETWEEN for other ranges
-          scoreConditions.push(`participation_score BETWEEN ${range.min} AND ${range.max}`);
-        }
+             scoreConditions.push(`(participation_score >= ${range.min} AND participation_score <= ${range.max})`);
+         }
       }
     });
     if (scoreConditions.length > 0) {
