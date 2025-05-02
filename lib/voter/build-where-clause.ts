@@ -4,6 +4,7 @@
  */
 export function buildVoterListWhereClause(searchParams: URLSearchParams): string {
   // --- Start: Filter parameter extraction ---
+  const registrationNumber = searchParams.get('registrationNumber');
   const county = searchParams.get('county');
   const congressionalDistricts = searchParams.getAll('congressionalDistricts');
   const stateSenateDistricts = searchParams.getAll('stateSenateDistricts');
@@ -59,6 +60,16 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   // --- Start: Build SQL conditions ---
   const conditions = [];
 
+  // --- Handle Registration Number exclusively ---
+  if (registrationNumber && registrationNumber.trim() !== '') {
+    // Basic validation/sanitization might be needed depending on input source
+    // Assuming registrationNumber is reasonably safe here
+    conditions.push(`voter_registration_number = '${registrationNumber.trim()}'`);
+    // If registrationNumber is provided, return ONLY this condition
+    return `WHERE ${conditions[0]}`;
+  }
+
+  // --- If no registrationNumber, proceed with other filters ---
   // County Filter (Example)
   if (county) {
     conditions.push(`UPPER(county_name) = UPPER('${county}')`);

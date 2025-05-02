@@ -76,14 +76,14 @@ Schemas used for the voter data:
 
 **Phase 1: Core Calculation and Aggregate Endpoint**
 
-- [ ] **Task 1: Backend Calculation Logic (TypeScript)**
-    - [ ] Create `lib/participation-score/calculate.ts`.
-    - [ ] Implement `calculateParticipationScore(voterData: { status: string, historyEvents: HistoryEvent[] }): number`.
-        - [ ] Handle Status, Recency (step function), Frequency (raw count scaling), Diversity (multiplier).
-        - [ ] Use additive formula: `Base(Status) + Points(Recency) + (Points(Frequency) * Multiplier(Diversity))`.
-        - [ ] Cap result: 1.0-10.0.
-    - [ ] Use adjustable constants/config for score parameters.
-    - [ ] Write comprehensive unit tests for `calculateParticipationScore`.
+- [x] **Task 1: Backend Calculation Logic (TypeScript)**
+    - [x] Create `lib/participation-score/calculate.ts`.
+    - [x] Implement `calculateParticipationScore(voterData: { status: string, historyEvents: HistoryEvent[] }): number`.
+        - [x] Handle Status, Recency (step function), Frequency (log scaling), Diversity (multiplier).
+        - [x] Use additive formula: `Base(Status) + Points(Recency) + (Points(Frequency) * Multiplier(Diversity))`.
+        - [x] Cap result: 1.0-10.0.
+    - [x] Use adjustable constants/config for score parameters.
+    - [x] Write comprehensive unit tests for `calculateParticipationScore`.
 
 - [ ] **Task 2: Backend API Endpoint (`/api/ga/voter/participation-score`)**
     - [ ] Create `app/api/ga/voter/participation-score/route.ts`.

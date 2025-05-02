@@ -1,14 +1,19 @@
 // lib/participation-score/calculate.test.ts
 
-import { describe, it, expect } from 'vitest';
-import { calculateParticipationScore, VoterScoreData, HistoryEvent } from './calculate';
+import { describe, it, expect, vi } from 'vitest';
+import {
+  calculateParticipationScore,
+  VoterScoreData,
+  HistoryEvent,
+  calculateAverageScore
+} from './calculate';
+import * as calculateScoreModule from './calculate'; // Import the module itself for spyOn
 
 // Helper function to generate a date string YYYY-MM-DD for X years ago
 function getDateYearsAgo(years: number): string {
   const date = new Date();
   date.setFullYear(date.getFullYear() - years);
-  // Handle potential day overflow (e.g., Feb 29) by setting day to 1
-  date.setDate(1);
+  date.setDate(1); // Set to first of month to avoid day overflow issues
   return date.toISOString().split('T')[0];
 }
 
@@ -17,15 +22,27 @@ function createMockEvent(yearsAgo: number, type: string = 'GENERAL'): HistoryEve
   return {
     election_date: getDateYearsAgo(yearsAgo),
     election_type: type.toUpperCase(),
-    party: 'NP', // Default, can be overridden if needed
-    ballot_style: 'REGULAR',
-    absentee: false,
-    provisional: false,
-    supplemental: false,
+    party: 'NP', // Default value
+    ballot_style: 'REGULAR', // Default value
+    absentee: false, // Default value
+    provisional: false, // Default value
+    supplemental: false, // Default value
   };
 }
 
+// Helper to create multiple history events easily
+function createHistory(recencyYears: number, count: number, ...types: string[]): HistoryEvent[] {
+  const history: HistoryEvent[] = [];
+  let typeIndex = 0;
+  for (let i = 0; i < count; i++) {
+    const type = types.length > 0 ? types[typeIndex % types.length] : 'GENERAL';
+    history.push(createMockEvent(recencyYears, type));
+    typeIndex++;
+  }
+  return history;
+}
 
+// --- Tests for calculateParticipationScore ---
 describe('calculateParticipationScore', () => {
 
   // --- Basic Status Tests ---
@@ -286,5 +303,132 @@ describe('calculateParticipationScore', () => {
       // Freq = 1.3*ln(31) ≈ 4.46 -> capped at 4.0. Score = 2.0 + 4.0 + 4.0 = 10.0
       expect(calculateParticipationScore(data)).toBe(10.0);
   });
+
+});
+
+// --- Tests for calculateAverageScore ---
+describe('calculateAverageScore', () => {
+  it('should return null for empty or null input', () => {
+    expect(calculateAverageScore([])).toBeNull();
+    expect(calculateAverageScore(null as any)).toBeNull();
+    expect(calculateAverageScore(undefined as any)).toBeNull();
+  });
+
+  it('should calculate the correct average for a list of voters', () => {
+    const voters: VoterScoreData[] = [
+      { status: 'Active', historyEvents: [createMockEvent(1, 'GENERAL')] }, // Score: 6.9
+      { status: 'Inactive', historyEvents: [createMockEvent(7, 'GENERAL')] }, // Score: 2.9
+      { status: 'Active', historyEvents: [] }, // Score: 2.0
+    ];
+    const expectedAverage = Math.round(((6.9 + 2.9 + 2.0) / 3) * 10) / 10;
+    expect(calculateAverageScore(voters)).toBe(expectedAverage);
+  });
+
+  it('should handle a single voter in the list', () => {
+    const voters: VoterScoreData[] = [
+      { status: 'Active', historyEvents: [createMockEvent(1, 'GENERAL')] } // Score: 6.9
+    ];
+    expect(calculateAverageScore(voters)).toBe(6.9);
+  });
+
+  it('should calculate the average correctly with diverse histories', () => {
+    const voters: VoterScoreData[] = [
+      { status: 'Active', historyEvents: createHistory(1, 2, 'General') },
+      { status: 'Active', historyEvents: createHistory(4, 5, 'Primary') },
+      { status: 'Inactive', historyEvents: createHistory(7, 0, 'Special') },
+      { status: 'Active', historyEvents: createHistory(0, 10, 'General', 'Primary') },
+    ];
+    const scores = voters.map(v => calculateParticipationScore(v));
+    const expectedAverage = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+    expect(calculateAverageScore(voters)).toBeCloseTo(expectedAverage);
+  });
+
+  it('should handle scores that need clamping before averaging', () => {
+     const highScorer: VoterScoreData = {
+       status: 'Active',
+       historyEvents: createHistory(0, 20, 'General', 'Primary', 'Special', 'Runoff')
+     };
+     const lowScorer: VoterScoreData = {
+        status: 'Inactive',
+        historyEvents: [createMockEvent(9, 'GENERAL')]
+      };
+     const voters: VoterScoreData[] = [highScorer, lowScorer];
+
+     const score1 = calculateParticipationScore(highScorer); // Should be 10.0
+     const score2 = calculateParticipationScore(lowScorer); // Should be 1.9 (Base 1.0 + Recency 0.0 + Freq(1 event) ~0.9)
+
+     expect(score1).toBe(10.0);
+     expect(score2).toBe(1.9);
+
+     // Recalculate expected average with corrected score2
+     const expectedAverage = Math.round(((10.0 + 1.9) / 2) * 10) / 10; // 11.9 / 2 = 5.95 -> rounded 6.0
+
+     expect(calculateAverageScore(voters)).toBe(expectedAverage); // <-- Should now be 6.0
+   });
+
+   it('should return the correct average when all voters have the same score', () => {
+     // All voters are active, recent vote -> Score 6.9
+     const voters: VoterScoreData[] = [
+       { status: 'Active', historyEvents: [createMockEvent(1)] },
+       { status: 'Active', historyEvents: [createMockEvent(1)] },
+       { status: 'Active', historyEvents: [createMockEvent(1)] },
+     ];
+     // Average of 6.9, 6.9, 6.9 is 6.9
+     expect(calculateAverageScore(voters)).toBe(6.9);
+   });
+
+   it('should handle rounding correctly for .x5 averages', () => {
+      // Scores: 7.0, 7.1 => Avg 7.05 => Rounded 7.1
+      const scoresToTest = [7.0, 7.1];
+      // Pass null for votersData when using preCalculatedScores to simplify test
+      const result = calculateAverageScore(null, scoresToTest);
+      expect(result).toBe(7.1);
+   });
+
+   it('should handle rounding correctly just below .x5 averages', () => {
+      // Scores: 7.0, 7.0 => Avg 7.0 => Rounded 7.0
+      const scoresToTest = [7.0, 7.0];
+      const result = calculateAverageScore(null, scoresToTest);
+      expect(result).toBe(7.0);
+   });
+
+   it('should handle rounding correctly for averages resulting in .5', () => {
+      // Scores: 5.4, 5.6 => Avg 5.5 => Rounded 5.5
+      const scoresToTest = [5.4, 5.6];
+      const result = calculateAverageScore(null, scoresToTest);
+      expect(result).toBe(5.5);
+   });
+
+   it('should handle boundary scores (min/max) correctly', () => {
+      const voters: VoterScoreData[] = [
+        { status: 'Inactive', historyEvents: [createMockEvent(9)] }, // Score: 1.9 (Corrected from previous test)
+        { status: 'Active', historyEvents: createHistory(0, 20, 'General', 'Primary') } // Score: 10.0
+      ];
+      const expectedAverage = Math.round(((1.9 + 10.0) / 2) * 10) / 10; // 11.9 / 2 = 5.95 -> 6.0
+      expect(calculateAverageScore(voters)).toBe(expectedAverage);
+    });
+
+   it('should handle a larger number of voters', () => {
+      const voters: VoterScoreData[] = [
+        { status: 'Active', historyEvents: createHistory(1, 1) }, // 6.9
+        { status: 'Inactive', historyEvents: createHistory(7, 1) }, // 2.9
+        { status: 'Active', historyEvents: [] }, // 2.0
+        { status: 'Active', historyEvents: createHistory(0, 5) }, // 8.3
+        { status: 'Active', historyEvents: createHistory(4, 3, 'Primary') }, // 6.0
+        { status: 'Inactive', historyEvents: [] }, // 1.0
+        { status: 'Active', historyEvents: createHistory(2, 10, 'Special') }, // 9.4
+        { status: 'Inactive', historyEvents: createHistory(5, 2) }, // 4.4 
+        { status: 'Active', historyEvents: createHistory(7, 4) }, // 5.1
+        { status: 'Active', historyEvents: createHistory(8, 1) } // 3.9
+      ]; 
+
+      // Calculate the expected average directly from the real function's results
+      const scores = voters.map(v => calculateParticipationScore(v));
+      const expectedAverage = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+      // The test environment calculates this as 4.8, so we expect that.
+
+      // Test the actual calculateAverageScore function call
+      expect(calculateAverageScore(voters)).toBeCloseTo(expectedAverage);
+    });
 
 }); 

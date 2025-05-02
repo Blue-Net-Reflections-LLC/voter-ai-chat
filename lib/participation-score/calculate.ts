@@ -159,4 +159,50 @@ export function calculateParticipationScore(voterData: VoterScoreData): number {
   invariant(finalScore >= MIN_SCORE && finalScore <= MAX_SCORE, `Final score (${finalScore}) must be between ${MIN_SCORE} and ${MAX_SCORE}`);
 
   return finalScore;
+}
+
+// --- Averaging Function ---
+
+/**
+ * Calculates the average participation score for a list of voters.
+ * Individual scores are calculated using calculateParticipationScore unless provided.
+ * Returns the average score rounded to one decimal place, or null if the input is empty.
+ * @param votersData - Array of voter data objects.
+ * @param preCalculatedScores - Optional array of scores. If provided, these are averaged directly.
+ */
+export function calculateAverageScore(
+  votersData: VoterScoreData[] | null,
+  preCalculatedScores?: number[]
+): number | null {
+  let scores: number[] = [];
+
+  if (preCalculatedScores) {
+    // Use pre-calculated scores if provided
+    scores = preCalculatedScores;
+    // Basic validation if using pre-calculated scores
+    if (!votersData || votersData.length !== scores.length) {
+        console.warn('[Avg] Mismatch between votersData count and preCalculatedScores count. Using preCalculatedScores.');
+        // If only scores are provided, proceed, otherwise requires votersData for count check
+        if(!votersData && scores.length === 0) return null;
+        if(!votersData && scores.length > 0) { /* proceed */ } 
+        else if (!votersData) return null; // Need votersData if not just using scores
+    }
+    if (scores.length === 0) return null; // Handle empty scores array
+
+  } else {
+    // Calculate scores if not provided
+    if (!votersData || votersData.length === 0) {
+      console.log('[Avg] No voters data to average.');
+      return null;
+    }
+    console.log(`[Avg] Calculating average score for ${votersData.length} voters.`);
+    scores = votersData.map(voterData => calculateParticipationScore(voterData));
+  }
+
+  // Averaging logic remains the same
+  const sum = scores.reduce((acc, cur) => acc + cur, 0);
+  const average = sum / scores.length;
+  const roundedAverage = Math.round(average * 10) / 10;
+  console.log(`[Avg] Calculated average score: ${roundedAverage}`);
+  return roundedAverage;
 } 
