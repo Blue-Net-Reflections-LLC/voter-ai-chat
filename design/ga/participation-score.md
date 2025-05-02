@@ -128,11 +128,10 @@ Schemas used for the voter data:
 - [ ] **Task 7: Integration into Voter Profile Page**
     *   [ ] Modify profile page data fetching (`app/ga/voter/[registrationNumber]/page.tsx`).
     *   [ ] Implement individual score fetching/display.
-    *   [ ] Implement household score fetching/display:
-        *   [ ] Fetch household members.
-        *   [ ] *Preferred:* Enhance backend for efficient household average calculation.
-        *   [ ] *Alternative:* Average individual scores on frontend.
-        *   [ ] Display household average in a separate widget.
+    *   [x] Implement household score fetching/display:
+        *   [x] Fetch household members (address is fetched by profile page).
+        *   [x] *Frontend Approach:* Fetch aggregate score for the address via `/api/ga/voter/participation-score?resident_address=...`.
+        *   [x] Display household average in the `LocationSection` component.
 
 **Phase 3: Testing and Refinement**
 

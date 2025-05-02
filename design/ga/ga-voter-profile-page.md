@@ -203,6 +203,7 @@ Schemas used for the voter data:
   - [x] Display the static map `<img>` tag once the URL is constructed.
   - [x] Display list of other voters once loaded.
   - [x] Display redistricting info once loaded.
+  - [x] **Household Score:** Display average participation score for the household (fetched from frontend).
 - [x] Task: **Precincts & Districts Section:**
   - [x] Display all precinct and district names/codes once core voter data is loaded.
   - [x] Under each relevant district (Congressional, State Senate, State House), display representative details:
@@ -294,6 +295,17 @@ To optimize response time, the backend API should fetch external data (Represent
     - URL parameter `scoreRanges` is used for persistence.
     - The `buildVoterListWhereClause` function (`lib/voter/build-where-clause.ts`) was updated to generate appropriate SQL `WHERE` conditions (e.g., `participation_score BETWEEN X AND Y OR participation_score = 10.0`) based on selected ranges.
     - Filter is additive (multiple ranges can be selected).
+
+### CR-002: Add Household Participation Score Display (Implemented)
+
+- **Date:** [Insert Date]
+- **Request:** Display the average Participation Score for all voters residing at the same address on the Voter Profile page.
+- **Implementation Details:**
+    - Added a new hook `useHouseholdParticipationScore` to `app/ga/voter/profile/[registration_number]/page.tsx`.
+    - This hook formats the primary voter's residence address into a `resident_address` query parameter.
+    - It fetches the average score by calling `/api/ga/voter/participation-score` with the `resident_address` parameter.
+    - The fetched score and loading state are passed down to the `LocationSection` component (`components/ga/voter/profile-sections/LocationSection.tsx`).
+    - The `LocationSection` component now renders the `ParticipationScoreWidget` near the "Other Voters at Residence" list, displaying the household average.
 
  
  
