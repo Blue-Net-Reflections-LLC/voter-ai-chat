@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { List, BarChart2, Map, PieChart, Landmark, Info } from "lucide-react";
 import React, { useState, useEffect } from 'react';
-import { useVoterFilterContext } from './VoterFilterProvider';
+import { useVoterFilterContext, buildQueryParams } from './VoterFilterProvider';
 import { FilterState } from './list/types';
 import { ParticipationScoreWidget } from '@/components/voter/ParticipationScoreWidget';
 import {
@@ -52,6 +52,8 @@ function useAggregateParticipationScore(filters: FilterState | null | undefined)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { residenceAddressFilters } = useVoterFilterContext() || { residenceAddressFilters: [] };
+
   useEffect(() => {
     if (!filters) {
         setScoreData(null);
@@ -60,26 +62,14 @@ function useAggregateParticipationScore(filters: FilterState | null | undefined)
         return;
     }
     
-    const { page, pageSize, ...relevantFilters } = filters;
-    const filterKey = JSON.stringify(relevantFilters);
-
     setLoading(true);
     setError(null);
 
     const controller = new AbortController();
     const signal = controller.signal;
 
-    const params = new URLSearchParams();
-    Object.entries(relevantFilters).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && value !== '') {
-        if (Array.isArray(value)) {
-          params.set(key, value.join(','));
-        } else {
-          params.set(key, String(value));
-        }
-      }
-    });
-
+    const { page, pageSize, sortBy, sortOrder, ...relevantFilters } = filters;
+    const params = buildQueryParams(relevantFilters as FilterState, residenceAddressFilters);
     const queryString = params.toString();
 
     fetch(`/api/ga/voter/participation-score?${queryString}`, { signal })
@@ -108,7 +98,7 @@ function useAggregateParticipationScore(filters: FilterState | null | undefined)
     return () => {
       controller.abort();
     };
-  }, [filters]);
+  }, [JSON.stringify(filters), JSON.stringify(residenceAddressFilters)]);
 
   return { scoreData, loading, error };
 }
