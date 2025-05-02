@@ -81,7 +81,12 @@ function useParticipationScore(
       queryString = params.toString();
       console.log(`[Score Fetch] Fetching individual score for: ${registrationNumber}`);
     } else {
-      const { page, pageSize, sortBy, sortOrder, ...relevantFilters } = filters || {};
+      const relevantFilters = { ...(filters || {}) };
+      delete (relevantFilters as any).page;
+      delete (relevantFilters as any).pageSize;
+      delete (relevantFilters as any).sortBy;
+      delete (relevantFilters as any).sortOrder;
+
       const params = buildQueryParams(relevantFilters as FilterState, residenceAddressFilters);
       queryString = params.toString();
       console.log(`[Score Fetch] Fetching aggregate score with query: ${queryString || '(no filters - overall avg)'}`);

@@ -12,6 +12,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge"; // For status
 import { calculateAge } from '@/lib/utils'; // Assuming a utility for age calc
+import { ParticipationScoreWidget } from '@/components/voter/ParticipationScoreWidget'; // Import the widget
 
 // Helper to format address object as a string
 function formatAddress(address: any) {
@@ -39,6 +40,9 @@ interface LocationSectionProps {
   otherVotersData: any; // Array of other voters
   otherVotersLoading: boolean;
   otherVotersError: string | null;
+  householdScoreData: { score: number | null; voterCount: number | null } | null;
+  householdScoreLoading: boolean;
+  householdScoreError: string | null;
 }
 
 export function LocationSection({
@@ -47,7 +51,10 @@ export function LocationSection({
   locationError,
   otherVotersData,
   otherVotersLoading,
-  otherVotersError
+  otherVotersError,
+  householdScoreData,
+  householdScoreLoading,
+  householdScoreError
 }: LocationSectionProps) {
 
   // Debug log
@@ -113,7 +120,21 @@ export function LocationSection({
               
               {/* Other Voters - Now moved to left column */}
               <div className="mt-4">
-                <h4 className="font-medium mb-2 text-sm">Other Voters at Residence</h4>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-medium text-sm">Other Voters at Residence</h4>
+                  {/* Display Household Score Widget */}
+                  <div className="flex items-center gap-1">
+                     <span className="text-xs text-muted-foreground">Household Score:</span>
+                     <ParticipationScoreWidget
+                        score={householdScoreData?.score}
+                        isLoading={householdScoreLoading}
+                        size="small" 
+                     />
+                     {/* Optional: Add error indicator for household score fetch? */}
+                     {/* {householdScoreError && <span title={householdScoreError}>⚠️</span>} */}
+                  </div>
+                </div>
+
                 {otherVotersLoading ? (
                   <div className="space-y-2">
                      <Skeleton className="w-full h-5" />
