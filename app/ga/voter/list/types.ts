@@ -40,6 +40,7 @@ export interface Voter {
     stateHouse?: string;
   };
   lastContactDate?: string;
+  participationScore?: number | null;
 }
 
 export interface FilterState {
@@ -47,6 +48,7 @@ export interface FilterState {
   congressionalDistricts: string[];
   stateSenateDistricts: string[];
   stateHouseDistricts: string[];
+  scoreRanges: string[];
   status: string[];
   party: string[];
   historyParty: string[];

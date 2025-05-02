@@ -23,6 +23,7 @@ const initialFilterState: FilterState = {
   congressionalDistricts: [],
   stateSenateDistricts: [],
   stateHouseDistricts: [],
+  scoreRanges: [],
   status: [],
   party: [],
   historyParty: [],
@@ -66,7 +67,7 @@ const initialPaginationState: PaginationState = {
 };
 
 // Available sort fields
-export type SortField = 'name' | 'id' | 'county' | 'status' | 'address';
+export type SortField = 'name' | 'id' | 'county' | 'status' | 'address' | 'score';
 export type SortDirection = 'asc' | 'desc';
 
 // Initial sort state

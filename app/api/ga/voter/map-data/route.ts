@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   console.log('Map data fetch request received (Standard Fetch)');
   const searchParams = request.nextUrl.searchParams;
 
-  try { // Add top-level try-catch
+  try {
     // --- Parse Parameters ---
     const zoom = parseFloat(searchParams.get('zoom') || '6.5');
     const minLng = parseFloat(searchParams.get('minLng') || '-85.6052');
@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
     const maxLat = parseFloat(searchParams.get('maxLat') || '35.0007');
     const boundsProvided = searchParams.has('minLng') && !isNaN(minLng) && !isNaN(minLat) && !isNaN(maxLng) && !isNaN(maxLat);
 
-    // --- Build Sidebar Filter Clause ---
+    // --- Build COMBINED WHERE Clause (Sidebar Filters + Spatial Filter) ---
+    // 1. Sidebar Filters
     const sidebarFilterSql = buildVoterListWhereClause(searchParams);
     let sidebarFilterConditions = 'TRUE';
     if (sidebarFilterSql && sidebarFilterSql.trim().startsWith('WHERE ')) {
@@ -44,90 +45,111 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // --- Determine Aggregation Level & Build Query String ---
-    let aggregationLevel: MapDataRow['aggregation_level'];
-    let queryString: string = '';
+    // 2. Spatial Filter
     const envelopeExpr = boundsProvided ? `ST_MakeEnvelope(${minLng}, ${minLat}, ${maxLng}, ${maxLat}, 4326)` : 'NULL::geometry';
-    const intersectsClause = (alias: string) => boundsProvided ? `AND ST_Intersects(${alias}.geom, ${envelopeExpr})` : '';
+    const spatialFilterCondition = (alias: string) => boundsProvided ? `ST_Intersects(${alias}.geom, ${envelopeExpr})` : 'TRUE';
+
+    // 3. Combine them for voter table queries
+    const finalVoterWhereClause = `WHERE ${sidebarFilterConditions} AND ${spatialFilterCondition('v')} AND v.geom IS NOT NULL`;
+    const finalVoterConditionsOnly = `(${sidebarFilterConditions} AND ${spatialFilterCondition('v')} AND v.geom IS NOT NULL)`; // Without WHERE for EXISTS etc.
+
+    // --- Determine Aggregation Level & Build GeoJSON Query String ---
+    let aggregationLevel: MapDataRow['aggregation_level'];
+    let geoJsonQueryString: string = '';
 
     if (zoom < ZOOM_COUNTY_LEVEL) {
       aggregationLevel = 'county';
-      queryString = `
+      // Use finalVoterConditionsOnly inside EXISTS
+      geoJsonQueryString = `
         SELECT ST_AsGeoJSON(c.geom) as geometry, 1 as count, c."NAME" as label, 'county' as aggregation_level, c."GEOID" as id
         FROM public.${COUNTY_TABLE} c
-        WHERE c."STATEFP" = '13' ${intersectsClause('c')}
-        AND EXISTS (SELECT 1 FROM ${SCHEMA_NAME}.${VOTER_TABLE} v WHERE v.county_fips = c."GEOID" ${intersectsClause('v')} AND ${sidebarFilterConditions})
+        WHERE c."STATEFP" = '13' AND ${spatialFilterCondition('c')}
+        AND EXISTS (SELECT 1 FROM ${SCHEMA_NAME}.${VOTER_TABLE} v WHERE v.county_fips = c."GEOID" AND ${finalVoterConditionsOnly})
         ORDER BY label
       `;
     } else if (zoom < ZOOM_ZIP_LEVEL) {
       aggregationLevel = 'zip';
-       queryString = `
+       // Use finalVoterConditionsOnly inside EXISTS
+       geoJsonQueryString = `
         SELECT ST_AsGeoJSON(z.geom) as geometry, 1 as count, z."ZCTA5CE20" as label, 'zip' as aggregation_level, z."ZCTA5CE20" as id
         FROM public.${ZCTA_TABLE} z
-        WHERE TRUE ${intersectsClause('z')}
-        AND EXISTS (SELECT 1 FROM ${SCHEMA_NAME}.${VOTER_TABLE} v WHERE v.zcta = z."ZCTA5CE20" AND ${sidebarFilterConditions})
+        WHERE ${spatialFilterCondition('z')}
+        AND EXISTS (SELECT 1 FROM ${SCHEMA_NAME}.${VOTER_TABLE} v WHERE v.zcta = z."ZCTA5CE20" AND ${finalVoterConditionsOnly})
         ORDER BY label
       `;
     } else { // Address Level
       aggregationLevel = 'address';
-      queryString = `
+      // Apply finalVoterWhereClause directly to the main query
+      geoJsonQueryString = `
         SELECT 
-          ST_AsGeoJSON(t.geom) as geometry, 
-          COUNT(t.voter_registration_number) as count,
-          -- Create a full address label from components, handling nulls
-          CONCAT_WS(' ', NULLIF(t.residence_street_number, ''), 
-                         NULLIF(t.residence_pre_direction, ''), 
-                         NULLIF(t.residence_street_name, ''), 
-                         NULLIF(t.residence_street_type, ''), 
-                         NULLIF(t.residence_post_direction, ''),
-                         CASE WHEN t.residence_apt_unit_number IS NOT NULL AND t.residence_apt_unit_number != '' 
-                              THEN CONCAT('# ', t.residence_apt_unit_number) 
+          ST_AsGeoJSON(v.geom) as geometry, 
+          COUNT(v.voter_registration_number) as count,
+          CONCAT_WS(' ', NULLIF(v.residence_street_number, ''), 
+                         NULLIF(v.residence_pre_direction, ''), 
+                         NULLIF(v.residence_street_name, ''), 
+                         NULLIF(v.residence_street_type, ''), 
+                         NULLIF(v.residence_post_direction, ''),
+                         CASE WHEN v.residence_apt_unit_number IS NOT NULL AND v.residence_apt_unit_number != '' 
+                              THEN CONCAT('# ', v.residence_apt_unit_number) 
                               ELSE NULL END) as street_address,
-          t.residence_city,
-          t.residence_zipcode,
-          -- Add a full formatted address as 'label' for frontend compatibility
+          v.residence_city,
+          v.residence_zipcode,
           CONCAT(
-            CONCAT_WS(' ', NULLIF(t.residence_street_number, ''), 
-                        NULLIF(t.residence_pre_direction, ''), 
-                        NULLIF(t.residence_street_name, ''), 
-                        NULLIF(t.residence_street_type, ''), 
-                        NULLIF(t.residence_post_direction, ''),
-                        CASE WHEN t.residence_apt_unit_number IS NOT NULL AND t.residence_apt_unit_number != '' 
-                             THEN CONCAT('# ', t.residence_apt_unit_number) 
+            CONCAT_WS(' ', NULLIF(v.residence_street_number, ''), 
+                        NULLIF(v.residence_pre_direction, ''), 
+                        NULLIF(v.residence_street_name, ''), 
+                        NULLIF(v.residence_street_type, ''), 
+                        NULLIF(v.residence_post_direction, ''),
+                        CASE WHEN v.residence_apt_unit_number IS NOT NULL AND v.residence_apt_unit_number != '' 
+                             THEN CONCAT('# ', v.residence_apt_unit_number) 
                              ELSE NULL END),
-            ', ', t.residence_city, ', GA ', t.residence_zipcode
+            ', ', v.residence_city, ', GA ', v.residence_zipcode
           ) as label,
           'address' as aggregation_level, 
-          JSON_AGG(t.voter_registration_number) as voter_ids
-        FROM ${SCHEMA_NAME}.${VOTER_TABLE} t
-        WHERE t.geom IS NOT NULL ${intersectsClause('t')} AND ${sidebarFilterConditions}
+          JSON_AGG(v.voter_registration_number) as voter_ids
+        FROM ${SCHEMA_NAME}.${VOTER_TABLE} v
+        ${finalVoterWhereClause} -- Use combined WHERE clause
         GROUP BY 
-          -- Group by all distinct address components to prevent over-grouping
-          t.geom, 
-          t.residence_street_number,
-          t.residence_pre_direction,
-          t.residence_street_name, 
-          t.residence_street_type,
-          t.residence_post_direction,
-          t.residence_apt_unit_number,
-          t.residence_city,
-          t.residence_zipcode
+          v.geom, 
+          v.residence_street_number,
+          v.residence_pre_direction,
+          v.residence_street_name, 
+          v.residence_street_type,
+          v.residence_post_direction,
+          v.residence_apt_unit_number,
+          v.residence_city,
+          v.residence_zipcode
         ORDER BY street_address
       `;
     }
 
-    if (!queryString) {
-        console.error("Error: Could not determine query string for map data.");
-        return NextResponse.json({ error: "Failed to build query" }, { status: 500 });
+    if (!geoJsonQueryString) {
+        console.error("Error: Could not determine query string for map GeoJSON data.");
+        return NextResponse.json({ error: "Failed to build GeoJSON query" }, { status: 500 });
     }
+    
+    // --- Build In-View Stats Query String (using the *same* final WHERE clause) ---
+    const statsQueryString = `
+      SELECT 
+        AVG(v.participation_score) as average_score,
+        COUNT(v.voter_registration_number) as voter_count 
+      FROM ${SCHEMA_NAME}.${VOTER_TABLE} v 
+      ${finalVoterWhereClause} AND v.participation_score IS NOT NULL;
+    `;
 
-    // console.log(`--- Executing Map Query (Zoom: ${zoom}, Level: ${aggregationLevel}) ---\n`, queryString);
+    console.log(`--- Executing Map Queries (Zoom: ${zoom}, Level: ${aggregationLevel}) ---`);
 
-    // --- Execute Query ---
-    const rows = await sql.unsafe<MapDataRow[]>(queryString);
+    // --- Execute Queries in Parallel --- 
+    const [geoJsonRowsResult, statsResult] = await Promise.all([
+        sql.unsafe<MapDataRow[]>(geoJsonQueryString),
+        sql.unsafe<{ average_score: number | null; voter_count: number | string }[]>(statsQueryString)
+    ]);
+    
+    const geoJsonRows = geoJsonRowsResult;
+    const stats = statsResult[0] || { average_score: null, voter_count: 0 }; // Default if no stats rows
 
-    // --- Format as GeoJSON FeatureCollection ---
-    const features = rows.map(row => {
+    // --- Format GeoJSON FeatureCollection ---
+    const features = geoJsonRows.map(row => {
         let geometry = null;
         try {
              geometry = row.geometry ? JSON.parse(row.geometry) : null;
@@ -152,8 +174,19 @@ export async function GET(request: NextRequest) {
         features: features,
     };
 
-    console.log(`Map data fetch complete. Level: ${aggregationLevel}, Features returned: ${features.length}`);
-    return NextResponse.json(featureCollection);
+    // --- Format In-View Stats ---
+    const inViewStats = {
+      score: stats.average_score !== null ? Math.round(stats.average_score * 10) / 10 : null,
+      voterCount: typeof stats.voter_count === 'string' ? parseInt(stats.voter_count, 10) : (stats.voter_count || 0)
+    };
+
+    console.log(`Map data fetch complete. Level: ${aggregationLevel}, Features: ${features.length}, In-View Score: ${inViewStats.score}, In-View Count: ${inViewStats.voterCount}`);
+    
+    // --- Return Combined Response --- 
+    return NextResponse.json({
+      geoJson: featureCollection,
+      inViewStats: inViewStats
+    });
 
   } catch (error) {
       console.error("Error in map data API route:", error);

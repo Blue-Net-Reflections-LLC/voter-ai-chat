@@ -3,6 +3,35 @@ import { sql } from '@/lib/voter/db';
 import { PassThrough } from 'node:stream';
 import { stringify } from 'csv-stringify';
 import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause'; // Import shared function
+// Import from shared constants file
+import { SCORE_RANGES } from '@/lib/participation-score/constants';
+
+// --- Participation Score Logic --- 
+// Remove local definitions - Now imported
+/*
+interface ScoreRange {
+  min: number;
+  max: number;
+  label: string;
+}
+const SCORE_RANGES: ScoreRange[] = [
+  { min: 1.0, max: 2.9, label: 'Needs Attention' },
+  { min: 3.0, max: 4.9, label: 'Needs Review' },
+  { min: 5.0, max: 6.4, label: 'Participates' },
+  { min: 6.5, max: 9.9, label: 'Power Voter' },
+  { min: 10.0, max: 10.0, label: 'Super Power Voter' },
+];
+*/
+// Keep the helper function, it now uses the imported SCORE_RANGES
+const getScoreLabel = (score: number | null): string => {
+  if (score === null || isNaN(score)) {
+    return 'N/A';
+  }
+  const clampedScore = Math.max(1.0, Math.min(score, 10.0));
+  const range = SCORE_RANGES.find(r => clampedScore >= r.min && clampedScore <= r.max);
+  return range ? range.label : 'Unknown';
+};
+// --- End Participation Score Logic ---
 
 // Suggest a longer execution time for platforms like Vercel (Pro/Enterprise plan may be required for > 60s)
 // Timeout behaviour ultimately depends on the deployment environment.
@@ -10,14 +39,14 @@ export const maxDuration = 300; // 5 minutes
 
 const DOWNLOAD_BATCH_SIZE = 5000; // Define the batch size for fetching
 
-// Define the fields to include in the CSV export
-// Omitted: geom (replaced by lat/lon), geocoded_at, geocoding_source
+// Define the fields to include in the CSV export in the desired order
 const CSV_FIELDS = [
   'county_name',
   'county_code',
   'voter_registration_number',
   'status',
   'status_reason',
+  'participation_score', 
   'last_name',
   'first_name',
   'middle_name',
@@ -65,7 +94,6 @@ const CSV_FIELDS = [
   'mailing_state',
   'mailing_country',
   'derived_last_vote_date',
-  // Add lat/lon derived from geom
   'latitude',
   'longitude',
   'census_tract',
@@ -74,7 +102,7 @@ const CSV_FIELDS = [
   'redistricting_senate_affected',
   'redistricting_house_affected',
   'redistricting_affected',
-  'participated_election_years'
+  'participated_election_years',
 ];
 
 // Function to convert snake_case to Title Case
@@ -87,13 +115,25 @@ function toTitleCase(str: string): string {
             .join(' ');
 }
 
-// Create CSV headers
-const CSV_HEADERS = CSV_FIELDS.map(field => {
-  if (field === 'voter_registration_number') return 'Registration ID';
-  if (field === 'latitude') return 'Latitude';
-  if (field === 'longitude') return 'Longitude';
-  return toTitleCase(field);
-});
+// Create CSV headers dynamically based on the reordered CSV_FIELDS
+const CSV_HEADERS = (() => {
+    const headers: string[] = [];
+    CSV_FIELDS.forEach(field => {
+        let header = '';
+        if (field === 'voter_registration_number') header = 'Registration ID';
+        else if (field === 'latitude') header = 'Latitude';
+        else if (field === 'longitude') header = 'Longitude';
+        else if (field === 'participation_score') header = 'Participation Score';
+        else header = toTitleCase(field);
+        headers.push(header);
+
+        // Insert 'Participation Label' header immediately after 'Participation Score' header
+        if (field === 'participation_score') {
+            headers.push('Participation Label');
+        }
+    });
+    return headers;
+})();
 
 export async function GET(request: NextRequest) {
   try {
@@ -112,6 +152,10 @@ export async function GET(request: NextRequest) {
       }
       if (field === 'participated_election_years') {
          return `array_to_string(${field}, ',') as ${field}`;
+      }
+      if (field === 'participation_score') {
+        // Skip participation_score here; it will be handled during processing
+        return field; 
       }
       // Ensure original field names are used in SELECT if they aren't derived
       return field;
@@ -149,13 +193,39 @@ export async function GET(request: NextRequest) {
     // Function to process a batch of rows
     const processBatch = async (rows: any[]) => {
       for (const row of rows) {
-        const processedRow = CSV_FIELDS.map(field => {
-          let value = row[field];
-          if (value instanceof Date) return value.toISOString().split('T')[0];
-          if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
-          if (typeof value === 'number') return value.toString();
-          return value === null || value === undefined ? '' : value;
+        let participationScore: number | null = null;
+        if (typeof row.participation_score === 'number') {
+            participationScore = row.participation_score;
+        } else if (typeof row.participation_score === 'string' && !isNaN(parseFloat(row.participation_score))) {
+            participationScore = parseFloat(row.participation_score);
+        }
+        const participationLabel = getScoreLabel(participationScore);
+        
+        // Build the row array according to the new header order
+        const processedRow: string[] = [];
+        CSV_FIELDS.forEach(field => {
+            let value = row[field];
+            let formattedValue = '';
+
+            if (field === 'participation_score') {
+                formattedValue = participationScore !== null ? participationScore.toFixed(1) : '';
+            } else if (value instanceof Date) {
+                formattedValue = value.toISOString().split('T')[0];
+            } else if (typeof value === 'boolean') {
+                formattedValue = value ? 'TRUE' : 'FALSE';
+            } else if (typeof value === 'number') {
+                formattedValue = value.toString();
+            } else {
+                formattedValue = value === null || value === undefined ? '' : String(value); // Ensure string conversion
+            }
+            processedRow.push(formattedValue);
+
+            // Insert the label immediately after the score value
+            if (field === 'participation_score') {
+                processedRow.push(participationLabel);
+            }
         });
+
         if (!stringifier.write(processedRow)) {
           // Handle backpressure
           await new Promise(resolve => stringifier.once('drain', resolve));

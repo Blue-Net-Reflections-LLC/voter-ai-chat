@@ -12,6 +12,7 @@ import { LocationSection } from "@/components/ga/voter/profile-sections/Location
 import { DistrictsSection } from "@/components/ga/voter/profile-sections/DistrictsSection";
 import { VotingHistorySection } from "@/components/ga/voter/profile-sections/VotingHistorySection";
 import { CensusSection } from "@/components/ga/voter/profile-sections/CensusSection";
+import { ParticipationScoreWidget } from "@/components/voter/ParticipationScoreWidget";
 
 // Helper hook for fetching voter profile section data
 function useVoterProfileSection(registrationNumber: string | undefined, section: string) {
@@ -66,6 +67,90 @@ function useVoterProfileSection(registrationNumber: string | undefined, section:
       };
 
   }, [registrationNumber, section]);
+
+  return { data, loading, error };
+}
+
+// Helper hook for fetching HOUSEHOLD participation score based on address
+function useHouseholdParticipationScore(residenceAddress: any | null | undefined) {
+  const [data, setData] = useState<{ score: number | null; voterCount: number | null } | null>(null);
+  const [loading, setLoading] = useState(false); // Initially not loading
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Only fetch if we have a valid address object
+    if (!residenceAddress || typeof residenceAddress !== 'object') {
+      setData(null); // Clear data if no address
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Format address components for the resident_address query parameter
+    const addressParamValue = [
+      residenceAddress.streetNumber || '',
+      residenceAddress.preDirection || '',
+      residenceAddress.streetName || '',
+      residenceAddress.streetType || '',
+      residenceAddress.postDirection || '',
+      residenceAddress.aptUnitNumber || '',
+      residenceAddress.city || '',
+      residenceAddress.zipcode || ''
+    ].join(',');
+
+    // Check if we have *any* address part to filter by
+    if (!addressParamValue.split(',').some(part => part !== '')) {
+      console.warn(`[Household Score Hook] No address components to query.`);
+      setData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setData(null); // Reset data on new fetch
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const params = new URLSearchParams();
+    params.set('resident_address', addressParamValue);
+    const queryString = params.toString();
+
+    console.log(`[Household Score Hook] Fetching with query: ${queryString}`);
+
+    fetch(`/api/ga/voter/participation-score?${queryString}`, { signal })
+      .then(res => {
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        return res.json();
+      })
+      .then(jsonData => {
+        console.log(`[Household Score Hook] Received data:`, jsonData);
+        // Ensure the response format matches { score: number | null, voterCount: number | null }
+        setData({
+          score: jsonData.score ?? null,
+          voterCount: jsonData.voterCount ?? null
+        });
+        setLoading(false);
+      })
+      .catch(e => {
+        if (e.name === 'AbortError') {
+          console.log(`Fetch aborted for household score`);
+          return; // Don't update state if fetch was aborted
+        }
+        console.error(`Error fetching household score:`, e);
+        setError(e.message || 'An error occurred');
+        setData(null); // Ensure data is null on error
+        setLoading(false);
+      });
+
+      // Cleanup function
+      return () => {
+        controller.abort();
+      };
+
+  }, [JSON.stringify(residenceAddress)]); // Depend on the stringified address object
 
   return { data, loading, error };
 }
@@ -138,6 +223,13 @@ export default function VoterProfilePage() {
     error: otherVotersError
   } = useVoterProfileSection(registrationNumber, 'otherVoters'); // Fetch other voters
 
+  // Fetch household score *after* location data (with address) is loaded
+  const { 
+    data: householdScoreData, 
+    loading: householdScoreLoading, 
+    error: householdScoreError 
+  } = useHouseholdParticipationScore(locationData?.residenceAddress);
+
   // Derive voter name for page title once info data is loaded
   const voterName = infoData
     ? `${infoData.firstName || ''} ${infoData.middleName ? infoData.middleName + ' ' : ''}${infoData.lastName || ''}`.trim() || 'Voter Profile'
@@ -160,21 +252,23 @@ export default function VoterProfilePage() {
   return (
     <div className="container py-2 max-w-5xl mx-auto">
       {/* Back Button and Header */}
-      <div className="mb-4 flex items-center" id="page-top">
+      <div className="mb-4 flex items-center gap-4" id="page-top">
         <Button
           variant="ghost"
-          className="p-0 mr-2 hover:bg-accent" // Added hover effect
+          className="p-0 mr-2 hover:bg-accent flex-shrink-0"
           onClick={handleBack}
-          aria-label="Go back" // Added aria-label
+          aria-label="Go back"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl md:text-3xl font-bold truncate"> {/* Added truncate */}
-          {infoLoading ? <Skeleton className="w-48 h-9" /> : voterName}
-        </h1>
+        <div className="flex-grow min-w-0">
+           <h1 className="text-2xl md:text-3xl font-bold truncate">
+             {infoLoading ? <Skeleton className="w-48 h-9 inline-block" /> : voterName}
+           </h1>
+        </div>
       </div>
 
-      {/* Section Navigation - traditional sticky positioning */}
+      {/* Section Navigation & Score Bar */}
       <div className="sticky top-0 z-50 bg-background border-b shadow-sm py-3 mb-6 -mx-4 px-4">
         <nav className="flex space-x-6 overflow-x-auto no-scrollbar">
           <a href="#voter-info" className="text-sm font-medium hover:text-primary whitespace-nowrap">Voter Info</a>
@@ -209,6 +303,9 @@ export default function VoterProfilePage() {
           otherVotersData={otherVotersData?.otherVoters || []}
           otherVotersLoading={otherVotersLoading}
           otherVotersError={otherVotersError}
+          householdScoreData={householdScoreData}
+          householdScoreLoading={householdScoreLoading}
+          householdScoreError={householdScoreError}
         />
       </div>
 
