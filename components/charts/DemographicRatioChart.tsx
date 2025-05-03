@@ -41,6 +41,41 @@ const COLORS = [
   '#00C49F', '#FFBB28', '#FF8042', '#a4de6c', '#d0ed57'
 ];
 
+// Custom legend component for better toggle behavior
+const CustomLegend = ({ payload, visibleLines, onToggle }: {
+  payload?: any[],
+  visibleLines: Record<string, boolean>,
+  onToggle: (dataKey: string) => void
+}) => {
+  if (!payload || payload.length === 0) return null;
+  
+  return (
+    <ul className="flex flex-wrap justify-center gap-3 mt-3">
+      {payload.map((entry, index) => (
+        <li 
+          key={`legend-item-${index}`}
+          className="flex items-center gap-1 cursor-pointer select-none px-2 py-1 rounded hover:bg-muted transition-colors"
+          onClick={() => onToggle(entry.dataKey)}
+        >
+          <span 
+            className="inline-block w-3 h-3 rounded-full" 
+            style={{ 
+              backgroundColor: entry.color, 
+              opacity: visibleLines[entry.dataKey] ? 1 : 0.3 
+            }}
+          />
+          <span style={{ 
+            textDecoration: visibleLines[entry.dataKey] ? 'none' : 'line-through',
+            opacity: visibleLines[entry.dataKey] ? 1 : 0.6
+          }}>
+            {entry.value}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 export function DemographicRatioChart() {
   const { filters, residenceAddressFilters, filtersHydrated } = useVoterFilterContext();
   const [chartData, setChartData] = useState<ChartData | null>(null);
@@ -54,6 +89,10 @@ export function DemographicRatioChart() {
     // Don't fetch until filters are hydrated from URL
     if (!filtersHydrated) return;
 
+    // Create abort controller for cancelling fetch when filters change
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     async function fetchChartData() {
       setIsLoading(true);
       setError(null);
@@ -64,8 +103,11 @@ export function DemographicRatioChart() {
           chartType: 'demographicRatioOverTime'
         });
 
-        const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`);
+        const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`, { signal });
         const data = await response.json();
+
+        // Check if the request was aborted before processing response
+        if (signal.aborted) return;
 
         if (!response.ok) {
           const errorMessage = data.message || 'Failed to fetch chart data';
@@ -100,6 +142,12 @@ export function DemographicRatioChart() {
           setVisibleLines(initialVisibility);
         }
       } catch (err) {
+        // Ignore AbortError which happens when we cancel the request
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.log('Chart data fetch aborted due to filter change');
+          return;
+        }
+        
         const errorMessage = 'An error occurred while fetching the chart data.';
         console.error('Error fetching chart data:', err);
         setError(errorMessage);
@@ -112,18 +160,26 @@ export function DemographicRatioChart() {
           description: errorMessage,
         });
       } finally {
-        setIsLoading(false);
+        // Only update loading state if the request wasn't aborted
+        if (!signal.aborted) {
+          setIsLoading(false);
+        }
       }
     }
 
     fetchChartData();
+
+    // Cleanup: abort any in-flight requests when filters change or component unmounts
+    return () => {
+      controller.abort();
+    };
   }, [filters, residenceAddressFilters, filtersHydrated, toast]);
 
   // Handle legend click to toggle line visibility
-  const handleLegendClick = (entry: { value: string }) => {
+  const handleLegendClick = (dataKey: string) => {
     setVisibleLines(prev => ({
       ...prev,
-      [entry.value]: !prev[entry.value]
+      [dataKey]: !prev[dataKey]
     }));
   };
 
@@ -154,31 +210,63 @@ export function DemographicRatioChart() {
     // Find min and max values across all visible series
     let minValue = 100;
     let maxValue = 0;
+    let hasVisibleData = false;
     
-    const formattedData = formatChartData();
-    formattedData.forEach(dataPoint => {
-      Object.entries(dataPoint).forEach(([key, value]) => {
-        if (key !== 'year' && value !== null) {
-          const numValue = parseFloat(value as string);
-          if (!isNaN(numValue)) {
-            minValue = Math.min(minValue, numValue);
-            maxValue = Math.max(maxValue, numValue);
+    // Get actual values from chart data, not the formatted data
+    chartData.series.forEach(series => {
+      if (visibleLines[series.name]) {
+        series.data.forEach(value => {
+          if (value !== null) {
+            const percentage = value * 100;
+            minValue = Math.min(minValue, percentage);
+            maxValue = Math.max(maxValue, percentage);
+            hasVisibleData = true;
           }
-        }
-      });
+        });
+      }
     });
     
-    // Add some padding (10% of the range)
-    const padding = (maxValue - minValue) * 0.1;
-    return [
-      Math.max(0, minValue - padding), // Don't go below 0
-      Math.min(100, maxValue + padding) // Don't go above 100
-    ];
+    // If no visible data or min/max are the same, use default range
+    if (!hasVisibleData || minValue === maxValue) {
+      return [0, 100];
+    }
+    
+    // Add padding (15% of the range)
+    const range = maxValue - minValue;
+    const padding = range * 0.15;
+    
+    // Calculate rounded min/max for cleaner axis values
+    const paddedMin = Math.max(0, minValue - padding);
+    const paddedMax = Math.min(100, maxValue + padding);
+    
+    // Round to 1 decimal place for cleaner axis
+    const roundedMin = Math.floor(paddedMin * 10) / 10;
+    const roundedMax = Math.ceil(paddedMax * 10) / 10;
+    
+    return [roundedMin, roundedMax];
   };
 
   // Custom tooltip formatter to show percentages
   const tooltipFormatter = (value: string) => {
     return `${value}%`;
+  };
+
+  // Render lines, including hidden ones with 0 opacity to maintain legend entries
+  const renderLines = () => {
+    if (!chartData) return null;
+    
+    return chartData.series.map((series, index) => (
+      <Line
+        key={series.name}
+        type="monotone"
+        dataKey={series.name}
+        stroke={COLORS[index % COLORS.length]}
+        activeDot={{ r: 8 }}
+        connectNulls
+        strokeOpacity={visibleLines[series.name] ? 1 : 0}
+        dot={{ strokeOpacity: visibleLines[series.name] ? 1 : 0, fillOpacity: visibleLines[series.name] ? 1 : 0 }}
+      />
+    ));
   };
 
   return (
@@ -231,19 +319,13 @@ export function DemographicRatioChart() {
                   tickFormatter={(value) => `${value}%`}
                 />
                 <Tooltip formatter={tooltipFormatter} />
-                <Legend onClick={handleLegendClick} />
-                {chartData.series.map((series, index) => (
-                  visibleLines[series.name] && (
-                    <Line
-                      key={series.name}
-                      type="monotone"
-                      dataKey={series.name}
-                      stroke={COLORS[index % COLORS.length]}
-                      activeDot={{ r: 8 }}
-                      connectNulls
-                    />
-                  )
-                ))}
+                <Legend 
+                  content={<CustomLegend 
+                    visibleLines={visibleLines} 
+                    onToggle={handleLegendClick} 
+                  />}
+                />
+                {renderLines()}
               </LineChart>
             </ResponsiveContainer>
           </div>
