@@ -35,9 +35,9 @@ const tabs = [
   },
   {
     label: "Charts",
-    href: "#",
+    href: "/ga/voter/charts",
     icon: PieChart,
-    enabled: false,
+    enabled: true,
   },
   {
     label: "Census Tract",

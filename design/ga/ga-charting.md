@@ -1,0 +1,216 @@
+# Participation Score Over Time Chart Requirements
+
+This document outlines the requirements for the initial chart displaying voter participation scores over time by election type.
+
+## Overview
+- **Goal:** Track and visualize the average participation score for various election types over a defined time period (2004-2025).
+- **Chart Type:** Multi-line chart.
+- **Location:** `/ga/voter/charts` (Requires a sub-navigation layout to accommodate future charts).
+- **Technology:** Use Recharts library for implementation.
+
+## Data & API
+- **Data Source:** Calculate average participation scores from voter election history.
+- **API Endpoint:** Create a new endpoint at `/api/ga/voter/chart-data`.
+    - It should accept a `chartType` query parameter. For this chart, the expected value is `participationOverTime`. The API should validate this parameter.
+    - It should also accept filter parameters (derived from the `FilterPanel`).
+- **Aggregation:**
+    - Each line represents the average participation score for a specific election type per year.
+    - If multiple elections of the same type occur within a single year, the score for that year is the *average* across those elections.
+- **Handling Missing Data:** Lines on the chart should connect across years where an election type did not occur (e.g., connect 2020 'GENERAL' point to 2024 'GENERAL' point).
+
+## Chart Axes
+- **X-axis:** Years from 2004 to 2025.
+- **Y-axis:** Participation score, ranging from 1.0 to 10.0.
+
+## Interactivity & Filtering
+- **Default View:** On initial load, display lines only for 'GENERAL' and 'GENERAL PRIMARY' election types.
+- **Line Toggling:** Users must be able to toggle the visibility of lines for any election type (likely via the chart legend).
+- **Filter Integration:**
+    - The chart must consider filters selected in the `FilterPanel` (using `VoterFilterProvider` context).
+    - When filters are applied, the chart data should be recalculated and the chart redrawn based on the filtered voter subset.
+    - By default (no filters applied), the chart represents data for all voters.
+- **Filter Indication:** When filters are active, update a label or legend element near the chart to clearly state that the displayed data is based on a filtered subset.
+
+## Relevant Code/References
+- **Participation Score Logic:** `design/ga/participation-score.md`
+- **Database Schema:** `lib/ga-voter-registration/migrations/0001_create_ga_voter_registration_list.sql`
+- **Filter Components:** `app/ga/voter/list/components/FilterPanel.tsx`
+- **Filter Context/Logic:** `app/ga/voter/VoterFilterProvider.tsx`, `lib/voter/build-where-clause.ts`
+- **Election Types:** Defined in `constants.ts`:
+  ```typescript
+  export const ELECTION_TYPE_OPTIONS = [
+    { value: 'GENERAL', label: 'GENERAL' },
+    { value: 'GENERAL ELECTION RUNOFF', label: 'GENERAL ELECTION RUNOFF' },
+    { value: 'GENERAL PRIMARY', label: 'GENERAL PRIMARY' },
+    // ... other types ...
+  ];
+  ```
+- **Related Design:** `design/ga/voter-profile-requirements.md`
+
+## Location
+
+Route:  http://localhost:3000/ga/voter/charts
+API: http://localhost:3000/api/ga/voter/chart-data
+
+## UI
+- Use Recharts
+- 
+
+## Implementation Tasks
+
+*   [ ] **API Endpoint (`/api/ga/voter/chart-data`):**
+    *   [ ] Define route handler (`app/api/ga/voter/chart-data/route.ts`).
+    *   [ ] Accept and validate `chartType` query parameter (expect `participationOverTime` initially).
+    *   [ ] Accept and process filter query parameters.
+    *   [ ] Implement database query for participation scores by year and election type (driven by `chartType`).
+    *   [ ] Implement aggregation logic (average score per type per year).
+    *   [ ] Implement logic to connect data points across missing years.
+    *   [ ] Integrate filter logic using `build-where-clause.ts` and query parameters.
+    *   [ ] Define and return JSON structure.
+*   [ ] **Frontend Route & Layout (`/ga/voter/charts`):**
+    *   [ ] Create page component (`app/ga/voter/charts/page.tsx`).
+    *   [ ] Enable and link the "Chart" tab in the main voter section navigation.
+    *   [ ] Implement sub-navigation layout.
+*   [ ] **Chart Component (`ParticipationChart.tsx`):**
+    *   [ ] Create component file (e.g., `components/charts/ParticipationChart.tsx`).
+    *   [ ] Fetch data from the `/api/ga/voter/chart-data` endpoint.
+    *   [ ] Configure Recharts component with X (Year) and Y (Score) axes.
+    *   [ ] Render lines based on fetched data.
+    *   [ ] Implement default view (show 'GENERAL' and 'GENERAL PRIMARY' only).
+    *   [ ] Implement line toggling via legend interaction.
+    *   [ ] Connect to `VoterFilterProvider` to react to filter changes.
+    *   [ ] Implement filter indication (label/legend update).
+*   [ ] **Database:**
+    *   [ ] Verify/add necessary database indexes for efficient querying.
+*   [ ] **Styling & Testing:**
+    *   [ ] Add appropriate styling to the chart and layout.
+    *   [ ] Write API tests.
+    *   [ ] Write component tests.
+
+# Demographic Ratio Over Time Chart Requirements
+
+This document outlines requirements for a chart visualizing the ratio of specific voter demographic subgroups among participating voters, tracked by election year.
+
+## Overview
+- **Goal:** Analyze how the demographic composition of participating voters changes over time based on selected filter criteria.
+- **Chart Type:** Multi-line chart.
+- **Location:** `/ga/voter/charts` (Requires sub-navigation).
+- **Technology:** Recharts.
+
+## Chart Axes & Data
+- **X-Axis:** Election Year (derived from voter's participation history in `voting_events`).
+- **Y-Axis:** Ratio (Proportion), ranging from 0.0 to 1.0.
+- **Calculation:** For a given election year (Y), the Y-value for a specific line (representing a filter combination) is:
+  `Ratio = COUNT(DISTINCT voters matching Combination C who participated in Year Y) / COUNT(DISTINCT total voters who participated in Year Y)`
+
+## Filtering & Line Generation
+- **No Filters:** If no filter options are selected, the chart area should display a message prompting the user to select at least one filter (e.g., "Please select filter options to generate the chart.").
+- **Allowed Filter Categories:** Lines are generated based ONLY on selections within these categories:
+    - `county` (from `v.county_name`)
+    - `congressionalDistricts` (from `v.congressional_district`)
+    - `stateSenateDistricts` (from `v.state_senate_district`)
+    - `stateHouseDistricts` (from `v.state_house_district`)
+    - `status` (from `v.status`)
+    - `statusReason` (from `v.status_reason`)
+    - `eventParty` (from `event ->> 'party'` in `v.voting_events`)
+    - `ageRange` (derived from `v.birth_year`)
+    - `gender` (from `v.gender`)
+    - `race` (from `v.race`)
+    - `electionType` (from `event ->> 'election_type'` in `v.voting_events`)
+    - `ballotStyle` (from `event ->> 'ballot_style'` in `v.voting_events`)
+- **Invalid Filters:** If any *other* filter parameter is present in the URL (e.g., `registrationNumber`, `scoreRanges`, `resident_address`), the API should return an error (400) indicating which filters are invalid for this chart.
+- **Line Generation Logic (Cartesian Product):**
+    - When multiple filter options are selected *across different allowed categories*, the chart generates lines for **all possible combinations** of those selections.
+    - *Example 1:* `race=White,Black` & `gender=Male` -> 2 lines: (White, Male Ratio), (Black, Male Ratio).
+    - *Example 2:* `race=White,Black` & `gender=Male,Female` -> 4 lines: (White, Male), (White, Female), (Black, Male), (Black, Female).
+    - *Example 3:* `race=White` -> 1 line: (White Ratio).
+- **Line Limit:** There is no hard limit on the number of lines generated by the API, but the frontend should handle potential performance issues with a large number of lines.
+
+## API Endpoint (`/api/ga/voter/chart-data`)
+- **`chartType` Parameter:** Must be `demographicRatioOverTime`.
+- **Functionality:**
+    1. Validate `chartType`.
+    2. Validate that only allowed filter keys are present.
+    3. Check if any allowed filters have selected values. If not, return 400 ("Please select filters...").
+    4. Generate the list of filter combinations based on selected values (Cartesian product).
+    5. Dynamically build a SQL query using conditional aggregation:
+        - Base data: Join `ga_voter_registration_list` with unnested `voting_events`.
+        - Group by election year.
+        - Calculate `COUNT(DISTINCT voter_registration_number)` for total participants per year.
+        - Calculate `COUNT(DISTINCT voter_registration_number) FILTER (WHERE ...)` for each generated combination.
+    6. Execute the query.
+    7. Process results: Calculate the ratio for each combination in each year.
+    8. Return data in the specified format.
+- **Response Format:**
+  ```json
+  {
+    "years": [Number], // Array of years with participation data
+    "series": [
+      {
+        "name": String, // Descriptive label (e.g., "Race: White, Gender: Male")
+        "filters": Object, // The filter combination for this line (e.g., { race: "White", gender: "Male" })
+        "data": [Number | null] // Array of ratios corresponding to the 'years' array
+      }
+      // ... more series objects
+    ]
+  }
+  ```
+  *Or, if no filters selected:* `{ "message": "Please select filter options..." }`
+  *Or, if invalid filters present:* `{ "error": "Invalid filter...", "allowedFilters": [...] }`
+
+## Frontend Chart Component (`DemographicRatioChart.tsx`)
+- Renamed from `ParticipationChart.tsx` to reflect new purpose.
+- Fetches data from the API using `chartType=demographicRatioOverTime` and current filters.
+- Handles API responses: Displays message if no filters selected, displays error if invalid filters used, renders chart if data received.
+- Renders lines based on the `series` array from the API.
+    - Uses `series[i].name` for legend labels.
+    - Uses `series[i].data` for line Y-values.
+- Allows users to toggle line visibility via the legend.
+- Displays X-axis (Election Year) and Y-axis (Ratio 0.0-1.0).
+
+## Relevant Code/References
+- **Primary Data Table:** `ga_voter_registration_list` (contains demographics, `voting_events` JSONB)
+- **Migrations:**
+    - `lib/ga-voter-registration/migrations/0001_create_ga_voter_registration_list.sql`
+    - `lib/ga-voter-registration/migrations/0011_add_voting_events_jsonb.sql`
+- **Filter Components:** `app/ga/voter/list/components/FilterPanel.tsx`
+- **Filter Context:** `app/ga/voter/VoterFilterProvider.tsx`
+- **Filter Constants:** `app/ga/voter/list/constants.ts` (for dropdown options)
+- **DB Connection:** `@/lib/voter/db` (used by API)
+
+## Implementation Tasks (Revised)
+
+*   [ ] **API Endpoint (`/api/ga/voter/chart-data`):**
+    *   [ ] Update route handler (`route.ts`) for `chartType=demographicRatioOverTime`.
+    *   [ ] Implement filter key validation (check against `ALLOWED_COMBO_FILTER_KEYS`).
+    *   [ ] Implement check for selected filter options.
+    *   [ ] Implement Cartesian product logic to generate filter combinations.
+    *   [ ] Implement `buildDynamicChartQuery` function:
+        *   [ ] Construct CTE to unnest events and get participation by year/voter.
+        *   [ ] Dynamically add `COUNT(...) FILTER (WHERE ...)` clauses for each combination.
+        *   [ ] Map filter keys/values to appropriate SQL conditions.
+    *   [ ] Execute the dynamic query using `sql.unsafe`.
+    *   [ ] Implement `processChartResults` function:
+        *   [ ] Iterate results, calculate ratios (handling division by zero).
+        *   [ ] Structure data into the specified `years` and `series` format.
+    *   [ ] Handle error responses (invalid filters, no selections).
+*   [ ] **Frontend Chart Component (`DemographicRatioChart.tsx`):**
+    *   [ ] Rename `ParticipationChart.tsx` to `DemographicRatioChart.tsx`.
+    *   [ ] Update props and internal logic to match the new API response format (`years`, `series`).
+    *   [ ] Render lines based on `series` data.
+    *   [ ] Implement legend click handler for line toggling.
+    *   [ ] Adjust Y-axis to represent Ratio (0.0-1.0).
+*   [ ] **Frontend Page (`/ga/voter/charts/page.tsx`):**
+    *   [ ] Update import to use `DemographicRatioChart`.
+    *   [ ] Modify data fetching logic:
+        *   [ ] Pass `chartType=demographicRatioOverTime`.
+        *   [ ] Handle API messages/errors (no filters selected, invalid filters).
+        *   [ ] Pass fetched `years` and `series` data to the chart component.
+    *   [ ] Display the message/error from the API when applicable.
+*   [ ] **Database:**
+    *   [ ] Re-evaluate indexes based on the new query pattern (GIN index on `voting_events`, indexes on columns used in combinations like `race`, `gender`, `birth_year`, `county_name`, etc.).
+*   [ ] **Styling & Testing:**
+    *   [ ] Update styling as needed.
+    *   [ ] Write new API tests for validation, combination logic, and query results.
+    *   [ ] Write new component tests for rendering, line toggling, message/error display.
+
