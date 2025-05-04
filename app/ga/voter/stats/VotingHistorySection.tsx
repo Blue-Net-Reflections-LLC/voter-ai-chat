@@ -6,7 +6,7 @@ import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider"
 import type { FilterState } from "../list/types";
 
 function VotingHistorySection() {
-  const { filters, filtersHydrated, updateFilter } = useVoterFilterContext();
+  const { filters, residenceAddressFilters, filtersHydrated, updateFilter } = useVoterFilterContext();
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -14,12 +14,12 @@ function VotingHistorySection() {
 
   React.useEffect(() => {
     if (!filtersHydrated) return;
-    const fetchKey = JSON.stringify({ filters });
+    const fetchKey = JSON.stringify({ filters, residenceAddressFilters });
     if (fetchKey === lastFetchKey.current) return;
     lastFetchKey.current = fetchKey;
     setLoading(true);
     setError(null);
-    const params = buildQueryParams(filters, [], { section: "voting_history" });
+    const params = buildQueryParams(filters, residenceAddressFilters, { section: "votingHistory" });
     fetch(`/api/ga/voter/summary?${params.toString()}`)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch aggregates");
@@ -33,7 +33,7 @@ function VotingHistorySection() {
         setError(e.message);
         setLoading(false);
       });
-  }, [filters, filtersHydrated]);
+  }, [filters, filtersHydrated, residenceAddressFilters]);
 
   function handleYearFilterClick(year: string) {
     // Add to electionYear filter (array)
