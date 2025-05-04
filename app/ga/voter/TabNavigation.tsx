@@ -16,13 +16,13 @@ import {
 
 const tabs = [
   {
-    label: "Voter List",
+    label: "List",
     href: "/ga/voter/list",
     icon: List,
     enabled: true,
   },
   {
-    label: "Stats/Aggregate",
+    label: "Stats",
     href: "/ga/voter/stats",
     icon: BarChart2,
     enabled: true,
@@ -40,7 +40,7 @@ const tabs = [
     enabled: true,
   },
   {
-    label: "Census Tract",
+    label: "Census",
     href: "#",
     icon: Landmark,
     enabled: false,
