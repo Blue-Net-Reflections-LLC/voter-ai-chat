@@ -146,10 +146,11 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   if (ageRanges && ageRanges.length > 0) {
     const ageConditions: string[] = [];
     ageRanges.forEach(range => {
-      // Simplified age range logic as example
+      // Expanded age range logic
       if (range === '18-23') ageConditions.push(`(birth_year <= '${currentYear - 18}' AND birth_year >= '${currentYear - 23}')`);
       else if (range === '25-44') ageConditions.push(`(birth_year <= '${currentYear - 25}' AND birth_year >= '${currentYear - 44}')`);
-      // Add other ranges similarly
+      else if (range === '45-64') ageConditions.push(`(birth_year <= '${currentYear - 45}' AND birth_year >= '${currentYear - 64}')`);
+      else if (range === '65-74') ageConditions.push(`(birth_year <= '${currentYear - 65}' AND birth_year >= '${currentYear - 74}')`);
       else if (range === '75+') ageConditions.push(`birth_year <= '${currentYear - 75}'`);
     });
     if (ageConditions.length > 0) conditions.push(`(${ageConditions.join(' OR ')})`);
