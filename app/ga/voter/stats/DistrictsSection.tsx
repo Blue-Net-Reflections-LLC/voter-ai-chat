@@ -5,8 +5,18 @@ import { MapPin, Landmark, Gavel, Home } from "lucide-react";
 import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider";
 import type { FilterState } from "../list/types";
 
+// Helper function to convert text to Title Case (same as in useLookupData)
+const toTitleCase = (text: string): string => {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 function DistrictsSection() {
-  const { filters, filtersHydrated, updateFilter } = useVoterFilterContext();
+  const { filters, residenceAddressFilters, filtersHydrated, updateFilter } = useVoterFilterContext();
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -14,12 +24,12 @@ function DistrictsSection() {
 
   React.useEffect(() => {
     if (!filtersHydrated) return;
-    const fetchKey = JSON.stringify({ filters });
+    const fetchKey = JSON.stringify({ filters, residenceAddressFilters });
     if (fetchKey === lastFetchKey.current) return;
     lastFetchKey.current = fetchKey;
     setLoading(true);
     setError(null);
-    const params = buildQueryParams(filters, [], { section: "districts" });
+    const params = buildQueryParams(filters, residenceAddressFilters, { section: "districts" });
     fetch(`/api/ga/voter/summary?${params.toString()}`)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch aggregates");
@@ -33,9 +43,10 @@ function DistrictsSection() {
         setError(e.message);
         setLoading(false);
       });
-  }, [filters, filtersHydrated]);
+  }, [filters, residenceAddressFilters, filtersHydrated]);
 
   function handleArrayFilterClick(filterKey: keyof FilterState, value: string) {
+    // Value is already title-cased by the caller (GroupCard onClick)
     const prev = (filters[filterKey] as string[]) || [];
     if (prev.includes(value)) return;
     updateFilter(filterKey, [...prev, value]);
@@ -67,21 +78,27 @@ function DistrictsSection() {
         </CardHeader>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
-            {items.map((item: any) => (
-              <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
-                <button
-                  type="button"
-                  className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
-                  title={`Filter by ${item.label}`}
-                  onClick={() => handleArrayFilterClick(filterKey, item.label)}
-                >
-                  {item.label}
-                </button>
-                <span className="font-mono text-[10px] text-muted-foreground font-light">
-                  {item.count.toLocaleString()}
-                </span>
-              </li>
-            ))}
+            {items.map((item: any) => {
+              // Convert label to Title Case for display and click handler
+              const displayLabel = toTitleCase(item.label); 
+              return (
+                <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
+                  <button
+                    type="button"
+                    className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
+                    title={`Filter by ${displayLabel}`}
+                    // Pass the title-cased label to the click handler
+                    onClick={() => handleArrayFilterClick(filterKey, displayLabel)} 
+                  >
+                    {/* Display the title-cased label */}
+                    {displayLabel} 
+                  </button>
+                  <span className="font-mono text-[10px] text-muted-foreground font-light">
+                    {item.count.toLocaleString()}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </CardContent>
       </Card>

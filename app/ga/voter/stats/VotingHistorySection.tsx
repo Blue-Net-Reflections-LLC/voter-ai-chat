@@ -6,7 +6,7 @@ import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider"
 import type { FilterState } from "../list/types";
 
 function VotingHistorySection() {
-  const { filters, filtersHydrated, updateFilter } = useVoterFilterContext();
+  const { filters, residenceAddressFilters, filtersHydrated, updateFilter } = useVoterFilterContext();
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -14,12 +14,12 @@ function VotingHistorySection() {
 
   React.useEffect(() => {
     if (!filtersHydrated) return;
-    const fetchKey = JSON.stringify({ filters });
+    const fetchKey = JSON.stringify({ filters, residenceAddressFilters });
     if (fetchKey === lastFetchKey.current) return;
     lastFetchKey.current = fetchKey;
     setLoading(true);
     setError(null);
-    const params = buildQueryParams(filters, [], { section: "voting_history" });
+    const params = buildQueryParams(filters, residenceAddressFilters, { section: "voting_history" });
     fetch(`/api/ga/voter/summary?${params.toString()}`)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch aggregates");
@@ -33,7 +33,7 @@ function VotingHistorySection() {
         setError(e.message);
         setLoading(false);
       });
-  }, [filters, filtersHydrated]);
+  }, [filters, filtersHydrated, residenceAddressFilters]);
 
   function handleYearFilterClick(year: string) {
     // Add to electionYear filter (array)
@@ -42,9 +42,11 @@ function VotingHistorySection() {
     updateFilter("electionYear", [...prev, year]);
   }
 
-  function handleLastVoteDateClick(date: string) {
-    // Add to notVotedSinceYear filter (string)
-    updateFilter("notVotedSinceYear", date);
+  function handleElectionDateFilterClick(date: string) {
+    // Add to electionDate filter (array)
+    const prev = (filters.electionDate as string[]) || [];
+    if (prev.includes(date)) return; // Check if date already exists
+    updateFilter("electionDate", [...prev, date]); // Add date to array
   }
 
   if (loading) {
@@ -75,19 +77,32 @@ function VotingHistorySection() {
           <ul className="divide-y divide-border">
             {items.map((item: any) => {
               let displayLabel = item.label;
-              if (isDate && item.label) {
-                const dateObj = new Date(item.label);
-                if (!isNaN(dateObj.getTime())) {
-                  displayLabel = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+              // Attempt to format if it's a date and the flag is set
+              if (isDate && item.label) { 
+                try {
+                  // Use slice(0, 10) to get YYYY-MM-DD for potential Date object
+                  const dateObj = new Date(item.label.slice(0, 10));
+                  // Check if the date is valid after slicing
+                  if (!isNaN(dateObj.getTime())) { 
+                    displayLabel = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                  }
+                } catch (e) { 
+                  // Ignore formatting errors, use original label
+                  console.warn("Date formatting failed for:", item.label, e);
+                  displayLabel = item.label; 
                 }
               }
+              // Extract only the date part (YYYY-MM-DD) for the click handler value
+              const valueForClick = typeof item.label === 'string' ? item.label.slice(0, 10) : item.label;
+              
               return (
                 <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
                   <button
                     type="button"
                     className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
                     title={`Filter by ${displayLabel}`}
-                    onClick={() => onItemClick(item.label)}
+                    // Pass only the YYYY-MM-DD part to the handler
+                    onClick={() => onItemClick(valueForClick)} 
                   >
                     {displayLabel}
                   </button>
@@ -105,8 +120,19 @@ function VotingHistorySection() {
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <GroupCard icon={<Calendar className="w-4 h-4 text-blue-500" />} title="Last Vote Date" items={data.derived_last_vote_date} onItemClick={handleLastVoteDateClick} isDate />
-      <GroupCard icon={<History className="w-4 h-4 text-green-600" />} title="Election Years" items={data.participated_election_years} onItemClick={handleYearFilterClick} />
+      <GroupCard 
+        icon={<Calendar className="w-4 h-4 text-blue-500" />} 
+        title="Election Date"
+        items={data.derived_last_vote_date}
+        onItemClick={handleElectionDateFilterClick}
+        isDate
+      />
+      <GroupCard 
+        icon={<History className="w-4 h-4 text-green-600" />} 
+        title="Election Years" 
+        items={data.participated_election_years} 
+        onItemClick={handleYearFilterClick} 
+      />
     </div>
   );
 }
