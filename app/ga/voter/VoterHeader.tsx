@@ -16,17 +16,17 @@ const VoterHeader: React.FC = () => {
             <Link href="/" className="font-semibold text-base leading-tight mr-1">
               Voter AI
             </Link>
-            <div className="flex items-center text-xs text-muted-foreground ml-2">
+            <Link href="/ga/voter" className="flex items-center text-xs text-muted-foreground ml-2 hover:text-primary transition-colors">
               <span className="mr-1">📍</span>
               <span>GA</span>
-            </div>
+            </Link>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
-          <div className="h-7 w-7 rounded bg-blue-800 flex items-center justify-center text-white text-xs font-bold">
+          <Link href="/ga/voter" className="h-7 w-7 rounded bg-blue-800 flex items-center justify-center text-white text-xs font-bold hover:bg-blue-700 transition-colors">
             GA
-          </div>
+          </Link>
           {/* Placeholder for UserProfile */}
           <div className="h-7 w-7 rounded-full bg-gray-300 flex items-center justify-center">
              <span className="text-xs">👤</span> {/* Simple placeholder icon */}

@@ -50,7 +50,8 @@ const tabs = [
 function useParticipationScore(
     filters: FilterState | null | undefined,
     filtersHydrated: boolean,
-    registrationNumber: string | null | undefined
+    registrationNumber: string | null | undefined,
+    pathname: string
 ) {
   const [scoreData, setScoreData] = useState<{ score: number | null, voterCount?: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,6 +60,13 @@ function useParticipationScore(
   const { residenceAddressFilters } = useVoterFilterContext() || { residenceAddressFilters: [] };
 
   useEffect(() => {
+    if (pathname === '/ga/voter') {
+      setScoreData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     const isIndividualFetch = typeof registrationNumber === 'string' && registrationNumber.length > 0;
     
     if (!isIndividualFetch && (!filtersHydrated || !filters)) {
@@ -119,7 +127,7 @@ function useParticipationScore(
     return () => {
       controller.abort();
     };
-  }, [filtersHydrated, JSON.stringify(filters), JSON.stringify(residenceAddressFilters), registrationNumber]);
+  }, [filtersHydrated, JSON.stringify(filters), JSON.stringify(residenceAddressFilters), registrationNumber, pathname]);
 
   return { scoreData, loading, error };
 }
@@ -132,41 +140,44 @@ export default function TabNavigation() {
   const filtersHydrated = voterFilterContext?.filtersHydrated || false;
 
   const isProfilePage = pathname.startsWith('/ga/voter/profile/');
+  const isLandingPage = pathname === '/ga/voter';
   const registrationNumber = isProfilePage && typeof params.registration_number === 'string' ? params.registration_number : null;
 
   const { 
     scoreData, 
     loading: scoreLoading, 
     error: scoreError 
-  } = useParticipationScore(filters, filtersHydrated, registrationNumber);
+  } = useParticipationScore(filters, filtersHydrated, registrationNumber, pathname);
 
   const scoreLabel = isProfilePage ? "Participation Score" : "Avg. Participation Score";
 
   return (
     <nav className="w-full border-b bg-background px-4 pt-2 pb-1 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-2 flex-shrink-0 pr-4 border-r">
-         <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">{scoreLabel}</span>
-         
-         <ParticipationScoreWidget 
-           score={scoreData?.score}
-           isLoading={scoreLoading} 
-           size="small"
-         />
+      {!isLandingPage && (
+        <div className="flex items-center gap-2 flex-shrink-0 pr-4 border-r">
+          <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">{scoreLabel}</span>
+          
+          <ParticipationScoreWidget 
+            score={scoreData?.score}
+            isLoading={scoreLoading} 
+            size="small"
+          />
           {scoreError && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                   <Info className="h-4 w-4 text-red-500" />
+                  <Info className="h-4 w-4 text-red-500" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="text-xs">Error: {scoreError}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-           )}
-      </div>
+          )}
+        </div>
+      )}
       
-      <div className="flex-grow flex justify-end space-x-2 md:space-x-4 overflow-x-auto no-scrollbar">
+      <div className={`flex-grow flex justify-end space-x-2 md:space-x-4 overflow-x-auto no-scrollbar ${isLandingPage ? 'w-full' : ''}`}>
         {tabs.map((tab) => {
           const isActive = tab.enabled && pathname.startsWith(tab.href);
           const Icon = tab.icon;

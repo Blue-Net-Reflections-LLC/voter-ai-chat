@@ -21,13 +21,22 @@ import { usePathname } from 'next/navigation';
 // Estimate combined height of fixed elements (Header + Nav)
 const FIXED_HEADER_NAV_HEIGHT = '100px'; // User specified height
 
+// Define paths where the FilterPanel should be visible
+const filterPanelVisiblePaths = [
+  '/ga/voter/list',
+  '/ga/voter/stats',
+  '/ga/voter/map',
+  '/ga/voter/charts'
+];
+
 export default function VoterLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname(); // Get pathname using the hook
-  const isProfilePage = pathname.startsWith('/ga/voter/profile/');
+  // Determine if the filter panel should be shown based on the current path
+  const showFilterPanel = filterPanelVisiblePaths.includes(pathname);
 
   return (
     // Wrap EVERYTHING in the providers
@@ -46,8 +55,8 @@ export default function VoterLayout({
               <div className={`w-full h-screen flex flex-col`} style={{ paddingTop: FIXED_HEADER_NAV_HEIGHT }}>
                  {/* Flex container for sidebar and main content */}
                 <div className="flex flex-1 w-full min-h-0">
-                  {/* Conditionally render sidebar */}
-                  {!isProfilePage && (
+                  {/* Conditionally render sidebar based on allowed paths */}
+                  {showFilterPanel && (
                     <aside 
                       className="w-1/4 min-w-[300px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
                       style={{ top: FIXED_HEADER_NAV_HEIGHT }}
@@ -57,9 +66,9 @@ export default function VoterLayout({
                       </div>
                     </aside>
                   )}
-                  {/* Scrollable Main content area - Adjust width/margin based on sidebar visibility */}
+                  {/* Scrollable Main content area - Adjust width/margin based on filter panel visibility */}
                   <main 
-                    className={`flex-1 overflow-y-auto ${isProfilePage ? 'w-full' : 'ml-[25%] w-[75%]'}`}
+                    className={`flex-1 overflow-y-auto ${showFilterPanel ? 'ml-[25%] w-[75%]' : 'w-full'}`}
                     style={{ height: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})` }}
                   >
                     {children}
