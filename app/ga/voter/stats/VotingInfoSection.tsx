@@ -7,6 +7,17 @@ import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider"
 import { cn } from "@/lib/utils";
 import type { FilterState, ResidenceAddressFilterState } from "../list/types";
 
+// Helper function to convert text to Title Case (same as in useLookupData)
+const toTitleCase = (text: string): string => {
+  if (!text) return '';
+  // Simple title case for now, handles single words and basic cases
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 function StatsSection({ title, children }: { title: string; children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   return (
@@ -65,6 +76,7 @@ function VotingInfoSection() {
 
   // Handler for simple array filters (status, statusReason)
   function handleArrayFilterClick(filterKey: keyof FilterState, value: string) {
+    // Value is already title-cased by the caller (GroupCard onClick)
     const prev = (filters[filterKey] as string[]) || [];
     if (prev.includes(value)) return; // Prevent duplicates
     updateFilter(filterKey, [...prev, value]);
@@ -72,6 +84,9 @@ function VotingInfoSection() {
 
   // Handler for address filters (city, zipcode) - Updates the first address filter
   function handleAddressFilterClick(addressKey: 'residence_city' | 'residence_zipcode', value: string) {
+    // Title case only for city
+    const processedValue = addressKey === 'residence_city' ? toTitleCase(value) : value;
+    
     setResidenceAddressFilters((prevFilters: ResidenceAddressFilterState[]) => {
       const updatedFilters = [...prevFilters];
       let targetFilter = updatedFilters[0];
@@ -89,8 +104,8 @@ function VotingInfoSection() {
         };
         updatedFilters[0] = targetFilter;
       }
-      if (targetFilter[addressKey] !== value) {
-        updatedFilters[0] = { ...targetFilter, [addressKey]: value };
+      if (targetFilter[addressKey] !== processedValue) {
+        updatedFilters[0] = { ...targetFilter, [addressKey]: processedValue };
         return updatedFilters;
       }
       return prevFilters;
@@ -115,12 +130,15 @@ function VotingInfoSection() {
     icon, 
     title, 
     items, 
-    onItemClick 
+    onItemClick, 
+    // Add a flag to control title casing for display/click
+    titleCaseValue = true 
   }: { 
     icon: React.ReactNode; 
     title: string; 
     items: any[]; 
     onItemClick: (value: string) => void; 
+    titleCaseValue?: boolean; 
   }) {
     if (!items || items.length === 0) return null;
     return (
@@ -133,21 +151,27 @@ function VotingInfoSection() {
         </CardHeader>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
-            {items.map((item: any) => (
-              <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
-                <button
-                  type="button"
-                  className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
-                  title={`Filter by ${item.label}`}
-                  onClick={() => onItemClick(item.label)}
-                >
-                  {item.label}
-                </button>
-                <span className="font-mono text-[10px] text-muted-foreground font-light">
-                  {item.count.toLocaleString()}
-                </span>
-              </li>
-            ))}
+            {items.map((item: any) => {
+              // Apply title casing based on the flag for display and click value
+              const valueToUse = titleCaseValue ? toTitleCase(item.label) : item.label;
+              const displayLabel = valueToUse; // Display the processed value
+              return (
+                <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
+                  <button
+                    type="button"
+                    className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
+                    title={`Filter by ${displayLabel}`}
+                    // Pass the correctly cased value
+                    onClick={() => onItemClick(valueToUse)} 
+                  >
+                    {displayLabel}
+                  </button>
+                  <span className="font-mono text-[10px] text-muted-foreground font-light">
+                    {item.count.toLocaleString()}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </CardContent>
       </Card>
@@ -178,12 +202,14 @@ function VotingInfoSection() {
           title="Status"
           items={data.status}
           onItemClick={(value) => handleArrayFilterClick('status', value)}
+          // titleCaseValue is true by default
         />
         <GroupCard
           icon={<AlertCircle className="w-4 h-4 text-yellow-500" />}
           title="Status Reason"
           items={data.status_reason}
           onItemClick={(value) => handleArrayFilterClick('statusReason', value)}
+          // titleCaseValue is true by default
         />
       </div>
       <GroupCard
@@ -191,12 +217,14 @@ function VotingInfoSection() {
         title="Residence City"
         items={data.residence_city}
         onItemClick={(value) => handleAddressFilterClick('residence_city', value)}
+        // titleCaseValue is true by default
       />
       <GroupCard
         icon={<Mail className="w-4 h-4 text-purple-500" />}
         title="Residence Zipcode"
         items={data.residence_zipcode}
         onItemClick={(value) => handleAddressFilterClick('residence_zipcode', value)}
+        titleCaseValue={false} // Explicitly disable for Zipcode
       />
     </div>
   );

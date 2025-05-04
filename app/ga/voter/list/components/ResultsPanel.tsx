@@ -156,10 +156,10 @@ export function ResultsPanel({
         </div>
       </CardHeader>
       <CardContent className="px-4 py-0 flex-grow min-h-0">
-        <div className="h-full overflow-auto min-h-0">
+        <div className="h-full overflow-auto min-h-0 relative">
           <VoterTable 
             voters={voters} 
-            isLoading={isLoading} 
+            isLoading={isLoading}
             sort={sort}
             onSort={onSort}
           />

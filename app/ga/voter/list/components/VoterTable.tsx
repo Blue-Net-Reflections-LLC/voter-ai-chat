@@ -55,7 +55,7 @@ const SortButton = ({ field, label, currentSort, onSort }: SortButtonProps) => {
 // Skeleton for loading state
 const LoadingSkeleton = () => (
   <>
-    {Array.from({ length: 10 }).map((_, i) => (
+    {Array.from({ length: 25 }).map((_, i) => (
       <TableRow key={i} className="h-8 border-b border-gray-800">
         <TableCell className="py-1"><Skeleton className="h-4 w-32" /></TableCell>
         <TableCell className="py-1"><Skeleton className="h-4 w-24" /></TableCell>

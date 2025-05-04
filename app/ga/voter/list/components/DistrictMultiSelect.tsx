@@ -105,7 +105,6 @@ export function DistrictMultiSelect({
                 </>
               )}
               {filtered
-                .filter(opt => !value.includes(opt.value))
                 .map(opt => renderDistrictCheckbox(opt, "list-"))}
               {selected.length === 0 && filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No districts found</div>}
             </>

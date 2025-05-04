@@ -124,16 +124,6 @@ export function useLookupData() {
   }, []);
 
   // Add logging after data is set
-  useEffect(() => {
-    if (lookupData) {
-      console.log("LookupData state updated:", lookupData);
-      const rawReasons = lookupData.fields.find(f => f.name === 'status_reason')?.values || [];
-      console.log("Raw status_reason values:", rawReasons);
-      const options = getOptionsForField('status_reason');
-      console.log("Generated statusReason Options:", options);
-    }
-  }, [lookupData]); // Run when lookupData changes
-
   return {
     isLoading,
     error,

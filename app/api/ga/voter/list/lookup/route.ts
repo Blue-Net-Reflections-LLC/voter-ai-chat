@@ -154,10 +154,12 @@ export async function GET(req: NextRequest) {
         const fieldResult = await sql.unsafe(queryString);
         
         // Extract values and clean them
-        results[fieldInfo.name] = fieldResult
-          .map(row => row[fieldInfo.name])
-          .filter(Boolean)
-          .map(val => String(val).trim().toUpperCase());
+        results[fieldInfo.name] = Array.from(new Set(
+          fieldResult
+            .map(row => row[fieldInfo.name])
+            .filter(Boolean)
+            .map(val => String(val).trim().toUpperCase())
+        ));
       } catch (error) {
         console.error(`Error fetching field ${fieldInfo.name}:`, error);
         results[fieldInfo.name] = [];
