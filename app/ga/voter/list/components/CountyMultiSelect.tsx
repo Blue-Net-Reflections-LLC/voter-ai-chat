@@ -84,7 +84,6 @@ export function CountyMultiSelect({ value, setValue, isLoading: propIsLoading, c
                 </>
               )}
               {filtered
-                .filter(county => !value.includes(county.value))
                 .map((county, index) => renderCountyCheckbox(county, "list-", index))}
               {selected.length === 0 && filtered.length === 0 && <div className="text-xs text-muted-foreground px-2 py-1">No counties found</div>}
             </>
