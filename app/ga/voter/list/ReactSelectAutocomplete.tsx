@@ -44,51 +44,56 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
   compact = false,
   hideLabel = false,
 }) => {
-  const { currentFilter, updateField, options, isLoading } = useAddressData();
+  const { currentFilter, updateField, options, isLoading, setSearch } = useAddressData();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState<string>('');
-  const debouncedInputValue = useDebounce(inputValue, 400);
   const inputRef = useRef<HTMLInputElement>(null);
   
-  // Get current value for this field
+  // Get current value for this field from the filter context
   const value = currentFilter[fieldKey] as string || '';
   
-  // Get options for this field
+  // Get options for this field (will be updated by provider)
   const fieldOptions = options[fieldKey] || [];
   
-  // Filter options based on input
+  // Filter options based on IMMEDIATE input for instant visual feedback
   const filteredOptions = fieldOptions.filter(option => 
     !inputValue || option.label.toLowerCase().includes(inputValue.toLowerCase())
   );
   
-  // Effect to update the filter after debounce period
+  // Sync local inputValue when the external filter value changes (e.g., auto-fill or clear)
   useEffect(() => {
-    if (debouncedInputValue !== '' && debouncedInputValue !== currentFilter[fieldKey]) {
-      updateField(fieldKey, debouncedInputValue);
+    // Ensure we don't overwrite user typing if value is cleared externally
+    // Only sync FROM context value TO input value
+    if (value !== inputValue) {
+        setInputValue(value); 
     }
-  }, [debouncedInputValue, fieldKey, updateField, currentFilter]);
-  
-  // Handle selection
+  }, [value]);
+
+  // Handle selection - This sets the filter and clears the provider's search state
   const handleSelect = (selectedValue: string) => {
-    updateField(fieldKey, selectedValue);
-    setInputValue(selectedValue);
+    updateField(fieldKey, selectedValue); // Update the actual filter
     setOpen(false);
+    // setSearch(null, ''); // updateField already clears search state in provider
   };
   
-  // Handle input change
+  // Handle input change - Updates local state AND informs provider of search
   const handleInputChange = (newValue: string) => {
-    setInputValue(newValue);
+    setInputValue(newValue); // Update display/filtering text immediately
+    setSearch(fieldKey, newValue); // Inform provider of active search
     
-    // Open dropdown when typing
     if (newValue.length > 0) {
       setOpen(true);
+    } else {
+      // If user manually clears input, ensure filter is cleared
+      // setSearch handles the empty query case triggering potential update
+      updateField(fieldKey, ''); 
+      setOpen(false);
     }
   };
   
-  // Handle clearing the input
+  // Handle clearing the input AND the filter using the X button
   const handleClear = () => {
-    updateField(fieldKey, '');
-    setInputValue('');
+    updateField(fieldKey, ''); // Clear the actual filter (this clears search state too)
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
