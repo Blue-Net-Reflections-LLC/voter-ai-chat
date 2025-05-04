@@ -100,7 +100,7 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
   };
 
   return (
-    <div className={compact ? "mb-0" : "mb-2"}>
+    <div>
       {!hideLabel && (
         <label htmlFor={`command-input-${String(fieldKey)}`} className="text-xs font-medium block mb-1">
           {label}
@@ -109,10 +109,10 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
       
       <div className="relative">
         <Command 
-          className="rounded-md border border-input bg-transparent overflow-visible" 
+          className="rounded-md bg-transparent overflow-visible" 
           shouldFilter={false}
         >
-          <div className="flex items-center border-b px-3">
+          <div className="flex items-center">
             <CommandInput
               ref={inputRef}
               id={`command-input-${String(fieldKey)}`}
@@ -123,7 +123,6 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
               placeholder={isLoading ? 'Loading...' : `Search ${label}...`}
               className={cn(
                 "flex h-9 w-full rounded-md bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
-                compact ? "h-8 py-1 text-xs" : ""
               )}
             />
             {inputValue && (
@@ -139,8 +138,8 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
           </div>
           {open && (
             <div className="relative z-50">
-              <CommandList className="absolute w-full top-0 max-h-[200px] overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
-                <CommandEmpty>{isLoading ? "Loading..." : "No results found."}</CommandEmpty>
+              <CommandList className="absolute w-full top-0 max-h-[200px] overflow-auto rounded-md bg-popover text-popover-foreground shadow-md">
+                <CommandEmpty>{isLoading ? "" : "No results found."}</CommandEmpty>
                 <CommandGroup>
                   {filteredOptions.map((option) => (
                     <CommandItem

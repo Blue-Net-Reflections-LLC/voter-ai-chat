@@ -137,7 +137,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
     <div className="space-y-4">
       {/* Display existing filters */}
       {addressFilters.map((filter, index) => (
-        <div key={filter.id} className="p-3 border rounded-md relative bg-background/50">
+        <div key={filter.id} className="p-3 rounded-md relative bg-background/50">
            <Button 
              variant="ghost" 
              size="icon" 
@@ -178,7 +178,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
             <PlusIcon className="mr-2 h-4 w-4" /> Add Address Filter
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-[750px] w-full">
+        <DialogContent className="max-w-[850px] w-full">
           <DialogHeader className="pb-2">
             <DialogTitle>Add Address Filter</DialogTitle>
           </DialogHeader>
@@ -188,7 +188,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
             initialFilter={{ id: newFilterId }}
           >
             {/* Address fields grid */}
-            <div className="w-full grid grid-cols-12 gap-2 mb-3">
+            <div className="w-full grid grid-cols-12 gap-1 mb-3">
               {/* Row 1: Street Number, Pre Direction, Street Name, Type, Post Direction */}
               <div className="col-span-2 min-w-[80px]">
                 <div className="text-xs font-medium mb-1">Street #</div>
@@ -199,7 +199,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                   hideLabel
                 />
               </div>
-              <div className="col-span-1 min-w-[50px]">
+              <div className="col-span-2 min-w-[50px]">
                 <div className="text-xs font-medium mb-1">Dir.</div>
                 <ReactSelectAutocomplete
                   label="Dir."
@@ -208,7 +208,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                   hideLabel
                 />
               </div>
-              <div className="col-span-6 min-w-[180px]">
+              <div className="col-span-4">
                 <div className="text-xs font-medium mb-1">Street Name</div>
                 <ReactSelectAutocomplete
                   label="Street Name"
@@ -225,7 +225,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                   hideLabel
                 />
               </div>
-              <div className="col-span-1 min-w-[60px]">
+              <div className="col-span-2">
                 <div className="text-xs font-medium mb-1">Dir.</div>
                 <ReactSelectAutocomplete
                   label="Dir."
