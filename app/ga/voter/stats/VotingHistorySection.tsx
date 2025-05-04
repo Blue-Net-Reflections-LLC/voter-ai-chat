@@ -19,7 +19,7 @@ function VotingHistorySection() {
     lastFetchKey.current = fetchKey;
     setLoading(true);
     setError(null);
-    const params = buildQueryParams(filters, residenceAddressFilters, { section: "votingHistory" });
+    const params = buildQueryParams(filters, residenceAddressFilters, { section: "voting_history" });
     fetch(`/api/ga/voter/summary?${params.toString()}`)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch aggregates");
