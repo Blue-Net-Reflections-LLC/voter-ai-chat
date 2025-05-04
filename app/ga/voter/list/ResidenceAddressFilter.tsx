@@ -88,6 +88,10 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
     if (hasValue) {
       addAddressFilter({ ...filter, id: newFilterId });
       setDialogOpen(false);
+    } else {
+      // Optional: Handle case where confirm is clicked with no value (e.g., show a message)
+      // Currently, the button will be disabled, so this branch might not be reachable
+      console.log("Confirm clicked with no filter values.");
     }
   };
 
@@ -258,29 +262,14 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
               </div>
             </div>
             
-            {/* Hidden component to extract values when needed */}
-            <AddressDataConsumer onConfirm={handleFilterConfirmed} />
+            {/* MOVE DialogFooter INSIDE AddressDataProvider */}
+            <DialogFooter className="pt-2">
+              {/* Render the consumer which now contains the buttons */}
+              <AddressDataConsumer onConfirm={handleFilterConfirmed} />
+            </DialogFooter>
           </AddressDataProvider>
           
-          <DialogFooter className="pt-2">
-            <div className="flex justify-between w-full gap-3">
-              <Button 
-                variant="outline"
-                size="sm" 
-                className="flex-1 text-muted-foreground hover:text-destructive"
-                onClick={handleClearAllFields}
-              >
-                Clear All Fields
-              </Button>
-              <Button 
-                size="sm" 
-                className="flex-1" 
-                onClick={handleAddNewFilter}
-              >
-                Confirm Add
-              </Button>
-            </div>
-          </DialogFooter>
+          {/* REMOVED DialogFooter from here */}
         </DialogContent>
       </Dialog>
 
@@ -294,29 +283,40 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
   );
 };
 
-// Helper component to extract values from context
+// Helper component to extract values from context AND RENDER BUTTONS
 const AddressDataConsumer: React.FC<{
   onConfirm: (filter: Partial<AddressFilter>) => void;
 }> = ({ onConfirm }) => {
   const { currentFilter, clearAllFields } = useAddressData();
+
+  // Determine if there are any values in the current filter, IGNORING the 'id' field
+  const hasValue = Object.entries(currentFilter)
+    .filter(([key]) => key !== 'id') // Exclude the 'id' key
+    .some(([, value]) => !!value); // Check if any remaining value is truthy
   
-  // Button to trigger extraction of values
   return (
-    <>
+    // Use the same flex container as the original DialogFooter
+    <div className="flex justify-between w-full gap-3">
       <Button 
-        id="add-filter-button"
-        className="hidden"
-        onClick={() => onConfirm(currentFilter)}
+        variant="outline"
+        size="sm" 
+        className="flex-1 text-muted-foreground hover:text-destructive"
+        onClick={clearAllFields} // Directly call clearAllFields
+        disabled={!hasValue} // Disable if no values exist
+        aria-disabled={!hasValue}
       >
-        Hidden Confirm
+        Clear All Fields
       </Button>
-      <Button
-        id="reset-filter-button"
-        className="hidden"
-        onClick={() => clearAllFields()}
+      <Button 
+        size="sm" 
+        className="flex-1" 
+        onClick={() => onConfirm(currentFilter)} // Directly call onConfirm
+        disabled={!hasValue} // Disable if no values exist
+        aria-disabled={!hasValue}
       >
-        Hidden Reset
+        Confirm Add
       </Button>
-    </>
+      {/* REMOVED hidden buttons */}
+    </div>
   );
 }; 
