@@ -258,7 +258,7 @@ export function useVoterList() {
     pagination,
     sort,
     voters,
-    isLoading,
+    isLoading: isLoading || !filtersHydrated,
     setFilters,
     setResidenceAddressFilters,
     updateFilter,

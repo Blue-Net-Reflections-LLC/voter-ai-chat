@@ -156,13 +156,19 @@ export function ResultsPanel({
         </div>
       </CardHeader>
       <CardContent className="px-4 py-0 flex-grow min-h-0">
-        <div className="h-full overflow-auto min-h-0">
-          <VoterTable 
-            voters={voters} 
-            isLoading={isLoading} 
-            sort={sort}
-            onSort={onSort}
-          />
+        <div className="h-full overflow-auto min-h-0 relative">
+          {isLoading && (
+            <div className="absolute inset-0 flex justify-center items-center bg-background/50 z-10">
+              <LoaderCircle size={32} className="animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!isLoading && (
+            <VoterTable 
+              voters={voters} 
+              sort={sort}
+              onSort={onSort}
+            />
+          )}
         </div>
       </CardContent>
       <CardFooter className="py-0 px-4 flex-shrink-0 max-h-[50px] border-t">
