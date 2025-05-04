@@ -157,16 +157,7 @@ export const ReactSelectAutocomplete: React.FC<ReactSelectAutocompleteProps> = (
           )}
         </Command>
         
-        {value && !open && (
-          <div className="absolute top-0 left-0 flex items-center h-9 px-3 pointer-events-none">
-            <span className="text-sm truncate">{value}</span>
-          </div>
-        )}
       </div>
-      
-      {isLoading && (
-        <div className="text-xs mt-1 text-muted-foreground">Loading options...</div>
-      )}
     </div>
   );
 }; 
