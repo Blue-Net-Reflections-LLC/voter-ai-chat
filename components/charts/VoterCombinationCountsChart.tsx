@@ -11,7 +11,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from 'recharts';
 import {
@@ -27,7 +26,6 @@ import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider';
 import { buildQueryParams } from '@/app/ga/voter/VoterFilterProvider';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from "@/components/ui/scroll-area"; // For table scroll
 
 // Types to match the API response
 interface CombinationResult {
@@ -149,8 +147,9 @@ export function VoterCombinationCountsChart() {
     if (!chartData?.results || !chartData?.totalCombinedCount) return [];
     const total = chartData.totalCombinedCount || 1; // Avoid division by zero
     return chartData.results
-        .map(item => ({ 
+        .map((item, index) => ({ 
             ...item, 
+            index, // Store index for color mapping
             percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) + '%' : '0.0%'
         }))
         .sort((a, b) => b.count - a.count); // Sort descending by count
@@ -196,7 +195,6 @@ export function VoterCombinationCountsChart() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                // label={renderCustomizedLabel} // Add custom label if needed
                 outerRadius={150}
                 fill="#8884d8"
                 dataKey="value"
@@ -206,7 +204,6 @@ export function VoterCombinationCountsChart() {
                 ))}
               </Pie>
               <Tooltip formatter={(value: number, name: string) => [`${tooltipFormatter(value)} voters`, name]}/>
-              <Legend wrapperStyle={{ fontSize: '0.75rem' /* equivalent to text-xs */ }} />
             </PieChart>
           </ResponsiveContainer>
         );
@@ -219,10 +216,11 @@ export function VoterCombinationCountsChart() {
   const renderTableView = () => {
       if (!tableData || tableData.length === 0) return null;
       return (
-        <ScrollArea className="h-[400px] border rounded-md">
+        <div className="mt-4">
             <Table>
-                <TableHeader className="sticky top-0 bg-background z-10">
+                <TableHeader>
                     <TableRow>
+                        <TableHead className="w-[20px]"></TableHead>
                         <TableHead>Combination</TableHead>
                         <TableHead className="text-right">Count</TableHead>
                         <TableHead className="text-right">Percentage</TableHead>
@@ -231,14 +229,20 @@ export function VoterCombinationCountsChart() {
                 <TableBody>
                 {tableData.map((item) => (
                     <TableRow key={item.name}>
-                    <TableCell className="font-medium text-xs py-1">{item.name}</TableCell>
-                    <TableCell className="text-right text-xs py-1">{item.count.toLocaleString()}</TableCell>
-                    <TableCell className="text-right text-xs py-1">{item.percentage}</TableCell>
+                        <TableCell className="py-1">
+                            <span 
+                                className="inline-block w-3 h-3 rounded-full"
+                                style={{ backgroundColor: COLORS[item.index % COLORS.length] }}
+                            />
+                        </TableCell>
+                        <TableCell className="font-medium text-xs py-1">{item.name}</TableCell>
+                        <TableCell className="text-right text-xs py-1">{item.count.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-xs py-1">{item.percentage}</TableCell>
                     </TableRow>
                 ))}
                 </TableBody>
             </Table>
-        </ScrollArea>
+        </div>
       );
   }
 
@@ -279,14 +283,9 @@ export function VoterCombinationCountsChart() {
           </div>
         )}
         {!isLoading && !error && chartData && (
-          // Updated Layout: Chart on left (2/3), Table on right (1/3) on medium+ screens
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="col-span-1 md:col-span-2">
-              {renderChartView()} 
-            </div>
-            <div className="col-span-1">
-              {renderTableView()}
-            </div>
+          <div>
+            {renderChartView()} 
+            {renderTableView()}
           </div>
         )}
         {!isLoading && !error && !chartData && (
