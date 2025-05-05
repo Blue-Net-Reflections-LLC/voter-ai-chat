@@ -294,7 +294,7 @@ This document outlines requirements for a chart visualizing the absolute number 
 
 ## Frontend Chart Component (`VoterCountsChart.tsx`)
 - Create a new component `VoterCountsChart.tsx`.
-- Implement a UI switcher (e.g., tabs or segmented control) to select between "Line", "Bar" (Grouped), and "Area" (Stacked) chart views.
+- Implement a UI switcher (e.g., tabs or segmented control) to select between "Line", "Bar" (Grouped), and "Stacked Area" chart views.
 - Fetches data from the API using `chartType=voterCountsOverTime` and current filters (data is the same for all three views).
 - Handles API responses (no filters, invalid filters, data).
 - Renders the selected chart type based on the `series` array from the API:
@@ -346,6 +346,90 @@ This document outlines requirements for a chart visualizing the absolute number 
     1.  Alternative views *of the Counts Over Time data* (e.g., showing counts for the *latest* year as a pie/bar)?
     2.  Separate charts entirely with different goals/data?
 - This requirement document focuses on the multi-line "Counts Over Time" chart first. The bar/pie charts should be specified separately once their purpose is clear.
+
+# Voter Combination Counts Chart Requirements
+
+This document outlines requirements for a chart visualizing the total size of specific voter demographic subgroups, based on filter combinations.
+
+## Overview
+- **Goal:** Show the total number of voters matching specific demographic combinations derived from selected filter criteria. This allows comparison of the absolute sizes of different defined subgroups within the overall filtered population.
+- **Chart Type:** User-selectable view: Bar Chart, Pie Chart, or Table view.
+- **Location:** `/ga/voter/charts` (integrated into the existing chart type navigation).
+- **Technology:** Recharts (for Bar/Pie), standard HTML/UI components (for Table).
+
+## Data & API
+- **Data Source:** `ga_voter_registration_list`.
+- **API Endpoint:** Reuse `/api/ga/voter/chart-data`.
+    - **`chartType` Parameter:** Needs a new value, e.g., `voterCombinationCounts`.
+    - **No `groupByField` parameter is used.**
+- **Filter Logic:**
+    - Uses the same `ALLOWED_COMBO_FILTER_KEYS` as the Over Time charts (Race, Gender, Status, etc.). Filters outside this list (like ageMin, notVotedSinceYear) will also be applied to narrow the overall population *before* counts are calculated.
+    - Generates the **Cartesian product** of selected filter values across different `ALLOWED_COMBO_FILTER_KEYS`. (e.g., `race=WHITE`, `race=BLACK`, `gender=MALE` -> `[{race: WHITE, gender: MALE}, {race: BLACK, gender: MALE}]`).
+    - If no filters from `ALLOWED_COMBO_FILTER_KEYS` are selected, return an appropriate message/error (e.g., "Please select filters from category X, Y, Z... to generate combinations").
+- **Calculation:** For *each* generated filter combination `C`, calculate `TotalCount(C) = COUNT(*)` of voters matching combination `C` *AND* any other general filters applied (like ageMin, etc.).
+- **Response Format:** An array of objects, each representing a combination and its total count.
+  ```json
+  {
+    "results": [
+      {
+        "name": "Race: White, Gender: Male", // Descriptive name for the combination
+        "filters": { "race": "WHITE", "gender": "MALE" }, // The specific filter combination
+        "count": 12345  // Total count matching this combo + other filters
+      },
+      {
+        "name": "Race: Black, Gender: Male",
+        "filters": { "race": "BLACK", "gender": "MALE" },
+        "count": 6789
+      }
+      // ... more combinations
+    ],
+    // Optional: could include total count matching *any* of the generated combinations
+    "totalCombinedCount": 19134 
+  }
+  ```
+
+## Visualization & Interaction
+- **Filter Input:** Uses the main filter panel. The chart dynamically updates based on selections within `ALLOWED_COMBO_FILTER_KEYS`.
+- **View Switcher:** UI switcher for "Bar", "Pie", "Table".
+- **Bar Chart:**
+    - Each bar represents one filter *combination* (using `results[i].name` as the label).
+    - Bar height represents the total `count` for that combination.
+- **Pie Chart:**
+    - Each slice represents a filter *combination* (`results[i].name`).
+    - Slice size is proportional to `results[i].count` relative to the total count of *all combinations shown*.
+- **Table View:**
+    - Each row represents one filter *combination*.
+    - Columns should include "Combination" (displaying the filters, e.g., "Race: White, Gender: Male"), "Count", and "Percentage" (relative to `totalCombinedCount`).
+    - Default sort by Count (descending).
+
+## Implementation Tasks
+
+*   [ ] **API Endpoint (`/api/ga/voter/chart-data`):**
+    *   [ ] Add support for `chartType=voterCombinationCounts`.
+    *   [ ] Reuse `extractAllowedFilters` and validation check (ensure at least one combo filter is selected).
+    *   [ ] Reuse `generateFilterCombinations` logic.
+    *   [ ] For each generated combination:
+        *   Construct a WHERE clause using `buildVoterListWhereClause`, passing *both* the combination's filters *and* any other general filters from the original `searchParams`.
+        *   Execute a `SELECT COUNT(*)` query with that WHERE clause.
+    *   [ ] Aggregate results into the specified response format.
+    *   [ ] Handle errors.
+*   [ ] **Frontend Page (`/ga/voter/charts/page.tsx`):**
+    *   [ ] Add "Combination Counts" chart type to the main chart navigation.
+    *   [ ] Import the new `VoterCombinationCountsChart` component.
+    *   [ ] Add conditional rendering for the new component.
+*   [ ] **Frontend Chart Component (`VoterCombinationCountsChart.tsx`):**
+    *   [ ] Create `VoterCombinationCountsChart.tsx`.
+    *   [ ] Implement data fetching logic for `chartType=voterCombinationCounts`.
+    *   [ ] Add a UI switcher for Bar/Pie/Table views.
+    *   [ ] Implement rendering logic for Bar Chart view (Bars represent combinations).
+    *   [ ] Implement rendering logic for Pie Chart view (Slices represent combinations).
+    *   [ ] Implement rendering logic for Table view (Rows represent combinations).
+    *   [ ] Implement loading and error states.
+*   [ ] **Styling & Testing:**
+    *   [ ] Ensure consistent styling.
+    *   [ ] Test with various filter combinations.
+    *   [ ] Test interaction with general filters (e.g., ageMin).
+    *   [ ] Test switching between views.
 
 
 

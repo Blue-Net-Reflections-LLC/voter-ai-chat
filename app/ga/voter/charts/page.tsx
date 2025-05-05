@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { DemographicRatioChart } from '@/components/charts/DemographicRatioChart';
 import { VoterCountsChart } from '@/components/charts/VoterCountsChart';
+import { VoterCombinationCountsChart } from '@/components/charts/VoterCombinationCountsChart';
 import { TabNavigation } from '@/components/charts/TabNavigation';
 import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider';
 
@@ -10,6 +11,7 @@ import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider';
 const chartTypes = [
   { value: 'demographicRatioOverTime', label: 'Demographic Ratio' },
   { value: 'voterCountsOverTime', label: 'Voter Counts' },
+  { value: 'voterCombinationCounts', label: 'Combination Counts' },
   // Future chart types can be added here
 ];
 
@@ -43,6 +45,7 @@ export default function ChartsPage() {
       {/* Render the active chart */}
       {activeChart === 'demographicRatioOverTime' && <DemographicRatioChart />}
       {activeChart === 'voterCountsOverTime' && <VoterCountsChart />}
+      {activeChart === 'voterCombinationCounts' && <VoterCombinationCountsChart />}
       
       {/* Add more chart components as they are implemented */}
     </div>
