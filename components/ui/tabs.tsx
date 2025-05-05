@@ -3,12 +3,22 @@ import * as React from "react";
 interface TabsProps {
   defaultValue: string;
   children: React.ReactNode;
+  onValueChange?: (value: string) => void;
 }
 
-export function Tabs({ defaultValue, children }: TabsProps) {
+export function Tabs({ defaultValue, children, onValueChange }: TabsProps) {
   const [value, setValue] = React.useState(defaultValue);
+  
+  // Create a function that updates internal state and calls the external handler
+  const handleValueChange = React.useCallback((newValue: string) => {
+    setValue(newValue);
+    if (onValueChange) {
+      onValueChange(newValue);
+    }
+  }, [onValueChange]);
+  
   return (
-    <TabsContext.Provider value={{ value, setValue }}>
+    <TabsContext.Provider value={{ value, setValue: handleValueChange }}>
       <div>{children}</div>
     </TabsContext.Provider>
   );

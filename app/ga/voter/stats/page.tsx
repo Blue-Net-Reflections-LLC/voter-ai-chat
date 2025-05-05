@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VotingInfoSection from "./VotingInfoSection";
 import DistrictsSection from "./DistrictsSection";
@@ -27,6 +28,13 @@ const ALL_SECTIONS: (keyof SummaryData)[] = ['voting_info', 'districts', 'demogr
 
 export default function StatsDashboardPage() {
   const { filters, residenceAddressFilters, filtersHydrated, setFilters, setResidenceAddressFilters, updateFilter } = useVoterFilterContext();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // Get initial tab from URL or default to 'voting_info'
+  const initialTab = searchParams.get('tab');
+  const defaultTab = initialTab && ALL_SECTIONS.includes(initialTab as keyof SummaryData) ? initialTab : 'voting_info';
 
   const [summaryData, setSummaryData] = useState<SummaryData>({});
   const [loading, setLoading] = useState(true);
@@ -129,6 +137,18 @@ export default function StatsDashboardPage() {
     } else { console.warn("Unhandled filter field in StatsDashboardPage:", fieldName); }
   }, [filters, setFilters, setResidenceAddressFilters, updateFilter]);
 
+  // Handle tab changes by updating URL
+  const handleTabChange = useCallback((value: string) => {
+    if (value && ALL_SECTIONS.includes(value as keyof SummaryData)) {
+      // Update URL search param without page refresh
+      const current = new URLSearchParams(Array.from(searchParams.entries()));
+      current.set("tab", value);
+      const search = current.toString();
+      const query = search ? `?${search}` : "";
+      router.replace(`${pathname}${query}`, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
   return (
     <div className="w-full p-2 md:p-6 xl:p-8">
       <div className="mb-4 text-right text-sm text-muted-foreground">
@@ -140,7 +160,7 @@ export default function StatsDashboardPage() {
         )}
       </div>
 
-      <Tabs defaultValue="voting_info">
+      <Tabs defaultValue={defaultTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4">
           {ALL_SECTIONS.map(section => (
             <TabsTrigger key={section} value={section}>
