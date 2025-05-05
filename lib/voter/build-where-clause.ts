@@ -15,6 +15,8 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   const statusValues = searchParams.getAll('status');
   const statusReasonParams = searchParams.getAll('statusReason');
   const partyValues = searchParams.getAll('party');
+  const countyPrecincts = searchParams.getAll('countyPrecinct');
+  const municipalPrecincts = searchParams.getAll('municipalPrecinct');
   const redistrictingAffectedTypes = searchParams.getAll('redistrictingAffectedTypes');
   const ballotStyles = searchParams.getAll('ballotStyle');
   const eventParties = searchParams.getAll('eventParty');
@@ -130,6 +132,14 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams): string
   if (stateHouseDistricts.length > 0) {
       const placeholders = stateHouseDistricts.map(district => `'${district}'`);
       conditions.push(`state_house_district IN (${placeholders.join(', ')})`);
+  }
+  if (countyPrecincts.length > 0) {
+      const placeholders = countyPrecincts.map(precinct => `'${precinct.toUpperCase()}'`);
+      conditions.push(`county_precinct IN (${placeholders.join(', ')})`);
+  }
+  if (municipalPrecincts.length > 0) {
+      const placeholders = municipalPrecincts.map(precinct => `'${precinct.toUpperCase()}'`);
+      conditions.push(`municipal_precinct IN (${placeholders.join(', ')})`);
   }
   if (partyValues.length > 0) {
       const partyConditions = partyValues.map(p => `UPPER(last_party_voted) = UPPER('${p}')`).join(' OR ');

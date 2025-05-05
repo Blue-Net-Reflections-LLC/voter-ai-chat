@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 import { SCORE_RANGES } from '@/lib/participation-score/constants';
+import PrecinctFilters from './PrecinctFilters';
 
 export function FilterPanel() {
   const {
@@ -136,6 +137,9 @@ export function FilterPanel() {
               compact={true}
             />
           </div>
+
+          {/* Add Precinct Filters component */}
+          <PrecinctFilters />
 
           {/* Congressional District Filter */}
           <div className="space-y-2">
