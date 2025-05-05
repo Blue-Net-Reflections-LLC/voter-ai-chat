@@ -159,7 +159,7 @@ export function DemographicRatioChart() {
       
       chartData.series.forEach(series => {
         // Keep data point even if line is hidden, Recharts handles visibility
-        const value = series.data[index];
+          const value = series.data[index];
         dataPoint[series.name] = value !== null ? (value * 100) : null;
       });
       
@@ -272,11 +272,11 @@ export function DemographicRatioChart() {
           {/* Legend Removed */} 
           {chartData.series.map((series, index) => (
             visibleLines[series.name] && (
-              <Line
-                key={series.name}
-                type="monotone"
-                dataKey={series.name}
-                stroke={COLORS[index % COLORS.length]}
+      <Line
+        key={series.name}
+        type="monotone"
+        dataKey={series.name}
+        stroke={COLORS[index % COLORS.length]}
                 strokeWidth={2}
                 dot={false}
                 connectNulls={true} // Connect points across null values

@@ -62,6 +62,8 @@ const CSV_FIELDS = [
   'residence_zipcode',
   'county_precinct',
   'county_precinct_description',
+  'county_precinct_facility_name',  // Added new field for facility name
+  'county_precinct_facility_address',  // Added new field for facility address
   'municipal_precinct',
   'municipal_precinct_description',
   'congressional_district',
@@ -124,6 +126,8 @@ const CSV_HEADERS = (() => {
         else if (field === 'latitude') header = 'Latitude';
         else if (field === 'longitude') header = 'Longitude';
         else if (field === 'participation_score') header = 'Participation Score';
+        else if (field === 'county_precinct_facility_name') header = 'County Precinct Facility'; 
+        else if (field === 'county_precinct_facility_address') header = 'County Precinct Location';
         else header = toTitleCase(field);
         headers.push(header);
 
@@ -140,32 +144,44 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
 
     // *** Use shared function to build the WHERE clause ***
-    const whereClause = buildVoterListWhereClause(searchParams);
+    // Pass 'v' as the table alias to qualify all column references
+    const whereClause = buildVoterListWhereClause(searchParams, 'v');
 
     // Select specific fields for CSV, extract lat/lon from geom
-    const selectFields = CSV_FIELDS.map(field => {
-      if (field === 'latitude') {
-        return 'ST_Y(geom) as latitude'; // Extract Latitude
-      }
-      if (field === 'longitude') {
-        return 'ST_X(geom) as longitude'; // Extract Longitude
-      }
-      if (field === 'participated_election_years') {
-         return `array_to_string(${field}, ',') as ${field}`;
-      }
-      if (field === 'participation_score') {
-        // Skip participation_score here; it will be handled during processing
-        return field; 
-      }
-      // Ensure original field names are used in SELECT if they aren't derived
-      return field;
-    }).join(', ');
+    const selectFields = CSV_FIELDS
+      .filter(field => !field.includes('facility')) // Skip the facility fields as they'll be handled by the JOIN
+      .map(field => {
+        if (field === 'latitude') {
+          return 'ST_Y(v.geom) as latitude'; // Extract Latitude
+        }
+        if (field === 'longitude') {
+          return 'ST_X(v.geom) as longitude'; // Extract Longitude
+        }
+        if (field === 'participated_election_years') {
+           return `array_to_string(v.${field}, ',') as ${field}`;
+        }
+        if (field === 'participation_score') {
+          // Skip participation_score here; it will be handled during processing
+          return `v.${field}`; 
+        }
+        // Add table alias prefix to ALL fields to avoid ambiguity
+        return `v.${field}`;
+      }).join(', ');
 
+    // Modified query to include a LEFT JOIN with REFERENCE_DATA for facility information
     const baseQuery = `
-      SELECT ${selectFields}
-      FROM GA_VOTER_REGISTRATION_LIST
+      SELECT 
+        ${selectFields},
+        rd.lookup_meta->>'facility_name' as county_precinct_facility_name,
+        rd.lookup_meta->>'facility_address' as county_precinct_facility_address
+      FROM GA_VOTER_REGISTRATION_LIST v
+      LEFT JOIN REFERENCE_DATA rd ON 
+        rd.lookup_type = 'GA_COUNTY_PRECINCT_DESC' 
+        AND rd.state_code = 'GA' 
+        AND rd.county_code = v.county_code 
+        AND rd.lookup_key = v.county_precinct
       ${whereClause}
-      ORDER BY voter_registration_number -- ORDER BY is important for stable pagination
+      ORDER BY v.voter_registration_number -- ORDER BY is important for stable pagination
     `;
 
     // --- Start: Streaming Logic with Manual Pagination ---
@@ -250,34 +266,25 @@ export async function GET(request: NextRequest) {
             continueFetching = false;
           }
 
-          // If fewer rows than batch size were returned, it's the last batch
-          if (rows.length < DOWNLOAD_BATCH_SIZE) {
-            continueFetching = false;
-          }
-
+          // Always advance the offset, even if this batch was empty
           offset += DOWNLOAD_BATCH_SIZE;
         }
-        console.log('Finished fetching all batches.');
-        stringifier.end(); // Signal end of data to stringifier
-      } catch (dbError) {
-        console.error('Error during database query pagination:', dbError);
-        if (!stringifier.destroyed) {
-           stringifier.destroy(dbError instanceof Error ? dbError : new Error(String(dbError)));
-        }
-        if (!responseStream.destroyed) {
-           responseStream.destroy(dbError instanceof Error ? dbError : new Error(String(dbError)));
-        }
+      } catch (error) {
+        console.error('Error fetching data batches:', error);
+        // Attempt to write error to stream
+        stringifier.write(['Error occurred during export. Some data may be missing.']);
+      } finally {
+        // End the CSV stream when we're done, whether successful or not
+        stringifier.end();
       }
-    })(); // Immediately invoke the async loop function
+    })();
 
-    // Return the stream immediately - the loop above will feed it data
+    // Return initial streaming response immediately without waiting for data to be fully processed
     return new NextResponse(responseStream as any, { status: 200, headers });
-    // --- End: Streaming Logic ---
-
   } catch (error) {
-    console.error('Error setting up voter download API:', error);
+    console.error('Error in CSV download route handler:', error);
     return NextResponse.json(
-      { error: 'Failed to generate voter CSV data' },
+      { error: 'Failed to generate CSV file', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
