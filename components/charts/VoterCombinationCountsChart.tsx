@@ -50,6 +50,52 @@ const COLORS = [
   '#00C49F', '#FFBB28', '#FF8042', '#a4de6c', '#d0ed57'
 ];
 
+// --- Custom Label for Pie Chart --- 
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ 
+    cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, 
+  }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5; // Label position inside slice (initial)
+  // Calculate position slightly outside the slice for the connecting line start
+  const radiusLineStart = outerRadius * 1.1;
+  const xLineStart = cx + radiusLineStart * Math.cos(-midAngle * RADIAN);
+  const yLineStart = cy + radiusLineStart * Math.sin(-midAngle * RADIAN);
+
+  // Calculate end position for the line and text
+  const radiusText = outerRadius * 1.3; // Adjust this multiplier for distance
+  const xText = cx + radiusText * Math.cos(-midAngle * RADIAN);
+  const yText = cy + radiusText * Math.sin(-midAngle * RADIAN);
+  
+  // Determine text anchor based on position relative to center
+  const textAnchor = xText > cx ? 'start' : 'end';
+
+  return (
+    <g>
+        {/* Connecting Line - Disabled for now as labelLine prop handles it */}
+        {/* 
+        <line 
+            x1={xLineStart} 
+            y1={yLineStart} 
+            x2={xText} 
+            y2={yText} 
+            stroke="hsl(var(--muted-foreground))" // Use muted text color for line
+            strokeWidth={1} 
+        /> 
+        */}
+      <text 
+        x={xText} 
+        y={yText} 
+        fill="hsl(var(--foreground))" // Use theme text color
+        textAnchor={textAnchor} 
+        dominantBaseline="central"
+        fontSize="0.75rem" // text-xs
+      >
+        {`${name} (${(percent * 100).toFixed(0)}%)`}
+      </text>
+    </g>
+  );
+};
+
 // Changed: Only Bar and Pie are selectable chart views now
 type ChartViewType = 'bar' | 'pie';
 
@@ -189,13 +235,17 @@ export function VoterCombinationCountsChart() {
       case 'pie':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <PieChart>
+            {/* Increased margin to give labels space */}
+            <PieChart margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
               <Pie
                 data={pieData}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                outerRadius={150}
+                // Enable default label line rendering
+                labelLine={true} 
+                // Use the custom label rendering function
+                label={renderCustomizedLabel} 
+                outerRadius={120} // Adjust radius to make space for labels
                 fill="#8884d8"
                 dataKey="value"
               >
