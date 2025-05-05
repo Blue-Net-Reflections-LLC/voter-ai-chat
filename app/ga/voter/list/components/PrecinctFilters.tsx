@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
 import DistrictMultiSelect, { MultiSelectOption } from './DistrictMultiSelect';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
-import { is } from 'drizzle-orm';
 
 // Interface for the lookup response data from API
 interface PrecinctLookupData {
