@@ -155,7 +155,7 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
         return (
             <div className="flex flex-col space-y-2 p-4 border rounded-md bg-card h-[372px]"> {/* Match approx height */} 
                 <h3 className="text-lg font-semibold">{fieldName} Distribution</h3>
-                <div className="flex-grow flex items-center justify-center">
+                <div className="grow flex items-center justify-center">
                     <p className="text-sm text-muted-foreground">No data available for {fieldName}.</p>
                 </div>
             </div>
@@ -208,7 +208,7 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                     }`}
                                 >
                                     <TableCell className="py-1 pl-2 pr-1 w-[24px]">
-                                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.fill }}></div>
+                                        <div className="size-3 rounded-sm" style={{ backgroundColor: item.fill }}></div>
                                     </TableCell>
                                     <TableCell className="font-medium text-xs py-1 pr-2">{item.name}</TableCell>
                                     <TableCell className="text-right text-xs py-1">{item.count.toLocaleString()}</TableCell>
@@ -262,24 +262,25 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                 >
                                      {/* Map over pieChartData for Cells */}
                                     {pieChartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={entry.fill} 
+                                            onClick={() => handleInteraction(entry.name)} 
+                                            // Dim the &apos;Other&apos; slice slightly and prevent interaction
+                                            style={{ 
+                                                cursor: entry.name === 'Other' ? 'default' : 'pointer', 
+                                                opacity: entry.name === 'Other' ? 0.7 : 1, 
+                                            }}
+                                        />
                                     ))}
                                 </Pie>
-                                <Tooltip content={<CustomTooltip />} />
                             </PieChart>
                         )}
                     </ResponsiveContainer>
                 </div>
             </div>
-            <div>
-                {truncatedChartData.length !== chartData.length && (
-                    <p className="text-xs text-muted-foreground text-center pt-1 pb-2">
-                        Showing top {truncatedChartData.length} items and 'Other'. Full data in table.
-                    </p>
-                )}
-            </div>
         </div>
     );
 };
 
-export default AggregateFieldDisplay; 
+export default AggregateFieldDisplay;
