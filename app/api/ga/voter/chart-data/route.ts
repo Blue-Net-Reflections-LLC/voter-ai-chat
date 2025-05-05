@@ -191,7 +191,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const chartType = searchParams.get('chartType');
 
-  if (chartType !== 'demographicRatioOverTime') {
+  // Allow both chart types
+  if (chartType !== 'demographicRatioOverTime' && chartType !== 'voterCountsOverTime') {
     return NextResponse.json({ message: 'Invalid chart type requested.' }, { status: 400 });
   }
 
@@ -218,25 +219,40 @@ export async function GET(request: Request) {
   const years = [2004, 2006, 2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2024];
 
   try {
-    // Fetch total counts first (can potentially be cached/precomputed)
-    const totalsByYear = await getTotalVotersByYear(years);
-
     // Fetch counts for each combination in parallel
     const seriesDataPromises = combinations.map(combo => getCountsForCombination(years, combo));
     const seriesResults = await Promise.all(seriesDataPromises);
 
-    // Format the response
+    // Fetch total counts ONLY if needed for Ratio chart
+    let totalsByYear: YearCountMap = {}; // Initialize empty
+    if (chartType === 'demographicRatioOverTime') {
+        totalsByYear = await getTotalVotersByYear(years);
+    }
+
+    // Format the response based on chart type
     const responseSeries = seriesResults.map((data: YearCountMap, index: number) => {
       const combo = combinations[index];
-      return {
-        name: formatCombinationName(combo),
-        filters: combo,
-        data: years.map(year => {
-          const count = data[year] || 0;
+      const name = formatCombinationName(combo);
+      const comboFilters = combo; // Keep original filter object
+
+      // Map data based on chart type
+      const seriesChartData = years.map(year => {
+        const count = data[year] || 0;
+        
+        if (chartType === 'demographicRatioOverTime') {
           const total = totalsByYear[year] || 0;
           // Return null if total is 0, otherwise calculate ratio
           return total > 0 ? (count / total) : null;
-        })
+        } else { // voterCountsOverTime
+          // Return the raw count, or null if count is 0 (optional: could return 0)
+          return count > 0 ? count : null; 
+        }
+      });
+
+      return {
+        name: name,
+        filters: comboFilters,
+        data: seriesChartData
       };
     });
 
