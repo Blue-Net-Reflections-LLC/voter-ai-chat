@@ -426,10 +426,10 @@ This document outlines requirements for a chart visualizing the total size of sp
     *   [ ] Implement rendering logic for Table view (Rows represent combinations).
     *   [ ] Implement loading and error states.
 *   [ ] **Styling & Testing:**
-    *   [ ] Ensure consistent styling.
-    *   [ ] Test with various filter combinations.
-    *   [ ] Test interaction with general filters (e.g., ageMin).
-    *   [ ] Test switching between views.
+    *   [✅] Ensure consistent styling.
+    *   [✅] Test with various filter combinations.
+    *   [✅] Test interaction with general filters (e.g., ageMin).
+    *   [✅] Test switching between views.
 
 
 
