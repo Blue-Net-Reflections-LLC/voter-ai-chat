@@ -10,7 +10,6 @@ import CensusSection from "./CensusSection";
 import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider";
 import type { FilterState, ResidenceAddressFilterState } from "../list/types";
 
-// Structure for all summary data
 interface SummaryData {
   voting_info?: any;
   districts?: any;
@@ -19,97 +18,106 @@ interface SummaryData {
   census?: any;
 }
 
-// Helper function to convert text to Title Case (needed for filter handler)
 const toTitleCase = (text: string): string => {
   if (!text || typeof text !== 'string') return '';
   return text.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
+const ALL_SECTIONS: (keyof SummaryData)[] = ['voting_info', 'districts', 'demographics', 'voting_history', 'census'];
+
 export default function StatsDashboardPage() {
   const { filters, residenceAddressFilters, filtersHydrated, setFilters, setResidenceAddressFilters, updateFilter } = useVoterFilterContext();
 
-  // State for all data sections
-  const [summaryData, setSummaryData] = useState<SummaryData>({}); 
-  // Separate loading states
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [backgroundLoading, setBackgroundLoading] = useState<Record<string, boolean>>({
-    districts: false,
-    demographics: false,
-    voting_history: false,
-    census: false,
-  });
+  const [summaryData, setSummaryData] = useState<SummaryData>({});
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const backgroundFetchedRef = useRef<boolean>(false); // Ref to track if background fetch started
-  const lastFetchKey = useRef<string>(""); // Track filter changes for refetching
+  const lastFetchKey = useRef<string | null>(null);
+  const isFetchingRef = useRef<boolean>(false);
 
-  const sectionsToBackgroundFetch: (keyof SummaryData)[] = ['districts', 'demographics', 'voting_history', 'census'];
-
-  // Effect 1: Fetch initial data (Voting Info) and trigger background fetch
   useEffect(() => {
-    if (!filtersHydrated) return;
+    const effectId = Math.random().toString(36).substring(7);
+    console.log(`[Effect ${effectId}] Running effect. Hydrated: ${filtersHydrated}`);
 
-    const currentFetchKey = JSON.stringify({ filters, residenceAddressFilters });
-    // If filters change, reset everything and restart the process
-    if (currentFetchKey !== lastFetchKey.current) {
-        console.log("Filters changed, refetching initial data...");
-        lastFetchKey.current = currentFetchKey;
-        setInitialLoading(true);
-        setError(null);
-        setSummaryData({}); // Clear old data
-        backgroundFetchedRef.current = false; // Reset background fetch trigger
-        setBackgroundLoading({ districts: false, demographics: false, voting_history: false, census: false });
-
-        const params = buildQueryParams(filters, residenceAddressFilters, { section: "voting_info" });
-        fetch(`/api/ga/voter/summary?${params.toString()}`)
-          .then(res => {
-            if (!res.ok) { return res.text().then(text => { throw new Error(text || "Failed to fetch initial aggregates"); }); }
-            return res.json();
-          })
-          .then(data => {
-            console.log("Initial data fetched.");
-            setSummaryData(prev => ({ ...prev, voting_info: data.voting_info || data }));
-          })
-          .catch(e => {
-            console.error("Error fetching initial data:", e);
-            setError(e.message || "An unknown error occurred during initial fetch");
-            setSummaryData({}); // Clear on error
-          })
-          .finally(() => {
-            setInitialLoading(false);
-            // Don't trigger background fetch immediately here, let the next effect handle it
-          });
-    } else if (!initialLoading && !backgroundFetchedRef.current && summaryData.voting_info) {
-        // If initial load is done, voting_info is present, and background fetch hasn't started, start it
-         console.log("Initial load done, starting background fetches...");
-         backgroundFetchedRef.current = true; // Mark as started
-         sectionsToBackgroundFetch.forEach(section => {
-             if (!summaryData[section]) { // Only fetch if not already fetched (e.g., by a quick refetch)
-                 setBackgroundLoading(prev => ({ ...prev, [section]: true }));
-                 const params = buildQueryParams(filters, residenceAddressFilters, { section });
-                 fetch(`/api/ga/voter/summary?${params.toString()}`)
-                     .then(res => {
-                         if (!res.ok) { return res.text().then(text => { throw new Error(`Failed to fetch ${section} aggregates: ${text}`); }); }
-                         return res.json();
-                     })
-                     .then(data => {
-                         console.log(`Background data fetched for: ${section}`);
-                         setSummaryData(prev => ({ ...prev, [section]: data[section] || data }));
-                     })
-                     .catch(e => {
-                         console.error(`Error fetching background data for ${section}:`, e);
-                         // Optionally set a per-section error state or just log it
-                     })
-                     .finally(() => {
-                         setBackgroundLoading(prev => ({ ...prev, [section]: false }));
-                     });
-             }
-         });
+    if (!filtersHydrated) {
+        console.log(`[Effect ${effectId}] Skipping: Filters not hydrated.`);
+        return;
     }
 
-  // Dependencies: Run when filters change, or when initial loading finishes to trigger background
-  }, [filters, residenceAddressFilters, filtersHydrated, initialLoading, summaryData]); 
+    const currentFetchKey = JSON.stringify({ filters, residenceAddressFilters });
 
-  // Calculate total voters (remains the same, depends on voting_info)
+    if (isFetchingRef.current) {
+      console.log(`[Effect ${effectId}] Skipping: Fetch already in progress (isFetchingRef=true).`);
+      return;
+    }
+
+    if (currentFetchKey === lastFetchKey.current) {
+      console.log(`[Effect ${effectId}] Skipping: Fetch key matches last started key. Key: ${currentFetchKey}`);
+      if (loading) setLoading(false);
+      return;
+    }
+
+    console.log(`[Effect ${effectId}] Proceeding with fetch. New Key: ${currentFetchKey}`);
+    
+    isFetchingRef.current = true;
+    lastFetchKey.current = currentFetchKey;
+    setLoading(true);
+    setError(null);
+    setSummaryData({});
+
+    console.log(`[Effect ${effectId}] Fetch lock set, state cleared. Mapping fetch promises...`);
+
+    const fetchPromises = ALL_SECTIONS.map(sectionKey => {
+      const fetchId = `${effectId}-${sectionKey}`;
+      console.log(`[Fetch ${fetchId}] Creating promise.`);
+      const params = buildQueryParams(filters, residenceAddressFilters, { section: sectionKey });
+      const url = `/api/ga/voter/summary?${params.toString()}`;
+      console.log(`[Fetch ${fetchId}] URL: ${url}`);
+
+      return fetch(url)
+          .then(async (res) => {
+              console.log(`[Fetch ${fetchId}] Received response status: ${res.status}`);
+              if (!res.ok) {
+                  const errorText = await res.text();
+                  console.error(`[Fetch ${fetchId}] Error response: ${errorText}`);
+                  throw { section: sectionKey, status: res.status, message: errorText || `Failed to fetch ${sectionKey}` };
+              }
+              const data = await res.json();
+              const sectionData = data[sectionKey] || data;
+              console.log(`[Fetch ${fetchId}] Success, updating state.`);
+              setSummaryData(prev => ({ ...prev, [sectionKey]: sectionData }));
+              return { section: sectionKey, status: 'fulfilled' };
+          })
+          .catch(err => {
+              const errorPayload = {
+                  section: sectionKey,
+                  message: err.message || `Network error fetching ${sectionKey}`,
+                  isNetworkError: !err.status
+              };
+              console.error(`[Fetch ${fetchId}] Catch block error:`, errorPayload);
+              return Promise.reject({ section: sectionKey, status: 'rejected', reason: errorPayload });
+          });
+    });
+
+    console.log(`[Effect ${effectId}] Promises created. Waiting for allSettled...`);
+
+    Promise.allSettled(fetchPromises)
+        .then(results => {
+            console.log(`[Effect ${effectId}] All fetches settled.`);
+            let errorsFound = false;
+            results.forEach(result => {
+                 if (result.status === 'rejected') {
+                    errorsFound = true;
+                    console.error(`[Effect ${effectId}] Settled Error for ${result.reason?.section}:`, result.reason?.reason?.message);
+                    setError(prevError => prevError || `Error loading data for ${result.reason?.section}.`); 
+                 }
+            });
+            console.log(`[Effect ${effectId}] Releasing fetch lock and setting loading false.`);
+            isFetchingRef.current = false;
+            setLoading(false);
+        });
+
+  }, [filters, residenceAddressFilters, filtersHydrated]);
+
   const totalVoters = useMemo(() => {
     if (!summaryData?.voting_info?.status) return 0;
     const activeCount = summaryData.voting_info.status.find((s: any) => s.label === 'ACTIVE')?.count || 0;
@@ -117,9 +125,7 @@ export default function StatsDashboardPage() {
     return activeCount + inactiveCount;
   }, [summaryData.voting_info]);
 
-  // Restore unified filter handler (triggers refetch of initial, which then triggers background)
   const handleFilterChange = useCallback((fieldName: string, value: string | number) => {
-    // ... (Filter logic mapping fieldName to filterKey/addressKey remains the same) ...
     const filterValue = String(value);
     const arrayFilterMap: { [key: string]: keyof FilterState } = { 'Status': 'status', 'Status Reason': 'statusReason', 'Race': 'race', 'Gender': 'gender', 'County': 'county', 'Congressional District': 'congressionalDistricts', 'State Senate District': 'stateSenateDistricts', 'State House District': 'stateHouseDistricts', 'Age Range': 'age', 'Election Date': 'electionDate', 'Election Year': 'electionYear' };
     const addressFilterMap: { [key: string]: keyof ResidenceAddressFilterState } = { 'Residence City': 'residence_city', 'Residence Zipcode': 'residence_zipcode' };
@@ -143,17 +149,16 @@ export default function StatsDashboardPage() {
   return (
     <div className="w-full p-2 md:p-6 xl:p-8">
       <div className="mb-4 text-right text-sm text-muted-foreground">
-        {/* Show total based on initial loading state */}
-        {!initialLoading && summaryData.voting_info && (
+        {!loading && summaryData.voting_info && (
            <span>Total Matching Voters: <span className="font-semibold text-foreground">{totalVoters.toLocaleString()}</span></span>
         )}
-         {initialLoading && (
+         {loading && !summaryData.voting_info && (
            <span className="animate-pulse">Loading Total...</span>
         )}
       </div>
 
       <Tabs defaultValue="voting_info">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4"> 
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4">
           <TabsTrigger value="voting_info">Voting Info</TabsTrigger>
           <TabsTrigger value="districts">Districts</TabsTrigger>
           <TabsTrigger value="demographics">Demographics</TabsTrigger>
@@ -161,13 +166,11 @@ export default function StatsDashboardPage() {
           <TabsTrigger value="census">Census</TabsTrigger>
         </TabsList>
         
-        {/* Pass relevant props down */}
-        {/* Note: We pass initialLoading state to all. Sections can show their own subtle loading for background data if needed, or just wait for data prop */}
         <TabsContent value="voting_info">
           <VotingInfoSection 
             data={summaryData.voting_info} 
-            loading={initialLoading} 
-            error={error} // Pass general error for now
+            loading={loading && !summaryData.voting_info} 
+            error={error}
             totalVoters={totalVoters}
             onFilterChange={handleFilterChange}
           />
@@ -175,7 +178,7 @@ export default function StatsDashboardPage() {
         <TabsContent value="districts">
           <DistrictsSection
              data={summaryData.districts}
-             loading={initialLoading || backgroundLoading.districts}
+             loading={loading && !summaryData.districts}
              error={error}
              totalVoters={totalVoters} 
              onFilterChange={handleFilterChange}
@@ -184,7 +187,7 @@ export default function StatsDashboardPage() {
          <TabsContent value="demographics">
           <DemographicsSection 
              data={summaryData.demographics}
-             loading={initialLoading || backgroundLoading.demographics}
+             loading={loading && !summaryData.demographics}
              error={error}
              totalVoters={totalVoters}
              onFilterChange={handleFilterChange}
@@ -193,7 +196,7 @@ export default function StatsDashboardPage() {
         <TabsContent value="voting_history">
           <VotingHistorySection 
             data={summaryData.voting_history}
-            loading={initialLoading || backgroundLoading.voting_history}
+            loading={loading && !summaryData.voting_history}
             error={error}
             totalVoters={totalVoters}
             onFilterChange={handleFilterChange}
@@ -202,7 +205,7 @@ export default function StatsDashboardPage() {
         <TabsContent value="census">
           <CensusSection 
              data={summaryData.census}
-             loading={initialLoading || backgroundLoading.census}
+             loading={loading && !summaryData.census}
              error={error}
              totalVoters={totalVoters}
              onFilterChange={handleFilterChange}
