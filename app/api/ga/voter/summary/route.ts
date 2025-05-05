@@ -214,6 +214,7 @@ async function getVotingHistoryAggregates(whereClause: string, shouldQuery: bool
             UnrolledEvents
         WHERE
             election_date >= $1::DATE -- Filter for last 16 years
+            AND EXTRACT(YEAR FROM election_date) % 2 = 0 -- Filter for even years only
         GROUP BY
             election_date
         ORDER BY

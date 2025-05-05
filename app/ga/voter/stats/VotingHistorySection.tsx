@@ -77,15 +77,6 @@ function VotingHistorySection({
 
   return (
     <div className="flex flex-col gap-6"> {/* Stack vertically */}
-      {data?.election_date_counts && data.election_date_counts.length > 0 && (
-        <AggregateFieldDisplay
-          fieldName="Election Date Counts" // Updated display name
-          data={formatDataForDisplay(data.election_date_counts, true)} // Use date formatting
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-election-date-chartType"
-        />
-      )}
       {data?.participated_election_years && data.participated_election_years.length > 0 && (
         <AggregateFieldDisplay
           fieldName="Election Year" // Maps to 'electionYear' filter key
@@ -93,6 +84,15 @@ function VotingHistorySection({
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
           localStorageKey="stats-election-year-chartType"
+        />
+      )}
+      {data?.election_date_counts && data.election_date_counts.length > 0 && (
+        <AggregateFieldDisplay
+          fieldName="Election Date Counts" // Updated display name
+          data={formatDataForDisplay(data.election_date_counts, true)} // Use date formatting
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-election-date-chartType"
         />
       )}
     </div>

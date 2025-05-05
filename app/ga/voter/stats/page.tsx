@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import VotingInfoSection from "./VotingInfoSection";
 import DistrictsSection from "./DistrictsSection";
 import DemographicsSection from "./DemographicsSection";
@@ -139,6 +140,9 @@ export default function StatsDashboardPage() {
 
   // Handle tab changes by updating URL
   const handleTabChange = useCallback((value: string) => {
+    // Ignore selection of 'census' tab
+    if (value === 'census') return;
+    
     if (value && ALL_SECTIONS.includes(value as keyof SummaryData)) {
       // Update URL search param without page refresh
       const current = new URLSearchParams(Array.from(searchParams.entries()));
@@ -163,7 +167,7 @@ export default function StatsDashboardPage() {
       <Tabs defaultValue={defaultTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4">
           {ALL_SECTIONS.map(section => (
-            <TabsTrigger key={section} value={section}>
+            <TabsTrigger key={section} value={section} disabled={section === 'census'}>
               {section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </TabsTrigger>
           ))}
