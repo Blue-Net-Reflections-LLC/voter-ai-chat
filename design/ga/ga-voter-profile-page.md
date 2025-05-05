@@ -317,16 +317,14 @@ To optimize response time, the backend API should fetch external data (Represent
     - Loading of relevant precinct descriptions into `REFERENCE_DATA` (e.g., Cobb County data). *Note: Data loading is a separate process.*
 - **Implementation Details:**
     - **Backend (Data Structure):**
-        - [ ] Define schema for `REFERENCE_DATA` table (Columns: `id`, `lookup_type`, `state_code`, `county_code`, `lookup_key`, `lookup_value`, `lookup_meta` (JSONB), `created_at`, `updated_at`). `lookup_type` = 'GA_COUNTY_PRECINCT_DESC', `state_code` = 'GA', `county_code` = FIPS (e.g., '067' for Cobb), `lookup_key` = Precinct Code (e.g., 'BF02'), `lookup_value` = Precinct Description (e.g., 'Bells Ferry 02').
-        - [ ] Create migration script `lib/ga-voter-registration/migrations/0016_create_reference_data_table.sql` for the `REFERENCE_DATA` table.
+        - [X] Define schema for `REFERENCE_DATA` table (Columns: `id`, `lookup_type`, `state_code`, `county_code`, `lookup_key`, `lookup_value`, `lookup_meta` (JSONB), `created_at`, `updated_at`). `lookup_type` = 'GA_COUNTY_PRECINCT_DESC', `state_code` = 'GA', `county_code` = FIPS (e.g., '067' for Cobb), `lookup_key` = Precinct Code (e.g., 'BF02'), `lookup_value` = Precinct Description (e.g., 'Bells Ferry 02').
+        - [X] Create migration script `lib/ga-voter-registration/migrations/0016_create_reference_data_table.sql` for the `REFERENCE_DATA` table.
     - **Backend (API & Filtering):**
-        - [ ] Add `countyPrecincts` and `municipalPrecincts` (string arrays storing **codes**) to `FilterState` in `@app/ga/voter/VoterFilterProvider.tsx`.
-        - [ ] Update `FILTER_TO_URL_PARAM_MAP` in `@app/ga/voter/VoterFilterProvider.tsx` with URL parameters (e.g., `countyPrecinct`, `municipalPrecinct`).
-        - [ ] Update `buildQueryParams` and URL parsing logic in `@app/ga/voter/VoterFilterProvider.tsx` to handle these new array parameters.
-        - [ ] Update `buildVoterListWhereClause` function (`lib/voter/build-where-clause.ts`) to add `county_precinct = ANY($...)` and `municipal_precinct = ANY($...)` conditions based on selected **codes**. (Inclusive OR logic).
-        - [ ] Create a new API endpoint (e.g., `/api/lookup/precincts?type=county&countyCode=XXX` or similar) to fetch precinct options for the filter dropdowns.
-            - For `type=county`, it should query distinct `county_precinct` codes from `GA_VOTER_REGISTRATION_LIST` (optionally filtered by `county_code`) and join with `REFERENCE_DATA` (where `lookup_type='GA_COUNTY_PRECINCT_DESC'` and matching `state_code`, `county_code`, `lookup_key`) to get descriptions (`lookup_value`). Return list of `{ code: string, description: string }`.
-            - For `type=municipal`, it should query distinct pairs of `municipal_precinct` (code) and `municipal_precinct_description` (description) from `GA_VOTER_REGISTRATION_LIST` where description is not null/empty (optionally filtered by `county_code`). Return list of `{ code: string, description: string }`.
+        - [X] Add `countyPrecincts` and `municipalPrecincts` (string arrays storing **codes**) to `FilterState` in `@app/ga/voter/VoterFilterProvider.tsx`.
+        - [X] Update `FILTER_TO_URL_PARAM_MAP` in `@app/ga/voter/VoterFilterProvider.tsx` with URL parameters (e.g., `countyPrecinct`, `municipalPrecinct`).
+        - [X] Update `buildQueryParams` and URL parsing logic in `@app/ga/voter/VoterFilterProvider.tsx` to handle these new array parameters.
+        - [X] Update `buildVoterListWhereClause` function (`lib/voter/build-where-clause.ts`) to add `county_precinct = ANY($...)` and `municipal_precinct = ANY($...)` conditions based on selected **codes**. (Inclusive OR logic).
+string, description: string }`.
     - **Frontend (UI):**
         - [ ] Update the Filter Panel UI component (`app/ga/voter/list/components/FilterPanel.tsx`) to include two new multi-select components below "County":
             - "County Precinct": Fetches options from the new lookup API (`type=county`). Displays options as "Description (Code)" (e.g., "Bells Ferry 02 (BF02)"). Stores selected **codes** in context state (`countyPrecincts`).

@@ -4,7 +4,13 @@ import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from 'lucide-react';
-import { MultiSelectOption } from './MultiSelect';
+
+// Define the MultiSelectOption interface with additional properties
+export interface MultiSelectOption {
+  value: string;
+  label: string;
+  [key: string]: any; // Allow any additional properties
+}
 
 interface DistrictMultiSelectProps {
   label: string;
@@ -15,6 +21,7 @@ interface DistrictMultiSelectProps {
   error?: string | null;
   compact?: boolean;
   formatLabel?: (value: string) => string;
+  renderOption?: (option: MultiSelectOption) => React.ReactNode;
 }
 
 export function DistrictMultiSelect({ 
@@ -25,7 +32,8 @@ export function DistrictMultiSelect({
   isLoading = false,
   error = null,
   compact = false,
-  formatLabel
+  formatLabel,
+  renderOption
 }: DistrictMultiSelectProps) {
   const [search, setSearch] = useState("");
   
@@ -70,7 +78,7 @@ export function DistrictMultiSelect({
           }}
           className="form-checkbox h-3 w-3"
         />
-        {displayLabel}
+        {renderOption ? renderOption(option) : displayLabel}
       </label>
     );
   }
