@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes';
 interface AggregateDataPoint {
     value: string | number; // The specific category value (e.g., 'White', 'Male', 'Active')
     count: number;
+    filterValue?: string | number; // Optional property to store original value for filtering
     meta?: {
         facility_name?: string;
         facility_address?: string;
@@ -20,7 +21,7 @@ interface AggregateFieldDisplayProps {
     fieldName: string; // e.g., 'Race', 'Gender'
     data: AggregateDataPoint[];
     totalVoters: number; // Total number of voters for percentage calculation
-    onFilterChange: (filterField: string, filterValue: string | number) => void; // Callback to apply filters
+    onFilterChange: (filterField: string, filterValue: string | number, item?: AggregateDataPoint) => void; // Updated to include item
     localStorageKey: string; // Add prop for localStorage key
     displayExtraInfo?: (item: any) => React.ReactNode; // Optional prop to display extra information
     variant?: 'default' | 'stacked'; // Add variant prop for different layouts
@@ -106,6 +107,8 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
             count: item.count,
             fill: COLORS[index % COLORS.length],
             percentage: totalVoters > 0 ? ((item.count / totalVoters) * 100).toFixed(2) : '0.00',
+            filterValue: item.filterValue, // Preserve filterValue for interaction handling
+            originalItem: item // Store the original item for reference
         }));
     }, [data, totalVoters]);
 
@@ -120,8 +123,9 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
     // but keeping separate for clarity for now.
     const pieChartData = truncatedChartData; 
 
-    const handleInteraction = (value: string | number) => {
-        onFilterChange(fieldName, value);
+    const handleInteraction = (value: string | number, dataPoint: any) => {
+        // Pass the original item to onFilterChange for access to filterValue
+        onFilterChange(fieldName, value, dataPoint?.originalItem);
     };
 
      const CustomTooltip = ({ active, payload, label }: any) => {
@@ -187,22 +191,29 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                     <div className="w-full h-[425px]">
                         <ResponsiveContainer>
                             {chartType === 'bar' ? (
-                                <BarChart data={truncatedChartData} margin={{ top: 5, right: 5, left: 5, bottom: 20 }}> 
+                                <BarChart data={truncatedChartData} margin={{ top: 5, right: 10, left: 5, bottom: 100 }}> 
                                     <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? 'hsl(var(--muted))' : '#e0e0e0'} />
                                     <XAxis 
                                         dataKey="name" 
                                         type="category" 
-                                        tick={{ fontSize: 10, fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666' }} 
+                                        tick={{ 
+                                            fontSize: 10, 
+                                            fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666',
+                                            width: 300,
+                                            wordWrap: 'break-word'
+                                        }} 
+                                        height={80}
                                         interval={0}
                                         angle={-45}
                                         textAnchor="end"
+                                        tickMargin={5}
                                     />
                                     <YAxis 
                                         type="number" 
                                         tick={{ fontSize: 10, fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666' }}
                                     />
                                     <Tooltip content={<CustomTooltip />} cursor={{ fill: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}/>
-                                    <Bar dataKey="count" onClick={(data) => handleInteraction(data.name)}>
+                                    <Bar dataKey="count" onClick={(data) => handleInteraction(data.name, data)}>
                                         {truncatedChartData.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={entry.fill} />
                                         ))}
@@ -220,13 +231,13 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                         innerRadius="0%"
                                         dataKey="count"
                                         nameKey="name"
-                                        onClick={(data) => handleInteraction(data.name)}
+                                        onClick={(data) => handleInteraction(data.name, data)}
                                     >
                                         {pieChartData.map((entry, index) => (
                                             <Cell 
                                                 key={`cell-${index}`} 
                                                 fill={entry.fill} 
-                                                onClick={() => handleInteraction(entry.name)} 
+                                                onClick={() => handleInteraction(entry.name, entry)} 
                                                 style={{ cursor: 'pointer', opacity: 1 }}
                                             />
                                         ))}
@@ -251,7 +262,7 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                     {chartData.map((item, index) => (
                                         <TableRow
                                             key={`${item.name}-${index}`}
-                                            onClick={() => handleInteraction(item.name)}
+                                            onClick={() => handleInteraction(item.name, item)}
                                             className={`cursor-pointer hover:bg-muted/50 ${
                                                 !truncatedChartData.some(chartItem => chartItem.name === item.name)
                                                     ? 'text-muted-foreground text-opacity-80' : ''
@@ -315,7 +326,7 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                             {chartData.map((item, index) => (
                                 <TableRow
                                     key={`${item.name}-${index}`}
-                                    onClick={() => handleInteraction(item.name)}
+                                    onClick={() => handleInteraction(item.name, item)}
                                     className={`cursor-pointer hover:bg-muted/50 ${
                                         !truncatedChartData.some(chartItem => chartItem.name === item.name)
                                             ? 'text-muted-foreground text-opacity-80' : ''
@@ -340,22 +351,29 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                     <ResponsiveContainer>
                         {chartType === 'bar' ? (
                             /* Use truncatedChartData for BarChart */
-                            <BarChart data={truncatedChartData} margin={{ top: 5, right: 5, left: 5, bottom: 20 }}> 
+                            <BarChart data={truncatedChartData} margin={{ top: 5, right: 10, left: 5, bottom: 100 }}> 
                                 <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? 'hsl(var(--muted))' : '#e0e0e0'} />
                                 <XAxis 
                                     dataKey="name" 
                                     type="category" 
-                                    tick={{ fontSize: 10, fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666' }} 
+                                    tick={{ 
+                                        fontSize: 10, 
+                                        fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666',
+                                        width: 300,
+                                        wordWrap: 'break-word'
+                                    }}
+                                    height={80} 
                                     interval={0}
                                     angle={-45}
                                     textAnchor="end"
+                                    tickMargin={5}
                                 />
                                 <YAxis 
                                     type="number" 
                                     tick={{ fontSize: 10, fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666' }}
                                 />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}/>
-                                <Bar dataKey="count" onClick={(data) => handleInteraction(data.name)}>
+                                <Bar dataKey="count" onClick={(data) => handleInteraction(data.name, data)}>
                                     {/* Map over truncatedChartData for Cells */}
                                     {truncatedChartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -375,14 +393,14 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                     innerRadius="0%"
                                     dataKey="count"
                                     nameKey="name"
-                                    onClick={(data) => handleInteraction(data.name)}
+                                    onClick={(data) => handleInteraction(data.name, data)}
                                 >
                                      {/* Map over pieChartData for Cells */}
                                     {pieChartData.map((entry, index) => (
                                         <Cell 
                                             key={`cell-${index}`} 
                                             fill={entry.fill} 
-                                            onClick={() => handleInteraction(entry.name)} 
+                                            onClick={() => handleInteraction(entry.name, entry)} 
                                             style={{ 
                                                 cursor: 'pointer', 
                                                 opacity: 1, 

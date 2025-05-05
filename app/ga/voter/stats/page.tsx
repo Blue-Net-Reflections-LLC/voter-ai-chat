@@ -255,10 +255,10 @@ function PrecinctSectionContent({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-16">
       {/* County Precincts */}
       {data?.county_precinct && (
-        <div>
+        <div className="mb-6">
           <AggregateFieldDisplay
             fieldName="County Precinct"
             data={formatDataForDisplay(data.county_precinct, "County Precinct")}
@@ -278,7 +278,7 @@ function PrecinctSectionContent({
       
       {/* Municipal Precincts */}
       {data?.municipal_precinct && (
-        <div>
+        <div className="mt-6">
           <AggregateFieldDisplay
             fieldName="Municipal Precinct"
             data={formatDataForDisplay(data.municipal_precinct, "Municipal Precinct")}
