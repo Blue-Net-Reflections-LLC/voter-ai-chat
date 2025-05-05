@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -8,10 +8,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+} from "@/components/ui/table";
 import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider';
 import { buildQueryParams } from '@/app/ga/voter/VoterFilterProvider';
 import { Loader2 } from 'lucide-react';
@@ -40,41 +42,6 @@ const COLORS = [
   '#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', 
   '#00C49F', '#FFBB28', '#FF8042', '#a4de6c', '#d0ed57'
 ];
-
-// Custom legend component for better toggle behavior
-const CustomLegend = ({ payload, visibleLines, onToggle }: {
-  payload?: any[],
-  visibleLines: Record<string, boolean>,
-  onToggle: (dataKey: string) => void
-}) => {
-  if (!payload || payload.length === 0) return null;
-  
-  return (
-    <ul className="flex flex-wrap justify-center gap-3 mt-3">
-      {payload.map((entry, index) => (
-        <li 
-          key={`legend-item-${index}`}
-          className="flex items-center gap-1 cursor-pointer select-none px-2 py-1 rounded hover:bg-muted transition-colors"
-          onClick={() => onToggle(entry.dataKey)}
-        >
-          <span 
-            className="inline-block w-3 h-3 rounded-full" 
-            style={{ 
-              backgroundColor: entry.color, 
-              opacity: visibleLines[entry.dataKey] ? 1 : 0.3 
-            }}
-          />
-          <span style={{ 
-            textDecoration: visibleLines[entry.dataKey] ? 'none' : 'line-through',
-            opacity: visibleLines[entry.dataKey] ? 1 : 0.6
-          }}>
-            {entry.value}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-};
 
 export function DemographicRatioChart() {
   const { filters, residenceAddressFilters, filtersHydrated } = useVoterFilterContext();
@@ -175,8 +142,8 @@ export function DemographicRatioChart() {
     };
   }, [filters, residenceAddressFilters, filtersHydrated, toast]);
 
-  // Handle legend click to toggle line visibility
-  const handleLegendClick = (dataKey: string) => {
+  // Renamed handleLegendClick to handleTableRowClick for clarity
+  const handleTableRowClick = (dataKey: string) => {
     setVisibleLines(prev => ({
       ...prev,
       [dataKey]: !prev[dataKey]
@@ -184,24 +151,21 @@ export function DemographicRatioChart() {
   };
 
   // Format data for Recharts
-  const formatChartData = () => {
+  const formattedChartData = useMemo(() => {
     if (!chartData) return [];
     
     return chartData.years.map((year, index) => {
       const dataPoint: Record<string, any> = { year };
       
       chartData.series.forEach(series => {
-        // Only add data for visible lines
-        if (visibleLines[series.name]) {
-          // Use the percentage format (0-100%) instead of ratio (0-1)
-          const value = series.data[index];
-          dataPoint[series.name] = value !== null ? (value * 100).toFixed(1) : null;
-        }
+        // Keep data point even if line is hidden, Recharts handles visibility
+        const value = series.data[index];
+        dataPoint[series.name] = value !== null ? (value * 100) : null;
       });
       
       return dataPoint;
     });
-  };
+  }, [chartData]);
 
   // Calculate Y-axis domain based on data when auto-scaling is enabled
   const calculateYAxisDomain = () => {
@@ -247,27 +211,119 @@ export function DemographicRatioChart() {
   };
 
   // Custom tooltip formatter to show percentages
-  const tooltipFormatter = (value: string) => {
-    return `${value}%`;
+  const tooltipFormatter = (value: number | string, name: string) => {
+    if (value === null || value === undefined) return 'N/A';
+    const numValue = Number(value);
+    return Number.isFinite(numValue) ? `${numValue.toFixed(1)}%` : 'N/A';
   };
 
-  // Render lines, including hidden ones with 0 opacity to maintain legend entries
-  const renderLines = () => {
-    if (!chartData) return null;
+  // *** NEW: Format data for the legend table ***
+  const tableData = useMemo(() => {
+    if (!chartData?.series) return [];
     
-    return chartData.series.map((series, index) => (
-      <Line
-        key={series.name}
-        type="monotone"
-        dataKey={series.name}
-        stroke={COLORS[index % COLORS.length]}
-        activeDot={{ r: 8 }}
-        connectNulls
-        strokeOpacity={visibleLines[series.name] ? 1 : 0}
-        dot={{ strokeOpacity: visibleLines[series.name] ? 1 : 0, fillOpacity: visibleLines[series.name] ? 1 : 0 }}
-      />
-    ));
-  };
+    return chartData.series.map((series, index) => {
+      // Find the last non-null value for display
+      let latestValue: string | number = 'N/A';
+      for (let i = series.data.length - 1; i >= 0; i--) {
+        if (series.data[i] !== null) {
+          latestValue = (series.data[i]! * 100).toFixed(1) + '%';
+          break;
+        }
+      }
+      return {
+        name: series.name,
+        index: index,
+        latestValue: latestValue,
+        isVisible: visibleLines[series.name] ?? true // Default to true if somehow missing
+      };
+    })
+    // Optional: Sort by visibility or name if desired
+    // .sort((a, b) => a.name.localeCompare(b.name)); 
+  }, [chartData, visibleLines]);
+
+  // Render the Line Chart view
+  const renderChartView = () => {
+    if (!chartData) return null;
+    return (
+      <ResponsiveContainer width="100%" height={400}>
+        <LineChart 
+          data={formattedChartData}
+          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="year" />
+          <YAxis 
+            domain={calculateYAxisDomain()}
+            tickFormatter={(value) => `${value}%`}
+            allowDataOverflow={!autoScale}
+          />
+          {/* Apply consistent theme styling to the tooltip */}
+          <Tooltip 
+            formatter={tooltipFormatter} 
+            contentStyle={{
+              backgroundColor: 'hsl(var(--background))',
+              padding: '5px 10px',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: 'var(--radius)'
+            }}
+            itemStyle={{ color: 'hsl(var(--foreground))' }}
+            cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.3 }}
+          />
+          {/* Legend Removed */} 
+          {chartData.series.map((series, index) => (
+            visibleLines[series.name] && (
+              <Line
+                key={series.name}
+                type="monotone"
+                dataKey={series.name}
+                stroke={COLORS[index % COLORS.length]}
+                strokeWidth={2}
+                dot={false}
+                connectNulls={true} // Connect points across null values
+              />
+            )
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  // Render the table view (acting as advanced legend)
+  const renderTableView = () => {
+    if (!tableData || tableData.length === 0) return null;
+    return (
+      <div className="mt-4 md:mt-0"> {/* Adjusted margin */}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[20px]"></TableHead> {/* Color swatch */}
+              <TableHead>Combination</TableHead>
+              <TableHead className="text-right">Latest Ratio</TableHead> {/* Value column */}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tableData.map((item) => (
+              <TableRow 
+                key={item.name}
+                onClick={() => handleTableRowClick(item.name)} // Toggle on row click
+                className={`cursor-pointer ${!item.isVisible ? 'opacity-50' : ''}`}
+                style={{ textDecoration: !item.isVisible ? 'line-through' : 'none' }}
+              >
+                <TableCell className="py-1">
+                  <span 
+                    className="inline-block w-3 h-3 rounded-full"
+                    style={{ backgroundColor: COLORS[item.index % COLORS.length] }}
+                  />
+                </TableCell>
+                <TableCell className="font-medium text-xs py-1">{item.name}</TableCell>
+                <TableCell className="text-right text-xs py-1">{item.latestValue}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
 
   return (
     <Card className="w-full">
@@ -289,45 +345,28 @@ export function DemographicRatioChart() {
       </CardHeader>
       <CardContent>
         {isLoading && (
-          <div className="flex justify-center items-center h-80">
-            <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+          <div className="flex justify-center items-center h-[450px]">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         )}
 
         {error && !isLoading && (
-          <div className="mb-4 p-4 border border-red-500 bg-red-50 text-red-800 rounded-md">
-            <h4 className="font-medium mb-1">Error</h4>
-            <p>{error}</p>
+          <div className="flex justify-center items-center h-[450px]">
+            <p className="text-center text-red-600">Error: {error}</p>
           </div>
         )}
 
-        {chartData && !isLoading && !error && (
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={formatChartData()}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="year" 
-                  label={{ value: 'Election Year', position: 'insideBottomRight', offset: -10 }} 
-                />
-                <YAxis 
-                  domain={calculateYAxisDomain()} 
-                  label={{ value: 'Percentage (%)', angle: -90, position: 'insideLeft' }}
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip formatter={tooltipFormatter} />
-                <Legend 
-                  content={<CustomLegend 
-                    visibleLines={visibleLines} 
-                    onToggle={handleLegendClick} 
-                  />}
-                />
-                {renderLines()}
-              </LineChart>
-            </ResponsiveContainer>
+        {!isLoading && !error && chartData && (
+          // Reverted Layout: Chart above Table
+          <div>
+            {renderChartView()}
+            {renderTableView()}
+          </div>
+        )}
+
+        {!isLoading && !error && !chartData && (
+          <div className="flex justify-center items-center h-[450px]">
+            <p className="text-center text-muted-foreground">No ratio data available for the selected filters.</p>
           </div>
         )}
       </CardContent>
