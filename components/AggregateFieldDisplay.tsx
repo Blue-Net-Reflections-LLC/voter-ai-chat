@@ -71,8 +71,8 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
         }));
     }, [data, totalVoters]);
 
-     // Pie chart truncation logic (top 20)
-    const pieChartData = useMemo(() => {
+    // Apply truncation logic for BOTH Pie and Bar charts
+    const truncatedChartData = useMemo(() => {
         const sortedData = [...chartData].sort((a, b) => b.count - a.count);
         if (sortedData.length > 20) {
             const top19 = sortedData.slice(0, 19);
@@ -80,12 +80,16 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
             const otherPercentage = totalVoters > 0 ? ((otherCount / totalVoters) * 100).toFixed(2) : '0.00';
              return [
                 ...top19,
-                { name: 'Other', count: otherCount, fill: '#CCCCCC', percentage: otherPercentage } // Add an 'Other' category
+                 // Ensure 'Other' data point has consistent fields (name, count, fill, percentage)
+                { name: 'Other', count: otherCount, fill: '#CCCCCC', percentage: otherPercentage } 
             ];
         }
         return sortedData;
     }, [chartData, totalVoters]);
 
+    // Note: pieChartData is now the same as truncatedChartData, could potentially remove pieChartData 
+    // but keeping separate for clarity for now.
+    const pieChartData = truncatedChartData; 
 
     const handleInteraction = (value: string | number) => {
         // Don't filter on the 'Other' category for Pie charts
@@ -162,11 +166,17 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {(chartType === 'bar' ? chartData : pieChartData).map((item, index) => (
+                            {/* Map over the ORIGINAL chartData for the table */}
+                            {chartData.map((item, index) => (
                                 <TableRow
                                     key={`${item.name}-${index}`}
                                     onClick={() => handleInteraction(item.name)}
-                                    className={`cursor-pointer hover:bg-muted/50 ${chartType === 'pie' && item.name === 'Other' ? 'cursor-not-allowed opacity-70' : ''}`}
+                                    // Dim row in table if it's part of 'Other' in the chart
+                                    className={`cursor-pointer hover:bg-muted/50 ${ 
+                                        truncatedChartData.length !== chartData.length && 
+                                        !truncatedChartData.slice(0, 19).some(truncatedItem => truncatedItem.name === item.name) 
+                                        ? 'opacity-60' : ''
+                                    }`}
                                 >
                                     <TableCell className="py-1 pl-2 pr-1 w-[24px]">
                                         <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.fill }}></div>
@@ -183,7 +193,8 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                 <div className="lg:col-span-3 h-full min-h-[320px]">
                     <ResponsiveContainer>
                         {chartType === 'bar' ? (
-                            <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 20 }}>
+                            /* Use truncatedChartData for BarChart */
+                            <BarChart data={truncatedChartData} margin={{ top: 5, right: 5, left: 5, bottom: 20 }}> 
                                 <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? 'hsl(var(--muted))' : '#e0e0e0'} />
                                 <XAxis 
                                     dataKey="name" 
@@ -199,12 +210,14 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                 />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}/>
                                 <Bar dataKey="count" onClick={(data) => handleInteraction(data.name)}>
-                                    {chartData.map((entry, index) => (
+                                    {/* Map over truncatedChartData for Cells */}
+                                    {truncatedChartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
                                     ))}
                                 </Bar>
                             </BarChart>
                         ) : (
+                            /* Use pieChartData (which is same as truncatedChartData) for PieChart */
                             <PieChart margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
                                 <Pie
                                     data={pieChartData}
@@ -218,6 +231,7 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                     nameKey="name"
                                     onClick={(data) => handleInteraction(data.name)}
                                 >
+                                     {/* Map over pieChartData for Cells */}
                                     {pieChartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
                                     ))}
@@ -227,6 +241,13 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                         )}
                     </ResponsiveContainer>
                 </div>
+            </div>
+            <div>
+                {truncatedChartData.length !== chartData.length && (
+                    <p className="text-xs text-muted-foreground text-center pt-1 pb-2">
+                        Showing top {truncatedChartData.length} items and 'Other'. Full data in table.
+                    </p>
+                )}
             </div>
         </div>
     );

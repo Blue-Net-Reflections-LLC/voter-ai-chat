@@ -19,17 +19,16 @@ function DistrictsSection({
   onFilterChange
 }: DistrictsSectionProps) {
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
         <span className="animate-pulse">Loading Districts...</span>
       </div>
     );
   }
-  if (error) {
+  if (!loading && error && !data) {
     return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Districts: {error}</div>;
   }
-  // Check specific data fields
   if (!data || (!data.county_name && !data.congressional_district && !data.state_senate_district && !data.state_house_district)) {
     return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for District fields.</div>;
   }

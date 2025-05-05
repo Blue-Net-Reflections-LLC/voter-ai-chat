@@ -19,17 +19,16 @@ function VotingHistorySection({
   onFilterChange
 }: VotingHistorySectionProps) {
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
         <span className="animate-pulse">Loading Voting History...</span>
       </div>
     );
   }
-  if (error) {
+  if (!loading && error && !data) {
     return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Voting History: {error}</div>;
   }
-  // Check specific data fields
   if (!data || (!data.derived_last_vote_date && !data.participated_election_years)) {
     return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for Voting History fields.</div>;
   }

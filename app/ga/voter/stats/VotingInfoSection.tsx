@@ -2,9 +2,9 @@
 import React from "react";
 import AggregateFieldDisplay from "@/components/AggregateFieldDisplay";
 
-// Define props passed from the parent page
+// Restore props interface and destructuring
 interface VotingInfoSectionProps {
-  data: any; // Replace 'any' with a more specific type if known
+  data: any; 
   loading: boolean;
   error: string | null;
   totalVoters: number;
@@ -18,18 +18,17 @@ function VotingInfoSection({
   totalVoters,
   onFilterChange
 }: VotingInfoSectionProps) {
-
+  // Use props for loading/error/no data checks
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
-        <span className="animate-pulse">Loading Voting Info...</span>
+        <span className="animate-pulse">Loading Data...</span> 
       </div>
     );
   }
   if (error) {
-    return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Voting Info: {error}</div>;
+    return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading data: {error}</div>;
   }
-  // Check specific data fields expected for this section
   if (!data || (!data.status && !data.status_reason && !data.residence_city && !data.residence_zipcode)) {
     return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for Voting Info fields.</div>;
   }
@@ -41,7 +40,6 @@ function VotingInfoSection({
   };
 
   return (
-    // Use a flex column layout to stack the components
     <div className="flex flex-col gap-6">
       {data?.status && (
         <AggregateFieldDisplay
