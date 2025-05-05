@@ -5,8 +5,6 @@
 
 -- Ensure this script is run AFTER migration 0016_create_reference_data_table.sql
 
-\echo 'Seeding Cobb County (067) precinct descriptions into REFERENCE_DATA...'
-
 INSERT INTO REFERENCE_DATA (
     lookup_type,
     state_code,
@@ -21,7 +19,7 @@ SELECT DISTINCT
     '067' AS county_code, -- Cobb County FIPS code
     vr.county_precinct AS lookup_key,
     vr.county_precinct_description AS lookup_value,
-    NULL AS lookup_meta -- Placeholder for facility address, etc.
+    NULL::jsonb AS lookup_meta -- Cast NULL to jsonb
 FROM
     GA_VOTER_REGISTRATION_LIST vr
 WHERE
@@ -42,8 +40,6 @@ RETURNING id; -- Optional: Return IDs of inserted/updated rows
 
 -- Now seed Municipal Precinct descriptions for Cobb County
 
-\echo 'Seeding Cobb County (067) municipal precinct descriptions into REFERENCE_DATA...'
-
 INSERT INTO REFERENCE_DATA (
     lookup_type,
     state_code,
@@ -58,7 +54,7 @@ SELECT DISTINCT
     '067' AS county_code, -- Cobb County FIPS code
     vr.municipal_precinct AS lookup_key,
     vr.municipal_precinct_description AS lookup_value,
-    NULL AS lookup_meta
+    NULL::jsonb AS lookup_meta -- Cast NULL to jsonb
 FROM
     GA_VOTER_REGISTRATION_LIST vr
 WHERE

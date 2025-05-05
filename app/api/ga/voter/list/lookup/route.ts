@@ -22,6 +22,7 @@ const LOOKUP_FIELDS = [
   { name: 'congressional_district', limit: 50, category: 'district' },
   { name: 'state_senate_district', limit: 100, category: 'district' },
   { name: 'state_house_district', limit: 200, category: 'district' },
+  // county_precinct and municipal_precinct handled separately
   
   // Demographic fields
   { name: 'gender', limit: 10, category: 'demographic' },
@@ -36,6 +37,7 @@ const LOOKUP_FIELDS = [
 ];
 
 // Define categories and corresponding fields
+// Note: Precincts are handled as special categories now
 const CATEGORIES: Record<string, { displayName: string; fields: string[] }> = {
   district: {
     displayName: "District Information",
@@ -85,49 +87,135 @@ const CATEGORIES: Record<string, { displayName: string; fields: string[] }> = {
   }
 };
 
+interface PrecinctValue {
+  code: string;
+  description: string | null;
+  meta?: Record<string, any> | null;
+}
+
+async function fetchCountyPrecincts(countyCode?: string | null): Promise<PrecinctValue[]> {
+  let query = `
+    SELECT DISTINCT
+      v.county_precinct AS code,
+      rd.lookup_value AS description,
+      rd.lookup_meta AS meta
+    FROM ga_voter_registration_list v
+    LEFT JOIN reference_data rd ON rd.lookup_key = v.county_precinct
+      AND rd.lookup_type = 'GA_COUNTY_PRECINCT_DESC'
+      AND rd.state_code = 'GA'
+      ${countyCode ? `AND rd.county_code = '${countyCode}'` : ''}
+    WHERE v.county_precinct IS NOT NULL AND TRIM(v.county_precinct) != ''
+  `;
+  if (countyCode) {
+    query += ` AND v.county_code = '${countyCode}'`;
+  }
+  query += ` ORDER BY description, code;`;
+
+  try {
+    const result = await sql.unsafe(query);
+    return result.map((row: any) => ({ 
+        code: row.code, 
+        description: row.description || row.code, 
+        meta: row.meta || null
+    }));
+  } catch (error) {
+    console.error("Error fetching county precincts:", error);
+    return [];
+  }
+}
+
+async function fetchMunicipalPrecincts(countyCode?: string | null): Promise<PrecinctValue[]> {
+  let query = `
+    SELECT DISTINCT
+      municipal_precinct AS code,
+      municipal_precinct_description AS description
+    FROM ga_voter_registration_list
+    WHERE municipal_precinct IS NOT NULL AND TRIM(municipal_precinct) != ''
+      AND municipal_precinct_description IS NOT NULL AND TRIM(municipal_precinct_description) != ''
+  `;
+  if (countyCode) {
+    query += ` AND county_code = '${countyCode}'`;
+  }
+  query += ` ORDER BY description, code;`;
+
+  try {
+    const result = await sql.unsafe(query);
+    return result.map((row: any) => ({ code: row.code, description: row.description }));
+  } catch (error) {
+    console.error("Error fetching municipal precincts:", error);
+    return [];
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     console.log("[/api/ga/voter/list/lookup] Received request:", url.search);
     
-    // Allow filtering by category or field name
     const requestedField = url.searchParams.get('field');
     const requestedCategory = url.searchParams.get('category');
+    const countyCodeParam = url.searchParams.get('countyCode'); // For precinct filtering
     
-    // Generate a cache key based on the request
-    const cacheKey = requestedField ? `field:${requestedField}` : requestedCategory ? `category:${requestedCategory}` : 'all';
+    const cacheKey = requestedCategory 
+      ? `category:${requestedCategory}${countyCodeParam ? `:county:${countyCodeParam}` : ''}` 
+      : requestedField 
+      ? `field:${requestedField}` 
+      : 'all';
 
-    // Check if the result is already in the cache
+    // Check cache
     if (lookupCache[cacheKey]) {
       console.log(`[/api/ga/voter/list/lookup] Cache hit for key: ${cacheKey}`);
       return NextResponse.json(lookupCache[cacheKey]);
     }
     
     console.log(`[/api/ga/voter/list/lookup] Cache miss for key: ${cacheKey}. Fetching from DB.`);
+
+    // --- Handle Special Categories: Precincts ---
+    if (requestedCategory === 'countyPrecinct' || requestedCategory === 'municipalPrecinct') {
+      let precinctValues: PrecinctValue[] = [];
+      let displayName = '';
+      
+      if (requestedCategory === 'countyPrecinct') {
+        displayName = 'County Precinct';
+        precinctValues = await fetchCountyPrecincts(countyCodeParam);
+      } else { // municipalPrecinct
+        displayName = 'Municipal Precinct';
+        precinctValues = await fetchMunicipalPrecincts(countyCodeParam);
+      }
+
+      const metadata = {
+        fields: [
+          {
+            name: requestedCategory,
+            displayName: displayName,
+            category: 'district', // Assigning to district category for consistency
+            values: precinctValues, // Now contains { code, description, meta? }
+            count: precinctValues.length
+          }
+        ],
+        timestamp: new Date().toISOString()
+      };
+
+      lookupCache[cacheKey] = metadata;
+      console.log(`[/api/ga/voter/list/lookup] Stored precinct result in cache for key: ${cacheKey}`);
+      return NextResponse.json(metadata);
+    }
+
+    // --- Handle Regular Field/Category Lookups (Existing Logic) ---
     const results: Record<string, string[]> = {};
-    
-    // Filter fields based on request
     let fieldsToFetch = [...LOOKUP_FIELDS];
     
-    // Filter by specific field if requested
     if (requestedField) {
       fieldsToFetch = fieldsToFetch.filter(f => f.name === requestedField);
     }
-    
-    // Filter by category if requested
     if (requestedCategory) {
       fieldsToFetch = fieldsToFetch.filter(f => f.category === requestedCategory);
     }
     
-    // If no fields match the criteria, return empty result
     if (fieldsToFetch.length === 0) {
-      return NextResponse.json({
-        fields: [],
-        timestamp: new Date().toISOString()
-      });
+      return NextResponse.json({ fields: [], timestamp: new Date().toISOString() });
     }
     
-    // Fetch values for each requested field
     const queries = fieldsToFetch.map(async (fieldInfo) => {
       const sourceTable = 'GA_VOTER_REGISTRATION_LIST';
       let queryString: string;
@@ -166,10 +254,8 @@ export async function GET(req: NextRequest) {
       }
     });
     
-    // Wait for all queries to complete
     await Promise.all(queries);
     
-    // Structure the response with additional metadata
     const metadata = {
       fields: Object.entries(results).map(([name, values]) => {
         const fieldInfo = LOOKUP_FIELDS.find(f => f.name === name);
@@ -184,12 +270,10 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString()
     };
     
-    // Store the result in the cache before returning
     lookupCache[cacheKey] = metadata;
-    console.log(`[/api/ga/voter/list/lookup] Stored result in cache for key: ${cacheKey}`);
+    console.log(`[/api/ga/voter/list/lookup] Stored regular result in cache for key: ${cacheKey}`);
+    return NextResponse.json(metadata);
 
-    // Return response - No Cache-Control header needed with in-memory cache
-    return NextResponse.json(metadata); // REMOVED headers
   } catch (error) {
     console.error('Error in /api/ga/voter/list/lookup:', error);
     return NextResponse.json(
