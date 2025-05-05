@@ -113,8 +113,14 @@ To create a dashboard of aggregate totals based on the applied filters.
         - [x] Enable filter interaction (click to filter)
         - [x] UI/UX and data integration for Census complete
 
-- [ ] **Add client-side search/filter for long aggregate lists** [Cancelled]
-- [ ] **Sync filters with the voter list filter panel**
+## Change Requests
+
+- [x] **Add Data Visualization (Charts)**
+    - [x] Implement `AggregateFieldDisplay` component to show Bar/Pie charts for each aggregate field.
+    - [x] Integrate charts into each section (Voting Info, Districts, etc.) within `stats/page.tsx`.
+    - [x] Add toggle for Bar/Pie chart types with localStorage persistence.
+    - [x] Implement truncation for large datasets (Top 19 + Other).
+    - [x] Add custom tooltips and interactive filtering via chart elements (excluding 'Other').
 
 ### General/Other
 - [ ] **Update documentation** (requirements, API docs, usage instructions).

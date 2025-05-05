@@ -1,116 +1,84 @@
 "use client";
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Landmark, Gavel, Home } from "lucide-react";
-import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider";
-import type { FilterState } from "../list/types";
+import AggregateFieldDisplay from "@/components/AggregateFieldDisplay";
 
-// Helper function to convert text to Title Case (same as in useLookupData)
-const toTitleCase = (text: string): string => {
-  if (!text) return '';
-  return text
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
+// Define props
+interface DistrictsSectionProps {
+  data: any; // Define specific type later
+  loading: boolean;
+  error: string | null;
+  totalVoters: number;
+  onFilterChange: (fieldName: string, value: string | number) => void;
+}
 
-function DistrictsSection() {
-  const { filters, residenceAddressFilters, filtersHydrated, updateFilter } = useVoterFilterContext();
-  const [data, setData] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const lastFetchKey = React.useRef<string>("");
+function DistrictsSection({ 
+  data,
+  loading,
+  error,
+  totalVoters,
+  onFilterChange
+}: DistrictsSectionProps) {
 
-  React.useEffect(() => {
-    if (!filtersHydrated) return;
-    const fetchKey = JSON.stringify({ filters, residenceAddressFilters });
-    if (fetchKey === lastFetchKey.current) return;
-    lastFetchKey.current = fetchKey;
-    setLoading(true);
-    setError(null);
-    const params = buildQueryParams(filters, residenceAddressFilters, { section: "districts" });
-    fetch(`/api/ga/voter/summary?${params.toString()}`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch aggregates");
-        return res.json();
-      })
-      .then(json => {
-        setData(json.districts || null);
-        setLoading(false);
-      })
-      .catch(e => {
-        setError(e.message);
-        setLoading(false);
-      });
-  }, [filters, residenceAddressFilters, filtersHydrated]);
-
-  function handleArrayFilterClick(filterKey: keyof FilterState, value: string) {
-    // Value is already title-cased by the caller (GroupCard onClick)
-    const prev = (filters[filterKey] as string[]) || [];
-    if (prev.includes(value)) return;
-    updateFilter(filterKey, [...prev, value]);
-  }
-
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80px] text-muted-foreground text-sm">
+      <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
         <span className="animate-pulse">Loading Districts...</span>
       </div>
     );
   }
-  if (error) {
-    return <div className="text-red-500 text-sm">Error: {error}</div>;
+  if (!loading && error && !data) {
+    return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Districts: {error}</div>;
   }
-  if (!data || Object.values(data).every((arr: any) => !arr || arr.length === 0)) {
-    return <div className="text-muted-foreground text-sm">No data available.</div>;
+  if (!data || (!data.county_name && !data.congressional_district && !data.state_senate_district && !data.state_house_district)) {
+    return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for District fields.</div>;
   }
 
-  function GroupCard({ icon, title, items, filterKey }: { icon: React.ReactNode; title: string; items: any[]; filterKey: keyof FilterState }) {
-    if (!items || items.length === 0) return null;
-    return (
-      <Card className="w-full">
-        <CardHeader className="flex flex-row items-center gap-2 py-3 px-3">
-          <CardTitle className="text-xs font-semibold text-primary tracking-tight flex items-center gap-1.5">
-            {icon}
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ul className="divide-y divide-border">
-            {items.map((item: any) => {
-              // Convert label to Title Case for display and click handler
-              const displayLabel = toTitleCase(item.label); 
-              return (
-                <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
-                  <button
-                    type="button"
-                    className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
-                    title={`Filter by ${displayLabel}`}
-                    // Pass the title-cased label to the click handler
-                    onClick={() => handleArrayFilterClick(filterKey, displayLabel)} 
-                  >
-                    {/* Display the title-cased label */}
-                    {displayLabel} 
-                  </button>
-                  <span className="font-mono text-[10px] text-muted-foreground font-light">
-                    {item.count.toLocaleString()}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Helper to format data
+  const formatDataForDisplay = (items: any[] | undefined): { value: string; count: number }[] => {
+    if (!items) return [];
+    // The parent handler now handles Title Casing based on fieldName if needed
+    return items.map(item => ({ value: String(item.label), count: item.count })); 
+  };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <GroupCard icon={<MapPin className="w-4 h-4 text-blue-500" />} title="County" items={data.county_name} filterKey="county" />
-      <GroupCard icon={<Landmark className="w-4 h-4 text-green-600" />} title="Congressional District" items={data.congressional_district} filterKey="congressionalDistricts" />
-      <GroupCard icon={<Gavel className="w-4 h-4 text-yellow-600" />} title="State Senate District" items={data.state_senate_district} filterKey="stateSenateDistricts" />
-      <GroupCard icon={<Home className="w-4 h-4 text-purple-600" />} title="State House District" items={data.state_house_district} filterKey="stateHouseDistricts" />
+    <div className="flex flex-col gap-6"> {/* Stack vertically */}
+      {/* Map fieldName to the key used in page.tsx handler */}
+      {data?.county_name && (
+        <AggregateFieldDisplay
+          fieldName="County" // This needs to map to a key in page.tsx handleFilterChange 
+          data={formatDataForDisplay(data.county_name)}
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-county-chartType"
+        />
+      )}
+      {data?.congressional_district && (
+        <AggregateFieldDisplay
+          fieldName="Congressional District" // Maps to 'congressionalDistricts' in filter context
+          data={formatDataForDisplay(data.congressional_district)}
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-congressional-district-chartType"
+        />
+      )}
+      {data?.state_senate_district && (
+        <AggregateFieldDisplay
+          fieldName="State Senate District" // Maps to 'stateSenateDistricts'
+          data={formatDataForDisplay(data.state_senate_district)}
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-state-senate-district-chartType"
+        />
+      )}
+      {data?.state_house_district && (
+        <AggregateFieldDisplay
+          fieldName="State House District" // Maps to 'stateHouseDistricts'
+          data={formatDataForDisplay(data.state_house_district)}
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-state-house-district-chartType"
+        />
+      )}
     </div>
   );
 }
