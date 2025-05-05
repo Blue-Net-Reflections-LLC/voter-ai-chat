@@ -1,138 +1,100 @@
 "use client";
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, History } from "lucide-react";
-import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider";
-import type { FilterState } from "../list/types";
+import AggregateFieldDisplay from "@/components/AggregateFieldDisplay";
 
-function VotingHistorySection() {
-  const { filters, residenceAddressFilters, filtersHydrated, updateFilter } = useVoterFilterContext();
-  const [data, setData] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const lastFetchKey = React.useRef<string>("");
+// Define props
+interface VotingHistoryData {
+  election_date_counts?: { label: string; count: number }[]; // Renamed back
+  participated_election_years?: { label: string; count: number }[];
+}
 
-  React.useEffect(() => {
-    if (!filtersHydrated) return;
-    const fetchKey = JSON.stringify({ filters, residenceAddressFilters });
-    if (fetchKey === lastFetchKey.current) return;
-    lastFetchKey.current = fetchKey;
-    setLoading(true);
-    setError(null);
-    const params = buildQueryParams(filters, residenceAddressFilters, { section: "voting_history" });
-    fetch(`/api/ga/voter/summary?${params.toString()}`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch aggregates");
-        return res.json();
-      })
-      .then(json => {
-        setData(json.voting_history || null);
-        setLoading(false);
-      })
-      .catch(e => {
-        setError(e.message);
-        setLoading(false);
-      });
-  }, [filters, filtersHydrated, residenceAddressFilters]);
+interface VotingHistorySectionProps {
+  data: VotingHistoryData | null;
+  loading: boolean;
+  error: string | null;
+  totalVoters: number;
+  onFilterChange: (fieldName: string, value: string | number) => void;
+}
 
-  function handleYearFilterClick(year: string) {
-    // Add to electionYear filter (array)
-    const prev = (filters.electionYear as string[]) || [];
-    if (prev.includes(year)) return;
-    updateFilter("electionYear", [...prev, year]);
-  }
+function VotingHistorySection({ 
+  data,
+  loading,
+  error,
+  totalVoters,
+  onFilterChange
+}: VotingHistorySectionProps) {
 
-  function handleElectionDateFilterClick(date: string) {
-    // Add to electionDate filter (array)
-    const prev = (filters.electionDate as string[]) || [];
-    if (prev.includes(date)) return; // Check if date already exists
-    updateFilter("electionDate", [...prev, date]); // Add date to array
-  }
-
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80px] text-muted-foreground text-sm">
+      <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
         <span className="animate-pulse">Loading Voting History...</span>
       </div>
     );
   }
-  if (error) {
-    return <div className="text-red-500 text-sm">Error: {error}</div>;
+  if (error && !loading && !data) {
+    return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Voting History: {error}</div>;
   }
-  if (!data || Object.values(data).every((arr: any) => !arr || arr.length === 0)) {
-    return <div className="text-muted-foreground text-sm">No data available.</div>;
+  if (!data || (!data.election_date_counts && !data.participated_election_years)) {
+    return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for Voting History fields.</div>;
   }
 
-  function GroupCard({ icon, title, items, onItemClick, isDate }: { icon: React.ReactNode; title: string; items: any[]; onItemClick: (value: string) => void; isDate?: boolean }) {
-    if (!items || items.length === 0) return null;
-    return (
-      <Card className="w-full">
-        <CardHeader className="flex flex-row items-center gap-2 py-1.5 px-3">
-          <CardTitle className="text-xs font-semibold text-primary tracking-tight flex items-center gap-1.5">
-            {icon}
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ul className="divide-y divide-border">
-            {items.map((item: any) => {
-              let displayLabel = item.label;
-              // Attempt to format if it's a date and the flag is set
-              if (isDate && item.label) { 
-                try {
-                  // Use slice(0, 10) to get YYYY-MM-DD for potential Date object
-                  const dateObj = new Date(item.label.slice(0, 10));
-                  // Check if the date is valid after slicing
-                  if (!isNaN(dateObj.getTime())) { 
-                    displayLabel = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-                  }
-                } catch (e) { 
-                  // Ignore formatting errors, use original label
-                  console.warn("Date formatting failed for:", item.label, e);
-                  displayLabel = item.label; 
-                }
-              }
-              // Extract only the date part (YYYY-MM-DD) for the click handler value
-              const valueForClick = typeof item.label === 'string' ? item.label.slice(0, 10) : item.label;
-              
-              return (
-                <li key={item.label} className="flex items-center justify-between px-3 py-1.5 text-[11px]">
-                  <button
-                    type="button"
-                    className="truncate text-blue-400 hover:underline focus:underline outline-none bg-transparent border-0 p-0 m-0 cursor-pointer text-left"
-                    title={`Filter by ${displayLabel}`}
-                    // Pass only the YYYY-MM-DD part to the handler
-                    onClick={() => onItemClick(valueForClick)} 
-                  >
-                    {displayLabel}
-                  </button>
-                  <span className="font-mono text-[10px] text-muted-foreground font-light">
-                    {item.count.toLocaleString()}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Helper to format data - Dates might need special handling if they are full timestamps
+  const formatDataForDisplay = (items: { label: string | number; count: number }[] | undefined, isDate: boolean = false): { value: string; count: number }[] => {
+    if (!items) return [];
+    return items.map(item => {
+      let displayValue = String(item.label);
+      if (isDate && typeof item.label === 'string') {
+        try {
+          // Check if the label is already in YYYY-MM-DD format or similar
+          if (/^\d{4}-\d{2}-\d{2}/.test(item.label)) {
+            const dateStr = item.label.slice(0, 10);
+            const date = new Date(dateStr + 'T00:00:00Z'); // Treat as UTC to avoid timezone issues
+            if (!isNaN(date.getTime())) { // Check if date is valid
+              displayValue = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'UTC' // Specify UTC timezone for consistency
+              });
+            } else {
+              console.warn(`Invalid date encountered: ${item.label}`);
+              // Keep original label if parsing fails
+            }
+          } else {
+            // Keep original label if not in expected format
+          }
+        } catch (error) {
+          console.error(`Error formatting date: ${item.label}`, error);
+          // Keep original label on error
+        }
+      }
+      return {
+        value: displayValue,
+        count: item.count
+      };
+    });
+  };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <GroupCard 
-        icon={<Calendar className="w-4 h-4 text-blue-500" />} 
-        title="Election Date"
-        items={data.derived_last_vote_date}
-        onItemClick={handleElectionDateFilterClick}
-        isDate
-      />
-      <GroupCard 
-        icon={<History className="w-4 h-4 text-green-600" />} 
-        title="Election Years" 
-        items={data.participated_election_years} 
-        onItemClick={handleYearFilterClick} 
-      />
+    <div className="flex flex-col gap-6"> {/* Stack vertically */}
+      {data?.participated_election_years && data.participated_election_years.length > 0 && (
+        <AggregateFieldDisplay
+          fieldName="Election Year" // Maps to 'electionYear' filter key
+          data={formatDataForDisplay(data.participated_election_years)}
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-election-year-chartType"
+        />
+      )}
+      {data?.election_date_counts && data.election_date_counts.length > 0 && (
+        <AggregateFieldDisplay
+          fieldName="Election Date Counts" // Updated display name
+          data={formatDataForDisplay(data.election_date_counts, true)} // Use date formatting
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-election-date-chartType"
+        />
+      )}
     </div>
   );
 }

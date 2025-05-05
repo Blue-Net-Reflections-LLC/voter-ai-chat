@@ -1,4 +1,4 @@
-# Participation Score Over Time Chart Requirements
+# Participation Score Over Time Chart Requirements (Postpone due to very small variances)
 
 This document outlines the requirements for the initial chart displaying voter participation scores over time by election type.
 
@@ -217,7 +217,219 @@ This document outlines requirements for a chart visualizing the ratio of specifi
     *   [✅] Add memoization for total voter counts to reduce query time.
     *   [✅] Optimize data structure for chart rendering.
 *   [✅] **Styling & Testing:**
-    *   [✅] Add clean, consistent styling.
-    *   [✅] Verify functionality across various filter combinations.
-    *   [✅] Fix bugs in Y-axis calculation and legend toggling.
+    *   [✅] Ensure consistent styling across chart views and with the Ratio chart.
+    *   [✅] Test with various filter combinations.
+    *   [✅] Test switching between Ratio and Counts charts.
+    *   [✅] Test switching between Line, Bar, and Area views within the Counts chart.
+
+# Counts over Time Chart
+The chart will use the same grouping logic as the Demographic Ratio ove time but it will count the total voters in a give given year.
+
+It will also have a bar and pie chart 
+
+# Voter Counts Over Time Chart Requirements
+
+This document outlines requirements for a chart visualizing the absolute number of participating voters for specific demographic subgroups, tracked by election year.
+
+## Overview
+- **Goal:** Analyze how the absolute number of participating voters within specific demographic groups changes over time, based on selected filter criteria. This complements the Ratio chart by showing scale.
+- **Chart Type:** User-selectable view: Multi-line, Grouped Bar, or Stacked Area chart.
+- **Location:** `/ga/voter/charts` (using the same sub-navigation as the Ratio chart).
+- **Technology:** Recharts.
+
+## Chart Axes & Data
+- **X-Axis:** Election Year (derived from voter's participation history in `voting_events`).
+- **Y-Axis:** Voter Count (absolute number).
+- **Calculation:** For a given election year (Y), the Y-value for a specific line (representing a filter combination C) is:
+  `Count = COUNT(DISTINCT voters matching Combination C who participated in Year Y)`
+
+## Filtering & Line Generation
+- **Filter Logic:** Identical to the "Demographic Ratio Over Time" chart.
+- **No Filters:** If no filter options are selected from the allowed categories, the chart area displays a message prompting the user to select at least one filter.
+- **Allowed Filter Categories:** Lines are generated based ONLY on selections within these categories:
+    - `county` (from `v.county_name`)
+    - `congressionalDistricts` (from `v.congressional_district`)
+    - `stateSenateDistricts` (from `v.state_senate_district`)
+    - `stateHouseDistricts` (from `v.state_house_district`)
+    - `status` (from `v.status`)
+    - `statusReason` (from `v.status_reason`)
+    - `eventParty` (from `event ->> 'party'` in `v.voting_events`)
+    - `ageRange` (derived from `v.birth_year`)
+    - `gender` (from `v.gender`)
+    - `race` (from `v.race`)
+    - `electionType` (from `event ->> 'election_type'` in `v.voting_events`)
+    - `ballotStyle` (from `event ->> 'ballot_style'` in `v.voting_events`)
+- **Invalid Filters:** If any *other* filter parameter is present in the URL, the API returns an error (400) indicating which filters are invalid for this chart type.
+- **Line Generation Logic (Cartesian Product):** Identical to the Ratio chart.
+    - Generates lines for all possible combinations of selected values across different allowed categories.
+- **Line Limit:** No hard limit imposed by the API. Frontend handles toggling.
+
+## API Endpoint (`/api/ga/voter/chart-data`)
+- **`chartType` Parameter:** Needs a new value, e.g., `voterCountsOverTime`.
+- **Functionality:** Largely the same as `demographicRatioOverTime`, except for the final calculation:
+    1. Validate `chartType`.
+    2. Validate that only allowed filter keys are present.
+    3. Check if any allowed filters have selected values. If not, return 400 ("Please select filters...").
+    4. Generate the list of filter combinations based on selected values (Cartesian product).
+    5. Dynamically build SQL queries for each combination to get counts per year. *Crucially, this does NOT need the total voter count per year query required by the Ratio chart, simplifying the logic.*
+    6. Execute the queries.
+    7. Process results: Aggregate the counts for each combination in each year.
+    8. Return data in a similar format to the Ratio chart.
+- **Response Format:**
+  ```json
+  {
+    "years": [Number], // Array of years with participation data
+    "series": [
+      {
+        "name": String, // Descriptive label (e.g., "Race: White, Gender: Male")
+        "filters": Object, // The filter combination for this line (e.g., { race: "White", gender: "Male" })
+        "data": [Number | null] // Array of *counts* corresponding to the 'years' array
+      }
+      // ... more series objects
+    ]
+  }
+  ```
+  *Or, if no filters selected:* `{ "message": "Please select filter options..." }`
+  *Or, if invalid filters present:* `{ "error": "Invalid filter...", "allowedFilters": [...] }`
+
+## Frontend Chart Component (`VoterCountsChart.tsx`)
+- Create a new component `VoterCountsChart.tsx`.
+- Implement a UI switcher (e.g., tabs or segmented control) to select between "Line", "Bar" (Grouped), and "Stacked Area" chart views.
+- Fetches data from the API using `chartType=voterCountsOverTime` and current filters (data is the same for all three views).
+- Handles API responses (no filters, invalid filters, data).
+- Renders the selected chart type based on the `series` array from the API:
+    - **Line:** Multiple lines, one per series.
+    - **Bar:** Grouped bars for each year, one bar per series within the group.
+    - **Area:** Stacked areas, one area per series.
+- Uses `series[i].name` for legend labels/tooltips across all views.
+- Uses `series[i].data` for Y-values (absolute counts) across all views.
+- Implement line/bar/area toggling using the same custom legend component as the Ratio chart (legend interaction hides/shows the corresponding series in the active view).
+- Displays X-axis (Election Year) and Y-axis (Voter Count).
+- Implement loading and error states.
+- Consider adding the Y-axis Auto-Scaling toggle, applicable to all views.
+
+## Relevant Code/References
+- (Same as Demographic Ratio Over Time chart, as the underlying data and filtering logic are largely shared)
+
+## Implementation Tasks (Adaptation from Ratio Chart)
+
+*   [✅] **API Endpoint (`/api/ga/voter/chart-data`):**
+    *   [✅] Update route handler (`route.ts`) to accept `chartType=voterCountsOverTime`.
+    *   [✅] Reuse filter validation logic.
+    *   [✅] Reuse Cartesian product logic.
+    *   [✅] Adapt query generation: Only need the count for the specific combination per year (no total needed).
+    *   [✅] Implement result processing for counts.
+    *   [✅] Ensure consistent error handling.
+*   [✅] **Frontend Chart Component (`VoterCountsChart.tsx`):**
+    *   [✅] Create `VoterCountsChart.tsx`.
+    *   [✅] Implement UI switcher for Line, Grouped Bar, Stacked Area views.
+    *   [✅] Implement data fetching logic for the `chartType=voterCountsOverTime`.
+    *   [✅] Implement rendering logic for Line view using Recharts.
+    *   [✅] Implement rendering logic for Grouped Bar view using Recharts.
+    *   [✅] Implement rendering logic for Stacked Area view using Recharts.
+    *   [✅] Configure Recharts for count-based Y-axis.
+    *   [✅] Reuse or adapt the legend component for series toggling across views.
+    *   [✅] Implement loading/error states.
+    *   [✅] Consider adding the auto-scaling toggle.
+*   [✅] **Frontend Page (`/ga/voter/charts/page.tsx`):**
+    *   [✅] Add state/logic to switch between displaying the Ratio chart and the Counts chart (e.g., using tabs within the charts page).
+    *   [✅] Ensure the Counts chart component (`VoterCountsChart.tsx`) is rendered when selected.
+    *   [✅] Ensure filter context updates trigger re-fetch for the *active* chart.
+*   [✅] **Styling & Testing:**
+    *   [✅] Ensure consistent styling across chart views and with the Ratio chart.
+    *   [✅] Test with various filter combinations.
+    *   [✅] Test switching between Ratio and Counts charts.
+    *   [✅] Test switching between Line, Bar, and Area views within the Counts chart.
+
+## Bar/Pie Chart Note
+- The mention of Bar and Pie charts needs further definition. Are they:
+    1.  Alternative views *of the Counts Over Time data* (e.g., showing counts for the *latest* year as a pie/bar)?
+    2.  Separate charts entirely with different goals/data?
+- This requirement document focuses on the multi-line "Counts Over Time" chart first. The bar/pie charts should be specified separately once their purpose is clear.
+
+# Voter Combination Counts Chart Requirements
+
+This document outlines requirements for a chart visualizing the total size of specific voter demographic subgroups, based on filter combinations.
+
+## Overview
+- **Goal:** Show the total number of voters matching specific demographic combinations derived from selected filter criteria. This allows comparison of the absolute sizes of different defined subgroups within the overall filtered population.
+- **Chart Type:** User-selectable view: Bar Chart, Pie Chart, or Table view.
+- **Location:** `/ga/voter/charts` (integrated into the existing chart type navigation).
+- **Technology:** Recharts (for Bar/Pie), standard HTML/UI components (for Table).
+
+## Data & API
+- **Data Source:** `ga_voter_registration_list`.
+- **API Endpoint:** Reuse `/api/ga/voter/chart-data`.
+    - **`chartType` Parameter:** Needs a new value, e.g., `voterCombinationCounts`.
+    - **No `groupByField` parameter is used.**
+- **Filter Logic:**
+    - Uses the same `ALLOWED_COMBO_FILTER_KEYS` as the Over Time charts (Race, Gender, Status, etc.). Filters outside this list (like ageMin, notVotedSinceYear) will also be applied to narrow the overall population *before* counts are calculated.
+    - Generates the **Cartesian product** of selected filter values across different `ALLOWED_COMBO_FILTER_KEYS`. (e.g., `race=WHITE`, `race=BLACK`, `gender=MALE` -> `[{race: WHITE, gender: MALE}, {race: BLACK, gender: MALE}]`).
+    - If no filters from `ALLOWED_COMBO_FILTER_KEYS` are selected, return an appropriate message/error (e.g., "Please select filters from category X, Y, Z... to generate combinations").
+- **Calculation:** For *each* generated filter combination `C`, calculate `TotalCount(C) = COUNT(*)` of voters matching combination `C` *AND* any other general filters applied (like ageMin, etc.).
+- **Response Format:** An array of objects, each representing a combination and its total count.
+  ```json
+  {
+    "results": [
+      {
+        "name": "Race: White, Gender: Male", // Descriptive name for the combination
+        "filters": { "race": "WHITE", "gender": "MALE" }, // The specific filter combination
+        "count": 12345  // Total count matching this combo + other filters
+      },
+      {
+        "name": "Race: Black, Gender: Male",
+        "filters": { "race": "BLACK", "gender": "MALE" },
+        "count": 6789
+      }
+      // ... more combinations
+    ],
+    // Optional: could include total count matching *any* of the generated combinations
+    "totalCombinedCount": 19134 
+  }
+  ```
+
+## Visualization & Interaction
+- **Filter Input:** Uses the main filter panel. The chart dynamically updates based on selections within `ALLOWED_COMBO_FILTER_KEYS`.
+- **View Switcher:** UI switcher for "Bar", "Pie", "Table".
+- **Bar Chart:**
+    - Each bar represents one filter *combination* (using `results[i].name` as the label).
+    - Bar height represents the total `count` for that combination.
+- **Pie Chart:**
+    - Each slice represents a filter *combination* (`results[i].name`).
+    - Slice size is proportional to `results[i].count` relative to the total count of *all combinations shown*.
+- **Table View:**
+    - Each row represents one filter *combination*.
+    - Columns should include "Combination" (displaying the filters, e.g., "Race: White, Gender: Male"), "Count", and "Percentage" (relative to `totalCombinedCount`).
+    - Default sort by Count (descending).
+
+## Implementation Tasks
+
+*   [ ] **API Endpoint (`/api/ga/voter/chart-data`):**
+    *   [ ] Add support for `chartType=voterCombinationCounts`.
+    *   [ ] Reuse `extractAllowedFilters` and validation check (ensure at least one combo filter is selected).
+    *   [ ] Reuse `generateFilterCombinations` logic.
+    *   [ ] For each generated combination:
+        *   Construct a WHERE clause using `buildVoterListWhereClause`, passing *both* the combination's filters *and* any other general filters from the original `searchParams`.
+        *   Execute a `SELECT COUNT(*)` query with that WHERE clause.
+    *   [ ] Aggregate results into the specified response format.
+    *   [ ] Handle errors.
+*   [ ] **Frontend Page (`/ga/voter/charts/page.tsx`):**
+    *   [ ] Add "Combination Counts" chart type to the main chart navigation.
+    *   [ ] Import the new `VoterCombinationCountsChart` component.
+    *   [ ] Add conditional rendering for the new component.
+*   [ ] **Frontend Chart Component (`VoterCombinationCountsChart.tsx`):**
+    *   [ ] Create `VoterCombinationCountsChart.tsx`.
+    *   [ ] Implement data fetching logic for `chartType=voterCombinationCounts`.
+    *   [ ] Add a UI switcher for Bar/Pie/Table views.
+    *   [ ] Implement rendering logic for Bar Chart view (Bars represent combinations).
+    *   [ ] Implement rendering logic for Pie Chart view (Slices represent combinations).
+    *   [ ] Implement rendering logic for Table view (Rows represent combinations).
+    *   [ ] Implement loading and error states.
+*   [ ] **Styling & Testing:**
+    *   [✅] Ensure consistent styling.
+    *   [✅] Test with various filter combinations.
+    *   [✅] Test interaction with general filters (e.g., ageMin).
+    *   [✅] Test switching between views.
+
+
 

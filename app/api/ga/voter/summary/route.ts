@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause';
 import { sql } from '@/lib/voter/db';
 import { AGE_RANGES } from './ageRangeUtils';
+import { ELECTION_DATES } from '@/app/ga/voter/list/constants'; // Import the single source of truth
 // import { buildWhereClause } from '@/lib/voter/whereClause'; // TODO: Uncomment and use actual whereClause builder
 
 const AGG_LIMIT = parseInt(process.env.VOTER_AGG_LIMIT || '500', 10);
@@ -153,35 +154,95 @@ async function getDemographicsAggregates(whereClause: string, shouldQuery: boole
 async function getVotingHistoryAggregates(whereClause: string, shouldQuery: boolean) {
   if (!shouldQuery) {
     return {
-      derived_last_vote_date: [],
+      election_date_counts: [],
       participated_election_years: [],
     };
   }
-  // derived_last_vote_date: distinct dates and counts
-  const derivedLastVoteDatePromise = getAggregateCounts('derived_last_vote_date', 'GA_VOTER_REGISTRATION_LIST', whereClause);
+
+  // election_date_counts: Total votes on each distinct election date in the last 16 years
+  const electionDateCountsPromise = (async () => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const sixteenYearsAgoYear = currentYear - 16;
+
+      // Calculate the date 16 years ago for filtering
+      const sixteenYearsAgo = new Date();
+      sixteenYearsAgo.setFullYear(sixteenYearsAgo.getFullYear() - 16);
+      const sixteenYearsAgoStr = sixteenYearsAgo.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+
+      const sqlQuery = `
+        WITH FilteredVoters AS (
+            SELECT voter_registration_number, voting_events
+            FROM GA_VOTER_REGISTRATION_LIST
+            ${whereClause} -- Apply user filters here
+        ),
+        UnrolledEvents AS (
+            SELECT
+                (event_data ->> 'election_date')::DATE AS election_date
+            FROM
+                FilteredVoters,
+                jsonb_array_elements(voting_events) AS event_data
+            WHERE
+                voting_events IS NOT NULL
+                AND jsonb_typeof(voting_events) = 'array'
+                AND (event_data ->> 'election_date') IS NOT NULL
+        )
+        SELECT
+            election_date::TEXT AS label, -- Return date as string label
+            COUNT(*) AS count
+        FROM
+            UnrolledEvents
+        WHERE
+            election_date >= $1::DATE -- Filter for last 16 years
+            AND EXTRACT(YEAR FROM election_date) % 2 = 0 -- Filter for even years only
+        GROUP BY
+            election_date
+        ORDER BY
+            election_date DESC
+        LIMIT ${AGG_LIMIT};
+      `;
+      // Use sql.unsafe() with parameters to prevent SQL injection
+      const results = await sql.unsafe(sqlQuery, [sixteenYearsAgoStr]);
+      return results.map((row: any) => ({ label: row.label, count: Number(row.count) }));
+    } catch (e) {
+      console.error(`[voter/summary] Error querying election_date_counts:`, e);
+      return [];
+    }
+  })();
 
   // participated_election_years: count of voters for each year
   const participatedElectionYearsPromise = (async () => {
-    const sqlQuery = `
-      SELECT year::text AS label, COUNT(*) AS count
-      FROM (
-        SELECT UNNEST(participated_election_years) AS year
-        FROM GA_VOTER_REGISTRATION_LIST
-        ${whereClause}
-      ) AS years
-      GROUP BY year
-      ORDER BY year DESC
-      LIMIT ${AGG_LIMIT}
-    `;
-    const results = await sql.unsafe(sqlQuery);
-    return results.map((row: any) => ({ label: row.label, count: Number(row.count) }));
+    try {
+      // Added filter for non-null/non-empty participated_election_years
+      const extraFilter = `(participated_election_years IS NOT NULL AND array_length(participated_election_years, 1) > 0)`;
+      const fullWhere = whereClause
+          ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND`)
+          : `WHERE ${extraFilter}`;
+
+      const sqlQuery = `
+        SELECT year::text AS label, COUNT(*) AS count
+        FROM (
+          SELECT UNNEST(participated_election_years) AS year
+          FROM GA_VOTER_REGISTRATION_LIST
+          ${fullWhere}
+        ) AS years
+        GROUP BY year
+        ORDER BY year DESC
+        LIMIT ${AGG_LIMIT}
+      `;
+      const results = await sql.unsafe(sqlQuery);
+      return results.map((row: any) => ({ label: row.label, count: Number(row.count) }));
+    } catch (e) {
+      console.error(`[voter/summary] Error querying participated_election_years:`, e);
+      return [];
+    }
   })();
 
-  const [derived_last_vote_date, participated_election_years] = await Promise.all([
-    derivedLastVoteDatePromise,
+  const [election_date_counts, participated_election_years] = await Promise.all([
+    electionDateCountsPromise,
     participatedElectionYearsPromise,
   ]);
-  return { derived_last_vote_date, participated_election_years };
+  return { election_date_counts, participated_election_years };
 }
 
 async function getCensusAggregates(whereClause: string, shouldQuery: boolean) {
@@ -223,7 +284,7 @@ export async function GET(req: NextRequest) {
     // TODO: Call other section functions
 
     // --- Assemble response ---
-    const response: VoterSummaryResponse = {
+    const response: Partial<VoterSummaryResponse> & { timestamp: string } = {
       voting_info: votingInfo,
       districts: districts,
       demographics: demographics,

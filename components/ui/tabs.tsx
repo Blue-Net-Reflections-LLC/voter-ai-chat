@@ -3,12 +3,22 @@ import * as React from "react";
 interface TabsProps {
   defaultValue: string;
   children: React.ReactNode;
+  onValueChange?: (value: string) => void;
 }
 
-export function Tabs({ defaultValue, children }: TabsProps) {
+export function Tabs({ defaultValue, children, onValueChange }: TabsProps) {
   const [value, setValue] = React.useState(defaultValue);
+  
+  // Create a function that updates internal state and calls the external handler
+  const handleValueChange = React.useCallback((newValue: string) => {
+    setValue(newValue);
+    if (onValueChange) {
+      onValueChange(newValue);
+    }
+  }, [onValueChange]);
+  
   return (
-    <TabsContext.Provider value={{ value, setValue }}>
+    <TabsContext.Provider value={{ value, setValue: handleValueChange }}>
       <div>{children}</div>
     </TabsContext.Provider>
   );
@@ -25,8 +35,9 @@ export function TabsList({ className = "", children }: TabsListProps) {
 interface TabsTriggerProps {
   value: string;
   children: React.ReactNode;
+  disabled?: boolean;
 }
-export function TabsTrigger({ value, children }: TabsTriggerProps) {
+export function TabsTrigger({ value, children, disabled = false}: TabsTriggerProps) {
   const ctx = React.useContext(TabsContext);
   if (!ctx) throw new Error("TabsTrigger must be used within Tabs");
   const isActive = ctx.value === value;
@@ -37,10 +48,11 @@ export function TabsTrigger({ value, children }: TabsTriggerProps) {
         isActive
           ? "bg-primary text-white border-primary"
           : "bg-muted text-muted-foreground border-border hover:bg-primary/10"
-      }`}
+      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       onClick={() => ctx.setValue(value)}
       aria-selected={isActive}
       role="tab"
+      disabled={disabled}
     >
       {children}
     </button>
