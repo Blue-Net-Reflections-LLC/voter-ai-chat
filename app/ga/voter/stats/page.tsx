@@ -38,32 +38,22 @@ export default function StatsDashboardPage() {
     const effectId = Math.random().toString(36).substring(7);
     console.log(`[Effect ${effectId}] Running effect. Hydrated: ${filtersHydrated}`);
 
-    if (!filtersHydrated) {
-        console.log(`[Effect ${effectId}] Skipping: Filters not hydrated.`);
+    if (!filtersHydrated || isFetchingRef.current) {
+        console.log(`[Effect ${effectId}] Skipping: Filters not hydrated or already fetching.`);
         return;
     }
-
     const currentFetchKey = JSON.stringify({ filters, residenceAddressFilters });
-
-    if (isFetchingRef.current) {
-      console.log(`[Effect ${effectId}] Skipping: Fetch already in progress (isFetchingRef=true).`);
-      return;
-    }
-
     if (currentFetchKey === lastFetchKey.current) {
-      console.log(`[Effect ${effectId}] Skipping: Fetch key matches last started key. Key: ${currentFetchKey}`);
+      console.log(`[Effect ${effectId}] Skipping: Fetch key matches last started key.`);
       if (loading) setLoading(false);
       return;
     }
-
     console.log(`[Effect ${effectId}] Proceeding with fetch. New Key: ${currentFetchKey}`);
-    
     isFetchingRef.current = true;
     lastFetchKey.current = currentFetchKey;
     setLoading(true);
     setError(null);
     setSummaryData({});
-
     console.log(`[Effect ${effectId}] Fetch lock set, state cleared. Mapping fetch promises...`);
 
     const fetchPromises = ALL_SECTIONS.map(sectionKey => {
@@ -72,34 +62,28 @@ export default function StatsDashboardPage() {
       const params = buildQueryParams(filters, residenceAddressFilters, { section: sectionKey });
       const url = `/api/ga/voter/summary?${params.toString()}`;
       console.log(`[Fetch ${fetchId}] URL: ${url}`);
-
       return fetch(url)
-          .then(async (res) => {
-              console.log(`[Fetch ${fetchId}] Received response status: ${res.status}`);
-              if (!res.ok) {
-                  const errorText = await res.text();
-                  console.error(`[Fetch ${fetchId}] Error response: ${errorText}`);
-                  throw { section: sectionKey, status: res.status, message: errorText || `Failed to fetch ${sectionKey}` };
-              }
-              const data = await res.json();
-              const sectionData = data[sectionKey] || data;
-              console.log(`[Fetch ${fetchId}] Success, updating state.`);
-              setSummaryData(prev => ({ ...prev, [sectionKey]: sectionData }));
-              return { section: sectionKey, status: 'fulfilled' };
-          })
-          .catch(err => {
-              const errorPayload = {
-                  section: sectionKey,
-                  message: err.message || `Network error fetching ${sectionKey}`,
-                  isNetworkError: !err.status
-              };
-              console.error(`[Fetch ${fetchId}] Catch block error:`, errorPayload);
-              return Promise.reject({ section: sectionKey, status: 'rejected', reason: errorPayload });
-          });
+        .then(async (res) => {
+            console.log(`[Fetch ${fetchId}] Received response status: ${res.status}`);
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error(`[Fetch ${fetchId}] Error response: ${errorText}`);
+                throw { section: sectionKey, status: res.status, message: errorText || `Failed to fetch ${sectionKey}` };
+            }
+            const data = await res.json();
+            const sectionData = data[sectionKey] || data;
+            console.log(`[Fetch ${fetchId}] Success, updating state.`);
+            setSummaryData(prev => ({ ...prev, [sectionKey]: sectionData }));
+            return { section: sectionKey, status: 'fulfilled' };
+        })
+        .catch(err => {
+            const errorPayload = { section: sectionKey, message: err.message || `Network error fetching ${sectionKey}`, isNetworkError: !err.status };
+            console.error(`[Fetch ${fetchId}] Catch block error:`, errorPayload);
+            return Promise.reject({ section: sectionKey, status: 'rejected', reason: errorPayload });
+        });
     });
 
     console.log(`[Effect ${effectId}] Promises created. Waiting for allSettled...`);
-
     Promise.allSettled(fetchPromises)
         .then(results => {
             console.log(`[Effect ${effectId}] All fetches settled.`);
@@ -115,7 +99,6 @@ export default function StatsDashboardPage() {
             isFetchingRef.current = false;
             setLoading(false);
         });
-
   }, [filters, residenceAddressFilters, filtersHydrated]);
 
   const totalVoters = useMemo(() => {
@@ -159,58 +142,24 @@ export default function StatsDashboardPage() {
 
       <Tabs defaultValue="voting_info">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4">
-          <TabsTrigger value="voting_info">Voting Info</TabsTrigger>
-          <TabsTrigger value="districts">Districts</TabsTrigger>
-          <TabsTrigger value="demographics">Demographics</TabsTrigger>
-          <TabsTrigger value="voting_history">Voting History</TabsTrigger>
-          <TabsTrigger value="census">Census</TabsTrigger>
+          {ALL_SECTIONS.map(section => (
+            <TabsTrigger key={section} value={section}>
+              {section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </TabsTrigger>
+          ))}
         </TabsList>
         
-        <TabsContent value="voting_info">
-          <VotingInfoSection 
-            data={summaryData.voting_info} 
-            loading={loading && !summaryData.voting_info} 
-            error={error}
-            totalVoters={totalVoters}
-            onFilterChange={handleFilterChange}
-          />
-        </TabsContent>
-        <TabsContent value="districts">
-          <DistrictsSection
-             data={summaryData.districts}
-             loading={loading && !summaryData.districts}
-             error={error}
-             totalVoters={totalVoters} 
-             onFilterChange={handleFilterChange}
-          />
-        </TabsContent>
-         <TabsContent value="demographics">
-          <DemographicsSection 
-             data={summaryData.demographics}
-             loading={loading && !summaryData.demographics}
-             error={error}
-             totalVoters={totalVoters}
-             onFilterChange={handleFilterChange}
-          />
-        </TabsContent>
-        <TabsContent value="voting_history">
-          <VotingHistorySection 
-            data={summaryData.voting_history}
-            loading={loading && !summaryData.voting_history}
-            error={error}
-            totalVoters={totalVoters}
-            onFilterChange={handleFilterChange}
-          />
-        </TabsContent>
-        <TabsContent value="census">
-          <CensusSection 
-             data={summaryData.census}
-             loading={loading && !summaryData.census}
-             error={error}
-             totalVoters={totalVoters}
-             onFilterChange={handleFilterChange}
-          />
-        </TabsContent>
+        {ALL_SECTIONS.map(section => (
+            <TabsContent key={`${section}-content`} value={section}>
+                <div className="mt-4">
+                     {section === 'voting_info' && <VotingInfoSection data={summaryData.voting_info} loading={loading && !summaryData.voting_info} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+                     {section === 'districts' && <DistrictsSection data={summaryData.districts} loading={loading && !summaryData.districts} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+                     {section === 'demographics' && <DemographicsSection data={summaryData.demographics} loading={loading && !summaryData.demographics} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+                     {section === 'voting_history' && <VotingHistorySection data={summaryData.voting_history} loading={loading && !summaryData.voting_history} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+                     {section === 'census' && <CensusSection data={summaryData.census} loading={loading && !summaryData.census} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+                </div>
+            </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
