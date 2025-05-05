@@ -34,10 +34,21 @@ function DistrictsSection({
   }
 
   // Helper to format data
-  const formatDataForDisplay = (items: any[] | undefined): { value: string; count: number }[] => {
+  const formatDataForDisplay = (items: { label: string | number; count: number }[] | undefined, fieldName?: string): { value: string; count: number }[] => {
     if (!items) return [];
     // The parent handler now handles Title Casing based on fieldName if needed
-    return items.map(item => ({ value: String(item.label), count: item.count })); 
+    return items.map(item => {
+      let displayValue = String(item.label);
+
+      // Format specific district codes by removing the first two characters
+      if ((fieldName === "State Senate District" || fieldName === "State House District" || fieldName === "Congressional District") &&
+          typeof item.label === 'string' && item.label.length > 2 // Ensure it's a string long enough to slice
+      ) {
+        displayValue = item.label.slice(2); // Remove first 2 characters
+      }
+
+      return { value: displayValue, count: item.count };
+    });
   };
 
   return (
@@ -46,7 +57,7 @@ function DistrictsSection({
       {data?.county_name && (
         <AggregateFieldDisplay
           fieldName="County" // This needs to map to a key in page.tsx handleFilterChange 
-          data={formatDataForDisplay(data.county_name)}
+          data={formatDataForDisplay(data.county_name, "County")}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
           localStorageKey="stats-county-chartType"
@@ -55,7 +66,7 @@ function DistrictsSection({
       {data?.congressional_district && (
         <AggregateFieldDisplay
           fieldName="Congressional District" // Maps to 'congressionalDistricts' in filter context
-          data={formatDataForDisplay(data.congressional_district)}
+          data={formatDataForDisplay(data.congressional_district, "Congressional District")}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
           localStorageKey="stats-congressional-district-chartType"
@@ -64,7 +75,7 @@ function DistrictsSection({
       {data?.state_senate_district && (
         <AggregateFieldDisplay
           fieldName="State Senate District" // Maps to 'stateSenateDistricts'
-          data={formatDataForDisplay(data.state_senate_district)}
+          data={formatDataForDisplay(data.state_senate_district, "State Senate District")}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
           localStorageKey="stats-state-senate-district-chartType"
@@ -73,7 +84,7 @@ function DistrictsSection({
       {data?.state_house_district && (
         <AggregateFieldDisplay
           fieldName="State House District" // Maps to 'stateHouseDistricts'
-          data={formatDataForDisplay(data.state_house_district)}
+          data={formatDataForDisplay(data.state_house_district, "State House District")}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
           localStorageKey="stats-state-house-district-chartType"

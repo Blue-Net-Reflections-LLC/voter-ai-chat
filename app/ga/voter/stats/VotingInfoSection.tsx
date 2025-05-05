@@ -45,7 +45,7 @@ function VotingInfoSection({
       )}
       {data?.status_reason && (
         <AggregateFieldDisplay
-          fieldName="Status Reason"
+          fieldName="Inactive Status Reason Distribution"
           data={formatDataForDisplay(data.status_reason)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}

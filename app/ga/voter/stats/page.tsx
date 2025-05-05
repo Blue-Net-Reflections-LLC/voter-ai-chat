@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import VotingInfoSection from "./VotingInfoSection";
 import DistrictsSection from "./DistrictsSection";
 import DemographicsSection from "./DemographicsSection";
@@ -43,67 +44,52 @@ export default function StatsDashboardPage() {
   const isFetchingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    const effectId = Math.random().toString(36).substring(7);
-    console.log(`[Effect ${effectId}] Running effect. Hydrated: ${filtersHydrated}`);
-
     if (!filtersHydrated || isFetchingRef.current) {
-        console.log(`[Effect ${effectId}] Skipping: Filters not hydrated or already fetching.`);
         return;
     }
     const currentFetchKey = JSON.stringify({ filters, residenceAddressFilters });
     if (currentFetchKey === lastFetchKey.current) {
-      console.log(`[Effect ${effectId}] Skipping: Fetch key matches last started key.`);
       if (loading) setLoading(false);
       return;
     }
-    console.log(`[Effect ${effectId}] Proceeding with fetch. New Key: ${currentFetchKey}`);
     isFetchingRef.current = true;
     lastFetchKey.current = currentFetchKey;
     setLoading(true);
     setError(null);
     setSummaryData({});
-    console.log(`[Effect ${effectId}] Fetch lock set, state cleared. Mapping fetch promises...`);
 
     const fetchPromises = ALL_SECTIONS.map(sectionKey => {
-      const fetchId = `${effectId}-${sectionKey}`;
-      console.log(`[Fetch ${fetchId}] Creating promise.`);
       const params = buildQueryParams(filters, residenceAddressFilters, { section: sectionKey });
       const url = `/api/ga/voter/summary?${params.toString()}`;
-      console.log(`[Fetch ${fetchId}] URL: ${url}`);
       return fetch(url)
         .then(async (res) => {
-            console.log(`[Fetch ${fetchId}] Received response status: ${res.status}`);
             if (!res.ok) {
                 const errorText = await res.text();
-                console.error(`[Fetch ${fetchId}] Error response: ${errorText}`);
+                console.error(`[Stats Fetch] Error fetching ${sectionKey}: ${res.status} - ${errorText}`);
                 throw { section: sectionKey, status: res.status, message: errorText || `Failed to fetch ${sectionKey}` };
             }
             const data = await res.json();
             const sectionData = data[sectionKey] || data;
-            console.log(`[Fetch ${fetchId}] Success, updating state.`);
             setSummaryData(prev => ({ ...prev, [sectionKey]: sectionData }));
             return { section: sectionKey, status: 'fulfilled' };
         })
         .catch(err => {
             const errorPayload = { section: sectionKey, message: err.message || `Network error fetching ${sectionKey}`, isNetworkError: !err.status };
-            console.error(`[Fetch ${fetchId}] Catch block error:`, errorPayload);
+            console.error(`[Stats Fetch] Network/Catch Error fetching ${sectionKey}:`, errorPayload);
             return Promise.reject({ section: sectionKey, status: 'rejected', reason: errorPayload });
         });
     });
 
-    console.log(`[Effect ${effectId}] Promises created. Waiting for allSettled...`);
     Promise.allSettled(fetchPromises)
         .then(results => {
-            console.log(`[Effect ${effectId}] All fetches settled.`);
             let errorsFound = false;
             results.forEach(result => {
                  if (result.status === 'rejected') {
                     errorsFound = true;
-                    console.error(`[Effect ${effectId}] Settled Error for ${result.reason?.section}:`, result.reason?.reason?.message);
+                    console.error(`[Stats Fetch] Settled Error for ${result.reason?.section}:`, result.reason?.reason?.message);
                     setError(prevError => prevError || `Error loading data for ${result.reason?.section}.`); 
                  }
             });
-            console.log(`[Effect ${effectId}] Releasing fetch lock and setting loading false.`);
             isFetchingRef.current = false;
             setLoading(false);
         });
@@ -139,6 +125,9 @@ export default function StatsDashboardPage() {
 
   // Handle tab changes by updating URL
   const handleTabChange = useCallback((value: string) => {
+    // Ignore selection of 'census' tab
+    if (value === 'census') return;
+    
     if (value && ALL_SECTIONS.includes(value as keyof SummaryData)) {
       // Update URL search param without page refresh
       const current = new URLSearchParams(Array.from(searchParams.entries()));
@@ -163,7 +152,7 @@ export default function StatsDashboardPage() {
       <Tabs defaultValue={defaultTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4">
           {ALL_SECTIONS.map(section => (
-            <TabsTrigger key={section} value={section}>
+            <TabsTrigger key={section} value={section} disabled={section === 'census'}>
               {section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </TabsTrigger>
           ))}
