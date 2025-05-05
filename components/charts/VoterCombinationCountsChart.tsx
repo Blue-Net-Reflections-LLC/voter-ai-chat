@@ -26,6 +26,7 @@ import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider';
 import { buildQueryParams } from '@/app/ga/voter/VoterFilterProvider';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Types to match the API response
 interface CombinationResult {
@@ -105,6 +106,7 @@ export function VoterCombinationCountsChart() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ChartViewType>('bar'); // Default to bar
+  const [visibleCombinations, setVisibleCombinations] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -132,16 +134,26 @@ export function VoterCombinationCountsChart() {
           setError(errorMessage);
           setChartData(null);
           toast({ variant: "destructive", title: "Error loading chart data", description: errorMessage });
+          setVisibleCombinations({});
           return;
         }
 
         if (data.message) { // Handle API messages like "Please select filters..."
           setError(data.message);
           setChartData(null);
+          setVisibleCombinations({});
           return;
         }
 
         setChartData(data);
+        
+        if (data.results) {
+          const initialVisibility: Record<string, boolean> = {};
+          data.results.forEach((item: CombinationResult) => {
+            initialVisibility[item.name] = true; // Default all to visible
+          });
+          setVisibleCombinations(initialVisibility);
+        }
         
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
@@ -152,6 +164,7 @@ export function VoterCombinationCountsChart() {
         console.error('Error fetching chart data:', err);
         setError(errorMessage);
         setChartData(null);
+        setVisibleCombinations({});
         toast({ variant: "destructive", title: "Error loading chart data", description: errorMessage });
       } finally {
         if (!signal.aborted) {
@@ -167,6 +180,13 @@ export function VoterCombinationCountsChart() {
     };
   }, [filters, residenceAddressFilters, filtersHydrated, toast]);
 
+  const handleTableRowClick = (dataKey: string) => {
+    setVisibleCombinations(prev => ({
+      ...prev,
+      [dataKey]: !prev[dataKey]
+    }));
+  };
+
   // Custom tooltip formatter for counts
   const tooltipFormatter = (value: any) => {
     if (value === null || value === undefined) return 'N/A';
@@ -177,29 +197,44 @@ export function VoterCombinationCountsChart() {
   // Data formatting specifically for Pie chart
   const pieData = useMemo(() => {
       if (!chartData?.results) return [];
-      return chartData.results.map(item => ({ name: item.name, value: item.count }));
-  }, [chartData]);
+      return chartData.results
+          .filter(item => visibleCombinations[item.name])
+          .map((item, index) => ({ 
+              name: item.name, 
+              value: item.count, 
+              originalIndex: chartData.results.findIndex(original => original.name === item.name)
+          }));
+  }, [chartData, visibleCombinations]);
 
   // Data formatting specifically for Bar chart (uses results directly but needs name/count keys)
    const barData = useMemo(() => {
        if (!chartData?.results) return [];
-       // Recharts BarChart typically expects a dataKey for the value axis
-       // Here, we use the combination name for the category axis and 'count' for the value
-       return chartData.results.map(item => ({ name: item.name, count: item.count }));
-   }, [chartData]);
+       return chartData.results
+           .filter(item => visibleCombinations[item.name])
+           .map((item, index) => ({ 
+               name: item.name, 
+               count: item.count,
+               originalIndex: chartData.results.findIndex(original => original.name === item.name)
+            }));
+   }, [chartData, visibleCombinations]);
 
   // Data formatting and sorting for Table view
   const tableData = useMemo(() => {
     if (!chartData?.results || !chartData?.totalCombinedCount) return [];
-    const total = chartData.totalCombinedCount || 1; // Avoid division by zero
+    const totalVisibleCount = chartData.results.reduce((sum, item) => 
+        visibleCombinations[item.name] ? sum + item.count : sum, 0) || 1;
+        
     return chartData.results
         .map((item, index) => ({ 
             ...item, 
-            index, // Store index for color mapping
-            percentage: total > 0 ? ((item.count / total) * 100).toFixed(1) + '%' : '0.0%'
+            index, // Keep original index for color
+            isVisible: visibleCombinations[item.name] ?? true,
+            percentage: visibleCombinations[item.name] 
+                ? ((item.count / totalVisibleCount) * 100).toFixed(1) + '%' 
+                : 'N/A' // Or show original % but dimmed?
         }))
-        .sort((a, b) => b.count - a.count); // Sort descending by count
-  }, [chartData]);
+        .sort((a, b) => b.count - a.count); // Sort descending by original count
+  }, [chartData, visibleCombinations]);
 
 
   const renderChartView = () => {
@@ -226,7 +261,7 @@ export function VoterCombinationCountsChart() {
                />
               <Bar dataKey="count" fill="#8884d8">
                 {barData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={COLORS[entry.originalIndex % COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>
@@ -250,10 +285,22 @@ export function VoterCombinationCountsChart() {
                 dataKey="value"
               >
                 {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={COLORS[entry.originalIndex % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number, name: string) => [`${tooltipFormatter(value)} voters`, name]}/>
+              {/* Apply consistent theme styling to the tooltip */}
+              <Tooltip 
+                formatter={(value: number, name: string) => [`${tooltipFormatter(value)} voters`, name]}
+                contentStyle={{
+                    backgroundColor: 'hsl(var(--background))',
+                    padding: '5px 10px',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 'var(--radius)'
+                }}
+                itemStyle={{ color: 'hsl(var(--foreground))' }}
+                // Optional: Remove cursor style for pie if not desired
+                // cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.3 }}
+               />
             </PieChart>
           </ResponsiveContainer>
         );
@@ -278,11 +325,19 @@ export function VoterCombinationCountsChart() {
                 </TableHeader>
                 <TableBody>
                 {tableData.map((item) => (
-                    <TableRow key={item.name}>
+                    <TableRow 
+                        key={item.name}
+                        onClick={() => handleTableRowClick(item.name)}
+                        className={`cursor-pointer ${!item.isVisible ? 'opacity-50' : ''}`}
+                        style={{ textDecoration: !item.isVisible ? 'line-through' : 'none' }}
+                    >
                         <TableCell className="py-1">
                             <span 
                                 className="inline-block w-3 h-3 rounded-full"
-                                style={{ backgroundColor: COLORS[item.index % COLORS.length] }}
+                                style={{ 
+                                    backgroundColor: COLORS[item.index % COLORS.length],
+                                    opacity: item.isVisible ? 1 : 0.3 
+                                }}
                             />
                         </TableCell>
                         <TableCell className="font-medium text-xs py-1">{item.name}</TableCell>
