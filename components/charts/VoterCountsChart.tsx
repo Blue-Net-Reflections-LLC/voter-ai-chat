@@ -12,10 +12,13 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Cell
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+} from "@/components/ui/table";
 import { useVoterFilterContext } from '@/app/ga/voter/VoterFilterProvider';
 import { buildQueryParams } from '@/app/ga/voter/VoterFilterProvider';
 import { Loader2 } from 'lucide-react';
@@ -45,42 +48,6 @@ const COLORS = [
   '#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE',
   '#00C49F', '#FFBB28', '#FF8042', '#a4de6c', '#d0ed57'
 ];
-
-// Reusable Custom Legend (same as Ratio Chart)
-const CustomLegend = ({ payload, visibleSeries, onToggle }: {
-  payload?: any[],
-  visibleSeries: Record<string, boolean>,
-  onToggle: (dataKey: string) => void
-}) => {
-  if (!payload || payload.length === 0) return null;
-  
-  return (
-    <ul className="flex flex-wrap justify-center gap-3 mt-3">
-      {payload.map((entry, index) => (
-        <li 
-          key={`legend-item-${index}`}
-          className="flex items-center gap-1 cursor-pointer select-none px-2 py-1 rounded hover:bg-muted transition-colors"
-          onClick={() => onToggle(entry.dataKey)}
-        >
-          <span 
-            className="inline-block w-3 h-3 rounded-full" 
-            style={{ 
-              backgroundColor: entry.color, 
-              opacity: visibleSeries[entry.dataKey] ? 1 : 0.3 
-            }}
-          />
-          <span style={{ 
-            textDecoration: visibleSeries[entry.dataKey] ? 'none' : 'line-through',
-            opacity: visibleSeries[entry.dataKey] ? 1 : 0.6
-          }}>
-            {entry.value}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-};
-
 
 type ChartViewType = 'line' | 'bar' | 'area';
 
@@ -161,7 +128,7 @@ export function VoterCountsChart() {
     };
   }, [filters, residenceAddressFilters, filtersHydrated, toast]);
 
-  const handleLegendClick = (dataKey: string) => {
+  const handleTableRowClick = (dataKey: string) => {
     setVisibleSeries(prev => ({
       ...prev,
       [dataKey]: !prev[dataKey]
@@ -235,13 +202,32 @@ export function VoterCountsChart() {
     return Number.isFinite(numValue) ? numValue.toLocaleString() : 'N/A';
   };
   
+  // *** NEW: Format data for the legend table ***
+  const tableData = useMemo(() => {
+    if (!chartData?.series) return [];
+    
+    return chartData.series.map((series, index) => {
+      // Find the last non-null value for display
+      let latestValue: string | number = 'N/A';
+      for (let i = series.data.length - 1; i >= 0; i--) {
+        if (series.data[i] !== null) {
+          latestValue = series.data[i]!.toLocaleString();
+          break;
+        }
+      }
+      return {
+        name: series.name,
+        index: index,
+        latestValue: latestValue,
+        isVisible: visibleSeries[series.name] ?? true // Default to true if somehow missing
+      };
+    })
+  }, [chartData, visibleSeries]);
+
+  // Render the selected chart content (Line, Bar, Area)
   const renderChartContent = () => {
     if (!chartData || !chartData.series || chartData.series.length === 0) return null;
 
-    const visibleSeriesKeys = chartData.series
-        .filter(s => visibleSeries[s.name])
-        .map(s => s.name);
-        
     switch (activeView) {
       case 'line':
         return chartData.series.map((series, index) => (
@@ -258,14 +244,10 @@ export function VoterCountsChart() {
           )
         ));
       case 'bar':
+         // Note: BarChart component itself handles layout, this just defines the bars
          return chartData.series.map((series, index) => (
           visibleSeries[series.name] && (
-            <Bar
-              key={series.name}
-              dataKey={series.name}
-              fill={COLORS[index % COLORS.length]}
-              // No stackId makes it grouped
-            />
+            <Bar key={series.name} dataKey={series.name} fill={COLORS[index % COLORS.length]} />
           )
         ));
       case 'area':
@@ -275,7 +257,7 @@ export function VoterCountsChart() {
               key={series.name}
               type="monotone"
               dataKey={series.name}
-              stackId="1" // Same stackId makes it stacked
+              stackId="1" 
               stroke={COLORS[index % COLORS.length]}
               fill={COLORS[index % COLORS.length]}
               fillOpacity={0.6}
@@ -289,7 +271,7 @@ export function VoterCountsChart() {
     }
   };
   
-   // Determine the chart component based on active view
+  // Determine the Recharts container component based on active view
   const ChartComponent = useMemo(() => {
     switch (activeView) {
       case 'bar': return BarChart;
@@ -299,6 +281,42 @@ export function VoterCountsChart() {
     }
   }, [activeView]);
 
+  // Render the table view (acting as advanced legend)
+  const renderTableView = () => {
+      if (!tableData || tableData.length === 0) return null;
+      return (
+        <div className="mt-4 md:mt-0"> {/* Adjusted margin */}
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[20px]"></TableHead> {/* Color swatch */}
+                        <TableHead>Combination</TableHead>
+                        <TableHead className="text-right">Latest Count</TableHead> {/* Value column */}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                {tableData.map((item) => (
+                    <TableRow 
+                        key={item.name}
+                        onClick={() => handleTableRowClick(item.name)} // Toggle on row click
+                        className={`cursor-pointer ${!item.isVisible ? 'opacity-50' : ''}`}
+                        style={{ textDecoration: !item.isVisible ? 'line-through' : 'none' }}
+                    >
+                        <TableCell className="py-1">
+                            <span 
+                                className="inline-block w-3 h-3 rounded-full"
+                                style={{ backgroundColor: COLORS[item.index % COLORS.length] }}
+                            />
+                        </TableCell>
+                        <TableCell className="font-medium text-xs py-1">{item.name}</TableCell>
+                        <TableCell className="text-right text-xs py-1">{item.latestValue}</TableCell>
+                    </TableRow>
+                ))}
+                </TableBody>
+            </Table>
+        </div>
+      );
+  }
 
   return (
     <Card>
@@ -308,69 +326,86 @@ export function VoterCountsChart() {
             <CardTitle>Voter Counts Over Time</CardTitle>
             <CardDescription>Absolute number of participating voters based on selected filters.</CardDescription>
           </div>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="autoScaleCounts"
-              checked={autoScale}
-              onCheckedChange={setAutoScale}
-            />
-            <Label htmlFor="autoScaleCounts" className="text-sm">Auto-Scale Y-Axis</Label>
-          </div>
-        </div>
-        <div className="pt-4">
-          <div className="flex justify-center space-x-2">
-            <button 
-              className={`px-4 py-2 rounded ${activeView === 'line' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-              onClick={() => setActiveView('line')}
-            >
-              Line
-            </button>
-            <button 
-              className={`px-4 py-2 rounded ${activeView === 'bar' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-              onClick={() => setActiveView('bar')}
-            >
-              Bar
-            </button>
-            <button 
-              className={`px-4 py-2 rounded ${activeView === 'area' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-              onClick={() => setActiveView('area')}
-            >
-              Area
-            </button>
-          </div>
+           <div className="flex items-center space-x-4">
+                {/* View Switcher Buttons */}
+                <div className="flex justify-center space-x-1 border p-1 rounded-md bg-muted">
+                    <button 
+                    className={`px-3 py-1 rounded text-xs ${activeView === 'line' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                    onClick={() => setActiveView('line')}
+                    >Line</button>
+                    <button 
+                    className={`px-3 py-1 rounded text-xs ${activeView === 'bar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                    onClick={() => setActiveView('bar')}
+                    >Bar</button>
+                    <button 
+                    className={`px-3 py-1 rounded text-xs ${activeView === 'area' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                    onClick={() => setActiveView('area')}
+                    >Area</button>
+                </div>
+                {/* Auto-Scale Toggle */}
+                <div className="flex items-center space-x-2">
+                    <Switch
+                    id="autoScaleCounts"
+                    checked={autoScale}
+                    onCheckedChange={setAutoScale}
+                    />
+                    <Label htmlFor="autoScaleCounts" className="text-sm whitespace-nowrap">Auto-Scale Y-Axis</Label>
+                </div>
+           </div>
         </div>
       </CardHeader>
       <CardContent>
         {isLoading && (
-          <div className="flex justify-center items-center h-60">
+           <div className="flex justify-center items-center h-[450px]"> 
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         )}
         {!isLoading && error && (
-          <div className="flex justify-center items-center h-60">
+           <div className="flex justify-center items-center h-[450px]">
             <p className="text-center text-red-600">Error: {error}</p>
           </div>
         )}
         {!isLoading && !error && chartData && (
-          <ResponsiveContainer width="100%" height={400}>
-            <ChartComponent data={formattedChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis 
-                 tickFormatter={(value) => value.toLocaleString()} 
-                 domain={calculateYAxisDomain()} 
-                 allowDataOverflow={!autoScale} // Allow overflow if autoScale is off
-                 width={80} // Increase width to prevent label cropping
-               />
-              <Tooltip formatter={tooltipFormatter} />
-              <Legend content={<CustomLegend visibleSeries={visibleSeries} onToggle={handleLegendClick} />} />
-              {renderChartContent()}
-            </ChartComponent>
-          </ResponsiveContainer>
+          // Reverted Layout: Chart above Table
+          <div>
+            <div className="md:col-span-2"> {/* Keep chart responsive, remove grid parent */}
+               <ResponsiveContainer width="100%" height={400}>
+                 <ChartComponent 
+                    data={formattedChartData} 
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    {...(activeView === 'bar' ? { layout: 'horizontal', barCategoryGap: '10%' } : {})} 
+                  >
+                   <CartesianGrid strokeDasharray="3 3" />
+                   <XAxis dataKey="year" />
+                   <YAxis 
+                      tickFormatter={tooltipFormatter} 
+                      domain={calculateYAxisDomain()} 
+                      allowDataOverflow={!autoScale} 
+                      width={80} 
+                    />
+                   {/* Apply consistent theme styling to the tooltip */}
+                   <Tooltip 
+                     formatter={tooltipFormatter} 
+                     contentStyle={{
+                       backgroundColor: 'hsl(var(--background))',
+                       padding: '5px 10px',
+                       border: '1px solid hsl(var(--border))',
+                       borderRadius: 'var(--radius)'
+                     }}
+                     itemStyle={{ color: 'hsl(var(--foreground))' }}
+                     cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.3 }}
+                   />
+                   {renderChartContent()}
+                 </ChartComponent>
+               </ResponsiveContainer>
+            </div>
+            {/* Render table below chart */} 
+            {renderTableView()}
+          </div>
         )}
         {!isLoading && !error && !chartData && (
-           <div className="flex justify-center items-center h-60">
-             <p className="text-center text-muted-foreground">No data available for the selected filters.</p>
+            <div className="flex justify-center items-center h-[450px]">
+             <p className="text-center text-muted-foreground">No count data available for the selected filters.</p>
            </div>
          )}
       </CardContent>
