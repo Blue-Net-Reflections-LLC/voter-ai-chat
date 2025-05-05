@@ -1,5 +1,5 @@
 // components/AggregateFieldDisplay.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ interface AggregateFieldDisplayProps {
     data: AggregateDataPoint[];
     totalVoters: number; // Total number of voters for percentage calculation
     onFilterChange: (filterField: string, filterValue: string | number) => void; // Callback to apply filters
+    localStorageKey: string; // Add prop for localStorage key
 }
 
 const COLORS = [
@@ -53,14 +54,42 @@ const renderCustomizedLabel = ({
   );
 };
 
+// Helper function to get initial state safely (runs only on client)
+const getInitialChartType = (key: string): 'bar' | 'pie' => {
+  // Check if running in a browser environment
+  if (typeof window !== 'undefined' && key) { 
+    const savedType = localStorage.getItem(key);
+    if (savedType === 'bar' || savedType === 'pie') {
+      return savedType;
+    }
+  }
+  return 'bar'; // Default if server-side or no saved value
+};
+
 const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
     fieldName,
     data,
     totalVoters,
     onFilterChange,
+    localStorageKey
 }) => {
-    const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
+    // Initialize state using the helper function - runs once on mount
+    const [chartType, setChartType] = useState<'bar' | 'pie'>(() => getInitialChartType(localStorageKey)); 
     const { theme } = useTheme();
+
+    // Effect to SAVE preference to localStorage when chartType changes
+    useEffect(() => {
+        if (typeof window !== 'undefined' && localStorageKey) {
+            try {
+                // Add logging to see when saving happens
+                console.log(`Saving chartType '${chartType}' for key '${localStorageKey}'`);
+                localStorage.setItem(localStorageKey, chartType);
+            } catch (error) {
+                console.error(`Error saving chart type to localStorage for key "${localStorageKey}":`, error);
+            }
+        }
+        // This effect should run whenever the user changes the chartType via buttons
+    }, [chartType, localStorageKey]); 
 
     const chartData = useMemo(() => {
         return data.map((item, index) => ({

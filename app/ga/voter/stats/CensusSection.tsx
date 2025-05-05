@@ -63,6 +63,7 @@ function CensusSection({
                   data={formatDataForDisplay(data[field.apiField])}
                   totalVoters={totalVoters}
                   onFilterChange={onFilterChange}
+                  localStorageKey={`stats-${field.apiField.toLowerCase().replace(/_/g, '-')}-chartType`}
               />
           )
       ))}

@@ -49,6 +49,7 @@ function DistrictsSection({
           data={formatDataForDisplay(data.county_name)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-county-chartType"
         />
       )}
       {data?.congressional_district && (
@@ -57,6 +58,7 @@ function DistrictsSection({
           data={formatDataForDisplay(data.congressional_district)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-congressional-district-chartType"
         />
       )}
       {data?.state_senate_district && (
@@ -65,6 +67,7 @@ function DistrictsSection({
           data={formatDataForDisplay(data.state_senate_district)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-state-senate-district-chartType"
         />
       )}
       {data?.state_house_district && (
@@ -73,6 +76,7 @@ function DistrictsSection({
           data={formatDataForDisplay(data.state_house_district)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-state-house-district-chartType"
         />
       )}
     </div>

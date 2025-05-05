@@ -47,6 +47,7 @@ function DemographicsSection({
           data={formatDataForDisplay(data.race)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-race-chartType"
         />
       )}
       {data?.gender && (
@@ -55,6 +56,7 @@ function DemographicsSection({
           data={formatDataForDisplay(data.gender)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-gender-chartType"
         />
       )}
       {data?.age_range && (
@@ -63,6 +65,7 @@ function DemographicsSection({
           data={formatDataForDisplay(data.age_range)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-age-range-chartType"
         />
       )}
     </div>

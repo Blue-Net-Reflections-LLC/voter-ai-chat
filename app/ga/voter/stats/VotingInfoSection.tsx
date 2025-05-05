@@ -34,10 +34,42 @@ function VotingInfoSection({
 
   return (
     <div className="flex flex-col gap-6">
-      {data?.status && <AggregateFieldDisplay fieldName="Status" data={formatDataForDisplay(data.status)} totalVoters={totalVoters} onFilterChange={onFilterChange} />}
-      {data?.status_reason && <AggregateFieldDisplay fieldName="Status Reason" data={formatDataForDisplay(data.status_reason)} totalVoters={totalVoters} onFilterChange={onFilterChange} />}
-      {data?.residence_city && <AggregateFieldDisplay fieldName="Residence City" data={formatDataForDisplay(data.residence_city)} totalVoters={totalVoters} onFilterChange={onFilterChange} />}
-      {data?.residence_zipcode && <AggregateFieldDisplay fieldName="Residence Zipcode" data={formatDataForDisplay(data.residence_zipcode)} totalVoters={totalVoters} onFilterChange={onFilterChange} />}
+      {data?.status && (
+        <AggregateFieldDisplay
+          fieldName="Status"
+          data={formatDataForDisplay(data.status)}
+          totalVoters={totalVoters} 
+          onFilterChange={onFilterChange} 
+          localStorageKey="stats-status-chartType"
+        />
+      )}
+      {data?.status_reason && (
+        <AggregateFieldDisplay
+          fieldName="Status Reason"
+          data={formatDataForDisplay(data.status_reason)}
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-status-reason-chartType"
+        />
+      )}
+      {data?.residence_city && (
+        <AggregateFieldDisplay
+          fieldName="Residence City"
+          data={formatDataForDisplay(data.residence_city)}
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-residence-city-chartType"
+        />
+      )}
+      {data?.residence_zipcode && (
+        <AggregateFieldDisplay
+          fieldName="Residence Zipcode"
+          data={formatDataForDisplay(data.residence_zipcode)}
+          totalVoters={totalVoters}
+          onFilterChange={onFilterChange}
+          localStorageKey="stats-residence-zipcode-chartType"
+        />
+      )}
     </div>
   );
 }

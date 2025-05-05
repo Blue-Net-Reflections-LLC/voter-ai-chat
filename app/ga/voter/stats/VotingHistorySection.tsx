@@ -51,6 +51,7 @@ function VotingHistorySection({
           data={formatDataForDisplay(data.derived_last_vote_date, true)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-election-date-chartType"
         />
       )}
       {data?.participated_election_years && (
@@ -59,6 +60,7 @@ function VotingHistorySection({
           data={formatDataForDisplay(data.participated_election_years)}
           totalVoters={totalVoters}
           onFilterChange={onFilterChange}
+          localStorageKey="stats-election-year-chartType"
         />
       )}
     </div>
