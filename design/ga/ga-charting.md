@@ -217,9 +217,10 @@ This document outlines requirements for a chart visualizing the ratio of specifi
     *   [✅] Add memoization for total voter counts to reduce query time.
     *   [✅] Optimize data structure for chart rendering.
 *   [✅] **Styling & Testing:**
-    *   [✅] Add clean, consistent styling.
-    *   [✅] Verify functionality across various filter combinations.
-    *   [✅] Fix bugs in Y-axis calculation and legend toggling.
+    *   [✅] Ensure consistent styling across chart views and with the Ratio chart.
+    *   [✅] Test with various filter combinations.
+    *   [✅] Test switching between Ratio and Counts charts.
+    *   [✅] Test switching between Line, Bar, and Area views within the Counts chart.
 
 # Counts over Time Chart
 The chart will use the same grouping logic as the Demographic Ratio ove time but it will count the total voters in a give given year.
@@ -312,33 +313,33 @@ This document outlines requirements for a chart visualizing the absolute number 
 
 ## Implementation Tasks (Adaptation from Ratio Chart)
 
-*   [ ] **API Endpoint (`/api/ga/voter/chart-data`):**
-    *   [ ] Update route handler (`route.ts`) to accept `chartType=voterCountsOverTime`.
-    *   [ ] Reuse filter validation logic.
-    *   [ ] Reuse Cartesian product logic.
-    *   [ ] Adapt query generation: Only need the count for the specific combination per year (no total needed).
-    *   [ ] Implement result processing for counts.
-    *   [ ] Ensure consistent error handling.
-*   [ ] **Frontend Chart Component (`VoterCountsChart.tsx`):**
-    *   [ ] Create `VoterCountsChart.tsx`.
-    *   [ ] Implement UI switcher for Line, Grouped Bar, Stacked Area views.
-    *   [ ] Implement data fetching logic for the `chartType=voterCountsOverTime`.
-    *   [ ] Implement rendering logic for Line view using Recharts.
-    *   [ ] Implement rendering logic for Grouped Bar view using Recharts.
-    *   [ ] Implement rendering logic for Stacked Area view using Recharts.
-    *   [ ] Configure Recharts for count-based Y-axis.
-    *   [ ] Reuse or adapt the legend component for series toggling across views.
-    *   [ ] Implement loading/error states.
-    *   [ ] Consider adding the auto-scaling toggle.
-*   [ ] **Frontend Page (`/ga/voter/charts/page.tsx`):**
-    *   [ ] Add state/logic to switch between displaying the Ratio chart and the Counts chart (e.g., using tabs within the charts page).
-    *   [ ] Ensure the Counts chart component (`VoterCountsChart.tsx`) is rendered when selected.
-    *   [ ] Ensure filter context updates trigger re-fetch for the *active* chart.
-*   [ ] **Styling & Testing:**
-    *   [ ] Ensure consistent styling across chart views and with the Ratio chart.
-    *   [ ] Test with various filter combinations.
-    *   [ ] Test switching between Ratio and Counts charts.
-    *   [ ] Test switching between Line, Bar, and Area views within the Counts chart.
+*   [✅] **API Endpoint (`/api/ga/voter/chart-data`):**
+    *   [✅] Update route handler (`route.ts`) to accept `chartType=voterCountsOverTime`.
+    *   [✅] Reuse filter validation logic.
+    *   [✅] Reuse Cartesian product logic.
+    *   [✅] Adapt query generation: Only need the count for the specific combination per year (no total needed).
+    *   [✅] Implement result processing for counts.
+    *   [✅] Ensure consistent error handling.
+*   [✅] **Frontend Chart Component (`VoterCountsChart.tsx`):**
+    *   [✅] Create `VoterCountsChart.tsx`.
+    *   [✅] Implement UI switcher for Line, Grouped Bar, Stacked Area views.
+    *   [✅] Implement data fetching logic for the `chartType=voterCountsOverTime`.
+    *   [✅] Implement rendering logic for Line view using Recharts.
+    *   [✅] Implement rendering logic for Grouped Bar view using Recharts.
+    *   [✅] Implement rendering logic for Stacked Area view using Recharts.
+    *   [✅] Configure Recharts for count-based Y-axis.
+    *   [✅] Reuse or adapt the legend component for series toggling across views.
+    *   [✅] Implement loading/error states.
+    *   [✅] Consider adding the auto-scaling toggle.
+*   [✅] **Frontend Page (`/ga/voter/charts/page.tsx`):**
+    *   [✅] Add state/logic to switch between displaying the Ratio chart and the Counts chart (e.g., using tabs within the charts page).
+    *   [✅] Ensure the Counts chart component (`VoterCountsChart.tsx`) is rendered when selected.
+    *   [✅] Ensure filter context updates trigger re-fetch for the *active* chart.
+*   [✅] **Styling & Testing:**
+    *   [✅] Ensure consistent styling across chart views and with the Ratio chart.
+    *   [✅] Test with various filter combinations.
+    *   [✅] Test switching between Ratio and Counts charts.
+    *   [✅] Test switching between Line, Bar, and Area views within the Counts chart.
 
 ## Bar/Pie Chart Note
 - The mention of Bar and Pie charts needs further definition. Are they:
