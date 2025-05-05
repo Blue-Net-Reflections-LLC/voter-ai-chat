@@ -109,8 +109,33 @@ export function DistrictsSection({
             <div className="space-y-2">
               <h4 className="font-medium mb-1">Voting Location</h4>
               {districtsData.countyPrecinct ? (
-                <p><span className="font-medium">Precinct:</span> {districtsData.countyPrecinctDescription || districtsData.countyPrecinct}</p>
+                <>
+                  <p><span className="font-medium">Precinct:</span> {districtsData.countyPrecinctDescription || districtsData.countyPrecinct} ({districtsData.countyPrecinct})</p>
+                  
+                  {/* Render facility information if available */}
+                  {districtsData.facility && (
+                    <div className="mt-3 bg-muted/30 p-3 rounded-md">
+                      {districtsData.facility.facilityName && (
+                        <p className="mb-1"><span className="font-medium">Facility:</span> {districtsData.facility.facilityName}</p>
+                      )}
+                      {districtsData.facility.facilityAddress && (
+                        <p className="mb-1"><span className="font-medium">Address:</span> {districtsData.facility.facilityAddress}</p>
+                      )}
+                      {districtsData.facility.mapUrl && (
+                        <Link 
+                          href={districtsData.facility.mapUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs font-medium hover:underline flex items-center text-primary mt-2"
+                        >
+                          View Precinct Map <ExternalLink size={12} className="ml-1" />
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </>
               ) : <p className="text-muted-foreground">Precinct: N/A</p>}
+              
               {districtsData.municipalPrecinct && (
                 <p><span className="font-medium">Municipal Precinct:</span> {districtsData.municipalPrecinct}</p>
               )}
