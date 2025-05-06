@@ -17,6 +17,8 @@ const ALLOWED_COMBO_FILTER_KEYS: string[] = [
   'race',
   'electionType',
   'ballotStyle',
+  'countyPrecinct',
+  'municipalPrecinct',
 ];
 
 // Allowed groupBy fields for Snapshot chart
@@ -30,7 +32,9 @@ const ALLOWED_SNAPSHOT_GROUP_BY_FIELDS: string[] = [
     'voterEventMethod', // Requires special handling
     'participationScoreRange', // Requires special handling
     'neverVoted', // Requires special handling
-    'ageRange' // Requires special handling
+    'ageRange', // Requires special handling
+    'countyPrecinct',
+    'municipalPrecinct'
 ];
 
 // --- Type Definitions ---
@@ -215,6 +219,8 @@ function getSnapshotGroupBySQLExpression(groupByField: string): string {
         case 'gender': return 'UPPER(gender)';
         case 'race': return 'UPPER(race)';
         case 'party': return 'UPPER(last_party_voted)';
+        case 'countyPrecinct': return 'UPPER(county_precinct)';
+        case 'municipalPrecinct': return 'UPPER(municipal_precinct)';
         case 'neverVoted': return '(derived_last_vote_date IS NULL)'; // Results in TRUE/FALSE categories
         case 'ageRange':
             // Using CASE statement to bucket birth years into age ranges
