@@ -19,45 +19,13 @@ import {
   ELECTION_DATE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, FilterX, Menu, X } from "lucide-react";
+import { FilterX, Menu, X } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 import { SCORE_RANGES } from '@/lib/participation-score/constants';
 import PrecinctFilters from './PrecinctFilters';
-
-// Collapsible Section Component
-const CollapsibleSection = ({ 
-  title, 
-  children,
-  defaultOpen = true,
-  className = ""
-}: { 
-  title: string; 
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  className?: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className={cn("", className)}>
-      <button 
-        className="flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <h3 className="text-sm font-semibold">{title}</h3>
-        {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </button>
-      <div className={cn(
-        "space-y-3 transition-all duration-200 overflow-hidden",
-        isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
-      )}>
-        {children}
-      </div>
-    </div>
-  );
-};
+import CollapsibleSection from './CollapsibleSection';
 
 export function FilterPanel() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -223,7 +191,7 @@ export function FilterPanel() {
           </div>
         )}
         
-        <CardContent className="space-y-4 pt-2 px-3">
+        <CardContent className="space-y-2 pt-2 px-3">
           {/* Participation Score Filter */}
           <CollapsibleSection title="Participation Score" defaultOpen={true}>
             <MultiSelect
