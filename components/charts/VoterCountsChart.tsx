@@ -321,37 +321,39 @@ export function VoterCountsChart() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
+        <div className="flex flex-col space-y-2">
+          <div className="flex justify-between items-center">
             <CardTitle>Voter Counts Over Time</CardTitle>
-            <CardDescription>Absolute number of participating voters based on selected filters.</CardDescription>
+            <div className="flex items-center space-x-4">
+              {/* View Switcher Buttons */}
+              <div className="flex justify-center space-x-1 border p-1 rounded-md bg-muted">
+                <button 
+                  className={`px-3 py-1 rounded text-xs ${activeView === 'line' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                  onClick={() => setActiveView('line')}
+                >Line</button>
+                <button 
+                  className={`px-3 py-1 rounded text-xs ${activeView === 'bar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                  onClick={() => setActiveView('bar')}
+                >Bar</button>
+                <button 
+                  className={`px-3 py-1 rounded text-xs ${activeView === 'area' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                  onClick={() => setActiveView('area')}
+                >Area</button>
+              </div>
+              {/* Auto-Scale Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="autoScaleCounts"
+                  checked={autoScale}
+                  onCheckedChange={setAutoScale}
+                />
+                <Label htmlFor="autoScaleCounts" className="text-sm whitespace-nowrap">Auto-Scale Y-Axis</Label>
+              </div>
+            </div>
           </div>
-           <div className="flex items-center space-x-4">
-                {/* View Switcher Buttons */}
-                <div className="flex justify-center space-x-1 border p-1 rounded-md bg-muted">
-                    <button 
-                    className={`px-3 py-1 rounded text-xs ${activeView === 'line' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                    onClick={() => setActiveView('line')}
-                    >Line</button>
-                    <button 
-                    className={`px-3 py-1 rounded text-xs ${activeView === 'bar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                    onClick={() => setActiveView('bar')}
-                    >Bar</button>
-                    <button 
-                    className={`px-3 py-1 rounded text-xs ${activeView === 'area' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                    onClick={() => setActiveView('area')}
-                    >Area</button>
-                </div>
-                {/* Auto-Scale Toggle */}
-                <div className="flex items-center space-x-2">
-                    <Switch
-                    id="autoScaleCounts"
-                    checked={autoScale}
-                    onCheckedChange={setAutoScale}
-                    />
-                    <Label htmlFor="autoScaleCounts" className="text-sm whitespace-nowrap">Auto-Scale Y-Axis</Label>
-                </div>
-           </div>
+          <CardDescription className="text-sm !-mt-[0px]">
+            Absolute number of participating voters based on selected filters.
+          </CardDescription>
         </div>
       </CardHeader>
       <CardContent>
