@@ -7,13 +7,15 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
   defaultOpen?: boolean;
   className?: string;
+  filterCount?: number; // Number of active filters in this section
 }
 
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ 
   title, 
   children,
   defaultOpen = true,
-  className = ""
+  className = "",
+  filterCount = 0
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -24,7 +26,14 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         onClick={() => setIsOpen(!isOpen)}
       >
         <h3 className="text-sm font-semibold">{title}</h3>
-        {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <div className="flex items-center">
+          {filterCount > 0 && (
+            <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full mr-2">
+              {filterCount}
+            </span>
+          )}
+          {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
       </button>
       <div className={cn(
         "pt-1 pl-2 space-y-3 transition-all duration-200 overflow-hidden",

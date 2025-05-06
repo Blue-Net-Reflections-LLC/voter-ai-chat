@@ -113,43 +113,60 @@ export function FilterPanel() {
     setMobileFiltersOpen(!mobileFiltersOpen);
   };
 
-  // Calculate active filter count more accurately by counting categories rather than values
-  const getActiveFilterCount = () => {
-    if (!hasActiveFilters()) return 0;
-    
+  // Calculate filter counts for each section
+  const getParticipationScoreFilterCount = () => {
+    return Array.isArray(filters.scoreRanges) && filters.scoreRanges.length > 0 ? 1 : 0;
+  };
+
+  const getGeographicFilterCount = () => {
     let count = 0;
-    
-    // Count array filters as 1 if they have any values
-    const arrayFilters = [
-      'county', 'congressionalDistricts', 'stateSenateDistricts', 'stateHouseDistricts',
-      'countyPrecincts', 'municipalPrecincts', 'scoreRanges', 'status', 'party', 'historyParty',
-      'age', 'gender', 'race', 'income', 'education', 'electionType', 'electionYear', 
-      'electionDate', 'ballotStyle', 'eventParty', 'redistrictingAffectedTypes', 'statusReason'
-    ];
-    
-    arrayFilters.forEach(key => {
-      if (Array.isArray(filters[key]) && filters[key].length > 0) {
-        count++;
-      }
-    });
-    
-    // Count string filters
-    if (filters.firstName) count++;
-    if (filters.lastName) count++;
-    if (filters.voterEventMethod) count++;
-    if (filters.notVotedSinceYear) count++;
-    
-    // Count boolean filters
-    if (filters.neverVoted) count++;
-    
-    // Count address filters as 1 if any address filters exist
-    if (residenceAddressFilters.length > 0) count++;
-    
+    if (Array.isArray(filters.county) && filters.county.length > 0) count++;
+    if (Array.isArray(filters.congressionalDistricts) && filters.congressionalDistricts.length > 0) count++;
+    if (Array.isArray(filters.stateSenateDistricts) && filters.stateSenateDistricts.length > 0) count++;
+    if (Array.isArray(filters.stateHouseDistricts) && filters.stateHouseDistricts.length > 0) count++;
+    if (Array.isArray(filters.countyPrecincts) && filters.countyPrecincts.length > 0) count++;
+    if (Array.isArray(filters.municipalPrecincts) && filters.municipalPrecincts.length > 0) count++;
+    if (Array.isArray(filters.redistrictingType) && filters.redistrictingType.length > 0) count++;
     return count;
   };
 
-  // Get the accurate filter count
-  const activeFilterCount = getActiveFilterCount();
+  const getVoterInfoFilterCount = () => {
+    let count = 0;
+    if (filters.firstName) count++;
+    if (filters.lastName) count++;
+    if (residenceAddressFilters.length > 0) count++;
+    if (Array.isArray(filters.status) && filters.status.length > 0) count++;
+    if (Array.isArray(filters.statusReason) && filters.statusReason.length > 0) count++;
+    if (Array.isArray(filters.party) && filters.party.length > 0) count++;
+    return count;
+  };
+
+  const getDemographicsFilterCount = () => {
+    let count = 0;
+    if (Array.isArray(filters.age) && filters.age.length > 0) count++;
+    if (Array.isArray(filters.gender) && filters.gender.length > 0) count++;
+    if (Array.isArray(filters.race) && filters.race.length > 0) count++;
+    return count;
+  };
+
+  const getVotingHistoryFilterCount = () => {
+    let count = 0;
+    if (Array.isArray(filters.electionType) && filters.electionType.length > 0) count++;
+    if (Array.isArray(filters.electionYear) && filters.electionYear.length > 0) count++;
+    if (Array.isArray(filters.electionDate) && filters.electionDate.length > 0) count++;
+    if (filters.notVotedSinceYear) count++;
+    if (Array.isArray(filters.ballotStyle) && filters.ballotStyle.length > 0) count++;
+    if (Array.isArray(filters.eventParty) && filters.eventParty.length > 0) count++;
+    if (filters.voterEventMethod) count++;
+    return count;
+  };
+
+  // Get counts for each section
+  const participationScoreFilterCount = getParticipationScoreFilterCount();
+  const geographicFilterCount = getGeographicFilterCount();
+  const voterInfoFilterCount = getVoterInfoFilterCount();
+  const demographicsFilterCount = getDemographicsFilterCount();
+  const votingHistoryFilterCount = getVotingHistoryFilterCount();
 
   return (
     <>
@@ -167,7 +184,7 @@ export function FilterPanel() {
           </span>
           {hasActiveFilters() && (
             <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
-              {activeFilterCount}
+              {participationScoreFilterCount + geographicFilterCount + voterInfoFilterCount + demographicsFilterCount + votingHistoryFilterCount}
             </span>
           )}
         </Button>
@@ -193,7 +210,11 @@ export function FilterPanel() {
         
         <CardContent className="space-y-2 pt-2 px-3">
           {/* Participation Score Filter */}
-          <CollapsibleSection title="Participation Score" defaultOpen={true}>
+          <CollapsibleSection 
+            title="Participation Score" 
+            defaultOpen={true}
+            filterCount={participationScoreFilterCount}
+          >
             <MultiSelect
               label="Participation Score Range"
               options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
@@ -206,7 +227,11 @@ export function FilterPanel() {
           <Separator />
           
           {/* Geographic Filters */}
-          <CollapsibleSection title="Geographic Filters" defaultOpen={true}>
+          <CollapsibleSection 
+            title="Geographic Filters" 
+            defaultOpen={true}
+            filterCount={geographicFilterCount}
+          >
             {/* County Filter */}
             <div className="space-y-2">
               <CountyMultiSelect
@@ -255,18 +280,39 @@ export function FilterPanel() {
                 compact={true}
               />
             </div>
+
+            <MultiSelect
+              label="Redistricting Type"
+              options={REDISTRICTING_TYPE_OPTIONS}
+              value={ensureStringArray(filters.redistrictingType)}
+              setValue={(value) => updateFilter('redistrictingType', value)}
+              compact={true}
+            />
           </CollapsibleSection>
           
           <Separator />
           
           {/* Voter Info Filters */}
-          <CollapsibleSection title="Voter Info" defaultOpen={true}>
+          <CollapsibleSection 
+            title="Voter Info" 
+            defaultOpen={true}
+            filterCount={voterInfoFilterCount}
+          >
             <div className="space-y-3">
               <MultiSelect
                 label="Status"
                 options={statuses.length > 0 ? statuses : []}
                 value={ensureStringArray(filters.status)}
                 setValue={(value) => updateFilter('status', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+              
+              <MultiSelect
+                label="Inactive Status Reasons"
+                options={statusReasons.length > 0 ? statusReasons : []}
+                value={ensureStringArray(filters.statusReason)}
+                setValue={(value) => updateFilter('statusReason', value)}
                 isLoading={isLoading}
                 compact={true}
               />
@@ -328,7 +374,11 @@ export function FilterPanel() {
           <Separator />
 
           {/* Demographic Filters */}
-          <CollapsibleSection title="Demographics" defaultOpen={false}>
+          <CollapsibleSection 
+            title="Demographics" 
+            defaultOpen={false}
+            filterCount={demographicsFilterCount}
+          >
             <div className="space-y-3">
               <MultiSelect
                 label="Age Range"
@@ -361,7 +411,11 @@ export function FilterPanel() {
           <Separator />
 
           {/* Voting History Filters */}
-          <CollapsibleSection title="Voting History" defaultOpen={false}>
+          <CollapsibleSection 
+            title="Voting History" 
+            defaultOpen={false}
+            filterCount={votingHistoryFilterCount}
+          >
             <div className="space-y-3">
               <MultiSelect
                 label="Voted by Election Type"
@@ -447,30 +501,6 @@ export function FilterPanel() {
               </div>
             </div>
           </CollapsibleSection>
-
-          <Separator />
-
-          {/* Advanced Filters */}
-          <CollapsibleSection title="Advanced" defaultOpen={false}>
-            <div className="space-y-3">
-              <MultiSelect
-                label="Status Reason"
-                options={statusReasons.length > 0 ? statusReasons : []}
-                value={ensureStringArray(filters.statusReason)}
-                setValue={(value) => updateFilter('statusReason', value)}
-                isLoading={isLoading}
-                compact={true}
-              />
-              
-              <MultiSelect
-                label="Redistricting Type"
-                options={REDISTRICTING_TYPE_OPTIONS}
-                value={ensureStringArray(filters.redistrictingType)}
-                setValue={(value) => updateFilter('redistrictingType', value)}
-                compact={true}
-              />
-            </div>
-          </CollapsibleSection>
         </CardContent>
       </Card>
 
@@ -510,7 +540,11 @@ export function FilterPanel() {
             
             <CardContent className="space-y-4 pt-3 px-3">
               {/* Participation Score Filter */}
-              <CollapsibleSection title="Participation Score" defaultOpen={true}>
+              <CollapsibleSection 
+                title="Participation Score" 
+                defaultOpen={true}
+                filterCount={participationScoreFilterCount}
+              >
                 <MultiSelect
                   label="Participation Score Range"
                   options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
@@ -523,7 +557,11 @@ export function FilterPanel() {
               <Separator />
               
               {/* Geographic Filters */}
-              <CollapsibleSection title="Geographic Filters" defaultOpen={true}>
+              <CollapsibleSection 
+                title="Geographic Filters" 
+                defaultOpen={true}
+                filterCount={geographicFilterCount}
+              >
                 {/* County Filter */}
                 <div className="space-y-2">
                   <CountyMultiSelect
@@ -572,18 +610,39 @@ export function FilterPanel() {
                     compact={true}
                   />
                 </div>
+
+                <MultiSelect
+                  label="Redistricting Type"
+                  options={REDISTRICTING_TYPE_OPTIONS}
+                  value={ensureStringArray(filters.redistrictingType)}
+                  setValue={(value) => updateFilter('redistrictingType', value)}
+                  compact={true}
+                />
               </CollapsibleSection>
               
               <Separator />
               
               {/* Voter Info Filters */}
-              <CollapsibleSection title="Voter Info" defaultOpen={true}>
+              <CollapsibleSection 
+                title="Voter Info" 
+                defaultOpen={true}
+                filterCount={voterInfoFilterCount}
+              >
                 <div className="space-y-3">
                   <MultiSelect
                     label="Status"
                     options={statuses.length > 0 ? statuses : []}
                     value={ensureStringArray(filters.status)}
                     setValue={(value) => updateFilter('status', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                  
+                  <MultiSelect
+                    label="Inactive Status Reasons"
+                    options={statusReasons.length > 0 ? statusReasons : []}
+                    value={ensureStringArray(filters.statusReason)}
+                    setValue={(value) => updateFilter('statusReason', value)}
                     isLoading={isLoading}
                     compact={true}
                   />
@@ -645,7 +704,11 @@ export function FilterPanel() {
               <Separator />
 
               {/* Demographic Filters */}
-              <CollapsibleSection title="Demographics" defaultOpen={false}>
+              <CollapsibleSection 
+                title="Demographics" 
+                defaultOpen={false}
+                filterCount={demographicsFilterCount}
+              >
                 <div className="space-y-3">
                   <MultiSelect
                     label="Age Range"
@@ -678,7 +741,11 @@ export function FilterPanel() {
               <Separator />
 
               {/* Voting History Filters */}
-              <CollapsibleSection title="Voting History" defaultOpen={false}>
+              <CollapsibleSection 
+                title="Voting History" 
+                defaultOpen={false}
+                filterCount={votingHistoryFilterCount}
+              >
                 <div className="space-y-3">
                   <MultiSelect
                     label="Voted by Election Type"
@@ -762,30 +829,6 @@ export function FilterPanel() {
                       ))}
                     </div>
                   </div>
-                </div>
-              </CollapsibleSection>
-
-              <Separator />
-
-              {/* Advanced Filters */}
-              <CollapsibleSection title="Advanced" defaultOpen={false}>
-                <div className="space-y-3">
-                  <MultiSelect
-                    label="Status Reason"
-                    options={statusReasons.length > 0 ? statusReasons : []}
-                    value={ensureStringArray(filters.statusReason)}
-                    setValue={(value) => updateFilter('statusReason', value)}
-                    isLoading={isLoading}
-                    compact={true}
-                  />
-                  
-                  <MultiSelect
-                    label="Redistricting Type"
-                    options={REDISTRICTING_TYPE_OPTIONS}
-                    value={ensureStringArray(filters.redistrictingType)}
-                    setValue={(value) => updateFilter('redistrictingType', value)}
-                    compact={true}
-                  />
                 </div>
               </CollapsibleSection>
             </CardContent>
