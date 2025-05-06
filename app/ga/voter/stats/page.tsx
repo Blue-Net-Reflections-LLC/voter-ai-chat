@@ -9,6 +9,7 @@ import DistrictsSection from "./DistrictsSection";
 import DemographicsSection from "./DemographicsSection";
 import VotingHistorySection from "./VotingHistorySection";
 import CensusSection from "./CensusSection";
+import AggregateFieldDisplay from "@/components/AggregateFieldDisplay";
 import { useVoterFilterContext, buildQueryParams } from "../VoterFilterProvider";
 import type { FilterState, ResidenceAddressFilterState } from "../list/types";
 
@@ -18,6 +19,7 @@ interface SummaryData {
   demographics?: any;
   voting_history?: any;
   census?: any;
+  precincts?: any;
 }
 
 const toTitleCase = (text: string): string => {
@@ -25,7 +27,7 @@ const toTitleCase = (text: string): string => {
   return text.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
-const ALL_SECTIONS: (keyof SummaryData)[] = ['voting_info', 'districts', 'demographics', 'voting_history', 'census'];
+const ALL_SECTIONS: (keyof SummaryData)[] = ['voting_info', 'districts', 'demographics', 'voting_history', 'precincts', 'census'];
 
 export default function StatsDashboardPage() {
   const { filters, residenceAddressFilters, filtersHydrated, setFilters, setResidenceAddressFilters, updateFilter } = useVoterFilterContext();
@@ -104,7 +106,21 @@ export default function StatsDashboardPage() {
 
   const handleFilterChange = useCallback((fieldName: string, value: string | number) => {
     const filterValue = String(value);
-    const arrayFilterMap: { [key: string]: keyof FilterState } = { 'Status': 'status', 'Status Reason': 'statusReason', 'Race': 'race', 'Gender': 'gender', 'County': 'county', 'Congressional District': 'congressionalDistricts', 'State Senate District': 'stateSenateDistricts', 'State House District': 'stateHouseDistricts', 'Age Range': 'age', 'Election Date': 'electionDate', 'Election Year': 'electionYear' };
+    const arrayFilterMap: { [key: string]: keyof FilterState } = { 
+      'Status': 'status', 
+      'Status Reason': 'statusReason', 
+      'Race': 'race', 
+      'Gender': 'gender', 
+      'County': 'county', 
+      'Congressional District': 'congressionalDistricts', 
+      'State Senate District': 'stateSenateDistricts', 
+      'State House District': 'stateHouseDistricts', 
+      'County Precinct': 'countyPrecincts',
+      'Municipal Precinct': 'municipalPrecincts',
+      'Age Range': 'age', 
+      'Election Date': 'electionDate', 
+      'Election Year': 'electionYear' 
+    };
     const addressFilterMap: { [key: string]: keyof ResidenceAddressFilterState } = { 'Residence City': 'residence_city', 'Residence Zipcode': 'residence_zipcode' };
 
     if (arrayFilterMap[fieldName]) {
@@ -150,7 +166,7 @@ export default function StatsDashboardPage() {
       </div>
 
       <Tabs defaultValue={defaultTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4">
+        <TabsList className="grid w-full grid-cols-6 mb-4">
           {ALL_SECTIONS.map(section => (
             <TabsTrigger key={section} value={section} disabled={section === 'census'}>
               {section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -166,10 +182,119 @@ export default function StatsDashboardPage() {
                      {section === 'demographics' && <DemographicsSection data={summaryData.demographics} loading={loading && !summaryData.demographics} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
                      {section === 'voting_history' && <VotingHistorySection data={summaryData.voting_history} loading={loading && !summaryData.voting_history} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
                      {section === 'census' && <CensusSection data={summaryData.census} loading={loading && !summaryData.census} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+                     {section === 'precincts' && (
+                        <PrecinctSectionContent 
+                          data={summaryData.precincts}
+                          loading={loading && !summaryData.precincts}
+                          error={error}
+                          totalVoters={totalVoters}
+                          onFilterChange={handleFilterChange}
+                        />
+                     )}
                 </div>
             </TabsContent>
         ))}
       </Tabs>
+    </div>
+  );
+}
+
+// Directly include the PrecinctSectionContent within the same file
+interface PrecinctSectionContentProps {
+  data: any;
+  loading: boolean;
+  error: string | null;
+  totalVoters: number;
+  onFilterChange: (fieldName: string, value: string | number) => void;
+}
+
+function PrecinctSectionContent({ 
+  data,
+  loading,
+  error,
+  totalVoters,
+  onFilterChange
+}: PrecinctSectionContentProps) {
+
+  if (loading && !data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
+        <span className="animate-pulse">Loading Precincts...</span>
+      </div>
+    );
+  }
+  
+  if (!loading && error && !data) {
+    return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Precincts: {error}</div>;
+  }
+  
+  if (!data || (!data.county_precinct && !data.municipal_precinct)) {
+    return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for Precinct fields.</div>;
+  }
+
+  // Helper to format data
+  const formatDataForDisplay = (items: { label: string | number; count: number; facility_name?: string; facility_address?: string }[] | undefined, fieldName?: string): { value: string; count: number; meta?: { facility_name?: string; facility_address?: string } }[] => {
+    if (!items) return [];
+    
+    return items.map(item => {
+      return { 
+        value: String(item.label), 
+        count: item.count,
+        meta: {
+          facility_name: item.facility_name,
+          facility_address: item.facility_address
+        }
+      };
+    });
+  };
+
+  // Extract just the precinct code from a label that has format "Description (CODE)"
+  const extractPrecinctCode = (label: string): string => {
+    const matches = label.match(/\(([^)]+)\)$/);
+    return matches?.[1] || label;
+  };
+
+  return (
+    <div className="flex flex-col gap-16">
+      {/* County Precincts */}
+      {data?.county_precinct && (
+        <div className="mb-6">
+          <AggregateFieldDisplay
+            fieldName="County Precinct"
+            data={formatDataForDisplay(data.county_precinct, "County Precinct")}
+            totalVoters={totalVoters}
+            onFilterChange={(_, value) => onFilterChange("County Precinct", extractPrecinctCode(String(value)))}
+            localStorageKey="stats-county-precinct-chartType"
+            displayExtraInfo={(item) => (
+              <div className="text-xs text-muted-foreground mt-1">
+                {item.meta?.facility_name && <div>{item.meta.facility_name}</div>}
+                {item.meta?.facility_address && <div>{item.meta.facility_address}</div>}
+              </div>
+            )}
+            variant="stacked"
+          />
+        </div>
+      )}
+      
+      {/* Municipal Precincts */}
+      {data?.municipal_precinct && (
+        <div className="mt-6">
+          <AggregateFieldDisplay
+            fieldName="Municipal Precinct"
+            data={formatDataForDisplay(data.municipal_precinct, "Municipal Precinct")}
+            totalVoters={totalVoters}
+            onFilterChange={(_, value) => onFilterChange("Municipal Precinct", extractPrecinctCode(String(value)))}
+            localStorageKey="stats-municipal-precinct-chartType"
+            displayExtraInfo={(item) => (
+              <div className="text-xs text-muted-foreground mt-1">
+                {item.meta?.facility_name && <div>{item.meta.facility_name}</div>}
+                {item.meta?.facility_address && <div>{item.meta.facility_address}</div>}
+              </div>
+            )}
+            variant="stacked"
+          />
+        </div>
+      )}
     </div>
   );
 } 

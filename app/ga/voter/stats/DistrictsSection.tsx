@@ -33,22 +33,34 @@ function DistrictsSection({
     return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for District fields.</div>;
   }
 
-  // Helper to format data
-  const formatDataForDisplay = (items: { label: string | number; count: number }[] | undefined, fieldName?: string): { value: string; count: number }[] => {
+  // Helper to format data - modified to preserve full value for filtering
+  const formatDataForDisplay = (items: { label: string | number; count: number }[] | undefined, fieldName?: string): { value: string; count: number; filterValue?: string }[] => {
     if (!items) return [];
-    // The parent handler now handles Title Casing based on fieldName if needed
+    
     return items.map(item => {
       let displayValue = String(item.label);
+      let filterValue = String(item.label); // Keep original value for filtering
 
-      // Format specific district codes by removing the first two characters
+      // Format specific district codes by removing the first two characters only for display
       if ((fieldName === "State Senate District" || fieldName === "State House District" || fieldName === "Congressional District") &&
           typeof item.label === 'string' && item.label.length > 2 // Ensure it's a string long enough to slice
       ) {
-        displayValue = item.label.slice(2); // Remove first 2 characters
+        displayValue = item.label.slice(2); // Remove first 2 characters for display only
       }
 
-      return { value: displayValue, count: item.count };
+      return { 
+        value: displayValue, 
+        count: item.count,
+        filterValue: filterValue // Preserve full district code for filtering
+      };
     });
+  };
+
+  // Modified handler to use filterValue when available
+  const handleFilterChange = (fieldName: string, value: string | number, item: any) => {
+    // Use the full district code from filterValue if available, otherwise use the display value
+    const filterValue = item.filterValue || value;
+    onFilterChange(fieldName, filterValue);
   };
 
   return (
@@ -59,7 +71,7 @@ function DistrictsSection({
           fieldName="County" // This needs to map to a key in page.tsx handleFilterChange 
           data={formatDataForDisplay(data.county_name, "County")}
           totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
+          onFilterChange={handleFilterChange}
           localStorageKey="stats-county-chartType"
         />
       )}
@@ -68,7 +80,7 @@ function DistrictsSection({
           fieldName="Congressional District" // Maps to 'congressionalDistricts' in filter context
           data={formatDataForDisplay(data.congressional_district, "Congressional District")}
           totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
+          onFilterChange={handleFilterChange}
           localStorageKey="stats-congressional-district-chartType"
         />
       )}
@@ -77,7 +89,7 @@ function DistrictsSection({
           fieldName="State Senate District" // Maps to 'stateSenateDistricts'
           data={formatDataForDisplay(data.state_senate_district, "State Senate District")}
           totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
+          onFilterChange={handleFilterChange}
           localStorageKey="stats-state-senate-district-chartType"
         />
       )}
@@ -86,7 +98,7 @@ function DistrictsSection({
           fieldName="State House District" // Maps to 'stateHouseDistricts'
           data={formatDataForDisplay(data.state_house_district, "State House District")}
           totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
+          onFilterChange={handleFilterChange}
           localStorageKey="stats-state-house-district-chartType"
         />
       )}

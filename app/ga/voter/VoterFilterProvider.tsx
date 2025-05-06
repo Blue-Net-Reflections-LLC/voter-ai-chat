@@ -31,6 +31,8 @@ export interface FilterState {
   notVotedSinceYear: string;
   redistrictingAffectedTypes: string[];
   statusReason: string[];
+  countyPrecincts: string[];
+  municipalPrecincts: string[];
 }
 */
 
@@ -43,6 +45,8 @@ const initialFilterState: FilterState = {
   status: [],
   party: [],
   historyParty: [],
+  countyPrecincts: [],
+  municipalPrecincts: [],
   age: [],
   gender: [],
   race: [],
@@ -95,6 +99,8 @@ export const FILTER_TO_URL_PARAM_MAP: Record<string, string> = {
   congressionalDistricts: 'congressionalDistricts',
   stateSenateDistricts: 'stateSenateDistricts',
   stateHouseDistricts: 'stateHouseDistricts',
+  countyPrecincts: 'countyPrecinct',
+  municipalPrecincts: 'municipalPrecinct',
   scoreRanges: 'scoreRanges',
   status: 'status',
   party: 'party',

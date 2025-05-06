@@ -9,14 +9,22 @@ import { useTheme } from 'next-themes';
 interface AggregateDataPoint {
     value: string | number; // The specific category value (e.g., 'White', 'Male', 'Active')
     count: number;
+    filterValue?: string | number; // Optional property to store original value for filtering
+    meta?: {
+        facility_name?: string;
+        facility_address?: string;
+        [key: string]: any; // Allow for other metadata properties
+    };
 }
 
 interface AggregateFieldDisplayProps {
     fieldName: string; // e.g., 'Race', 'Gender'
     data: AggregateDataPoint[];
     totalVoters: number; // Total number of voters for percentage calculation
-    onFilterChange: (filterField: string, filterValue: string | number) => void; // Callback to apply filters
+    onFilterChange: (filterField: string, filterValue: string | number, item?: AggregateDataPoint) => void; // Updated to include item
     localStorageKey: string; // Add prop for localStorage key
+    displayExtraInfo?: (item: any) => React.ReactNode; // Optional prop to display extra information
+    variant?: 'default' | 'stacked'; // Add variant prop for different layouts
 }
 
 const COLORS = [
@@ -71,7 +79,9 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
     data,
     totalVoters,
     onFilterChange,
-    localStorageKey
+    localStorageKey,
+    displayExtraInfo,
+    variant = 'default' // Default to the standard layout
 }) => {
     // Initialize state using the helper function - runs once on mount
     const [chartType, setChartType] = useState<'bar' | 'pie'>(() => getInitialChartType(localStorageKey)); 
@@ -97,35 +107,25 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
             count: item.count,
             fill: COLORS[index % COLORS.length],
             percentage: totalVoters > 0 ? ((item.count / totalVoters) * 100).toFixed(2) : '0.00',
+            filterValue: item.filterValue, // Preserve filterValue for interaction handling
+            originalItem: item // Store the original item for reference
         }));
     }, [data, totalVoters]);
 
-    // Apply truncation logic for BOTH Pie and Bar charts
+    // Only show top 20 items without an "Other" category
     const truncatedChartData = useMemo(() => {
         const sortedData = [...chartData].sort((a, b) => b.count - a.count);
-        if (sortedData.length > 20) {
-            const top19 = sortedData.slice(0, 19);
-            const otherCount = sortedData.slice(19).reduce((sum, item) => sum + item.count, 0);
-            const otherPercentage = totalVoters > 0 ? ((otherCount / totalVoters) * 100).toFixed(2) : '0.00';
-             return [
-                ...top19,
-                 // Ensure 'Other' data point has consistent fields (name, count, fill, percentage)
-                { name: 'Other', count: otherCount, fill: '#CCCCCC', percentage: otherPercentage } 
-            ];
-        }
-        return sortedData;
-    }, [chartData, totalVoters]);
+        // Just take the top 20 items without adding an "Other" category
+        return sortedData.slice(0, 20);
+    }, [chartData]);
 
     // Note: pieChartData is now the same as truncatedChartData, could potentially remove pieChartData 
     // but keeping separate for clarity for now.
     const pieChartData = truncatedChartData; 
 
-    const handleInteraction = (value: string | number) => {
-        // Don't filter on the 'Other' category for Pie charts
-        if (chartType === 'pie' && value === 'Other') {
-            return;
-        }
-        onFilterChange(fieldName, value);
+    const handleInteraction = (value: string | number, dataPoint: any) => {
+        // Pass the original item to onFilterChange for access to filterValue
+        onFilterChange(fieldName, value, dataPoint?.originalItem);
     };
 
      const CustomTooltip = ({ active, payload, label }: any) => {
@@ -162,6 +162,132 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
         );
     }
 
+    // If using stacked variant (chart on top, table below)
+    if (variant === 'stacked') {
+        return (
+            <div className="flex flex-col space-y-4">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold">{fieldName} Distribution</h3>
+                    <div className="space-x-2">
+                        <Button
+                            variant={chartType === 'bar' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setChartType('bar')}
+                        >
+                            Bar
+                        </Button>
+                        <Button
+                            variant={chartType === 'pie' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setChartType('pie')}
+                        >
+                            Pie
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-4 items-start">
+                    {/* Chart section first */}
+                    <div className="w-full h-[425px]">
+                        <ResponsiveContainer>
+                            {chartType === 'bar' ? (
+                                <BarChart data={truncatedChartData} margin={{ top: 5, right: 10, left: 5, bottom: 100 }}> 
+                                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? 'hsl(var(--muted))' : '#e0e0e0'} />
+                                    <XAxis 
+                                        dataKey="name" 
+                                        type="category" 
+                                        tick={{ 
+                                            fontSize: 10, 
+                                            fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666',
+                                            width: 300
+                                        }} 
+                                        height={80}
+                                        interval={0}
+                                        angle={-45}
+                                        textAnchor="end"
+                                        tickMargin={5}
+                                    />
+                                    <YAxis 
+                                        type="number" 
+                                        tick={{ fontSize: 10, fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666' }}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}/>
+                                    <Bar dataKey="count" onClick={(data) => handleInteraction(data.name, data)}>
+                                        {truncatedChartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            ) : (
+                                <PieChart margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                                    <Pie
+                                        data={pieChartData}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={true}
+                                        label={renderCustomizedLabel}
+                                        outerRadius="70%"
+                                        innerRadius="0%"
+                                        dataKey="count"
+                                        nameKey="name"
+                                        onClick={(data) => handleInteraction(data.name, data)}
+                                    >
+                                        {pieChartData.map((entry, index) => (
+                                            <Cell 
+                                                key={`cell-${index}`} 
+                                                fill={entry.fill} 
+                                                onClick={() => handleInteraction(entry.name, entry)} 
+                                                style={{ cursor: 'pointer', opacity: 1 }}
+                                            />
+                                        ))}
+                                    </Pie>
+                                </PieChart>
+                            )}
+                        </ResponsiveContainer>
+                    </div>
+
+                    {/* Table below with fixed height and scrolling */}
+                    <div className="w-full overflow-hidden">
+                        <div className="max-h-[425px] overflow-y-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead colSpan={2} className="pl-8">{fieldName}</TableHead>
+                                        <TableHead className="text-right">Count</TableHead>
+                                        <TableHead className="text-right">Percentage</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {chartData.map((item, index) => (
+                                        <TableRow
+                                            key={`${item.name}-${index}`}
+                                            onClick={() => handleInteraction(item.name, item)}
+                                            className={`cursor-pointer hover:bg-muted/50 ${
+                                                !truncatedChartData.some(chartItem => chartItem.name === item.name)
+                                                    ? 'text-muted-foreground text-opacity-80' : ''
+                                            }`}
+                                        >
+                                            <TableCell className="py-1 pl-2 pr-1 w-[24px]">
+                                                <div className="size-3 rounded-sm" style={{ backgroundColor: item.fill }}></div>
+                                            </TableCell>
+                                            <TableCell className="font-medium text-xs py-1 pr-2">
+                                                {item.name}
+                                                {displayExtraInfo && displayExtraInfo(data[index])}
+                                            </TableCell>
+                                            <TableCell className="text-right text-xs py-1">{item.count.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right text-xs py-1">{item.percentage}%</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Default variant (original layout)
     return (
         <div className="flex flex-col space-y-4 p-4 border rounded-md bg-card">
             <div className="flex justify-between items-center">
@@ -199,18 +325,19 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                             {chartData.map((item, index) => (
                                 <TableRow
                                     key={`${item.name}-${index}`}
-                                    onClick={() => handleInteraction(item.name)}
-                                    // Dim row in table if it's part of 'Other' in the chart
-                                    className={`cursor-pointer hover:bg-muted/50 ${ 
-                                        truncatedChartData.length !== chartData.length && 
-                                        !truncatedChartData.slice(0, 19).some(truncatedItem => truncatedItem.name === item.name) 
-                                        ? 'opacity-60' : ''
+                                    onClick={() => handleInteraction(item.name, item)}
+                                    className={`cursor-pointer hover:bg-muted/50 ${
+                                        !truncatedChartData.some(chartItem => chartItem.name === item.name)
+                                            ? 'text-muted-foreground text-opacity-80' : ''
                                     }`}
                                 >
                                     <TableCell className="py-1 pl-2 pr-1 w-[24px]">
                                         <div className="size-3 rounded-sm" style={{ backgroundColor: item.fill }}></div>
                                     </TableCell>
-                                    <TableCell className="font-medium text-xs py-1 pr-2">{item.name}</TableCell>
+                                    <TableCell className="font-medium text-xs py-1 pr-2">
+                                        {item.name}
+                                        {displayExtraInfo && displayExtraInfo(data[index])}
+                                    </TableCell>
                                     <TableCell className="text-right text-xs py-1">{item.count.toLocaleString()}</TableCell>
                                     <TableCell className="text-right text-xs py-1">{item.percentage}%</TableCell>
                                 </TableRow>
@@ -223,22 +350,28 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                     <ResponsiveContainer>
                         {chartType === 'bar' ? (
                             /* Use truncatedChartData for BarChart */
-                            <BarChart data={truncatedChartData} margin={{ top: 5, right: 5, left: 5, bottom: 20 }}> 
+                            <BarChart data={truncatedChartData} margin={{ top: 5, right: 10, left: 5, bottom: 100 }}> 
                                 <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? 'hsl(var(--muted))' : '#e0e0e0'} />
                                 <XAxis 
                                     dataKey="name" 
                                     type="category" 
-                                    tick={{ fontSize: 10, fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666' }} 
+                                    tick={{ 
+                                        fontSize: 10, 
+                                        fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666',
+                                        width: 300
+                                    }}
+                                    height={80} 
                                     interval={0}
                                     angle={-45}
                                     textAnchor="end"
+                                    tickMargin={5}
                                 />
                                 <YAxis 
                                     type="number" 
                                     tick={{ fontSize: 10, fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666' }}
                                 />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}/>
-                                <Bar dataKey="count" onClick={(data) => handleInteraction(data.name)}>
+                                <Bar dataKey="count" onClick={(data) => handleInteraction(data.name, data)}>
                                     {/* Map over truncatedChartData for Cells */}
                                     {truncatedChartData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -258,18 +391,17 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                     innerRadius="0%"
                                     dataKey="count"
                                     nameKey="name"
-                                    onClick={(data) => handleInteraction(data.name)}
+                                    onClick={(data) => handleInteraction(data.name, data)}
                                 >
                                      {/* Map over pieChartData for Cells */}
                                     {pieChartData.map((entry, index) => (
                                         <Cell 
                                             key={`cell-${index}`} 
                                             fill={entry.fill} 
-                                            onClick={() => handleInteraction(entry.name)} 
-                                            // Dim the &apos;Other&apos; slice slightly and prevent interaction
+                                            onClick={() => handleInteraction(entry.name, entry)} 
                                             style={{ 
-                                                cursor: entry.name === 'Other' ? 'default' : 'pointer', 
-                                                opacity: entry.name === 'Other' ? 0.7 : 1, 
+                                                cursor: 'pointer', 
+                                                opacity: 1, 
                                             }}
                                         />
                                     ))}
