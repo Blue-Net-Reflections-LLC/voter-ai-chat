@@ -145,8 +145,43 @@ export function FilterPanel() {
     setMobileFiltersOpen(!mobileFiltersOpen);
   };
 
-  // Determine if any filters are active to show active badge
-  const activeFilterCount = hasActiveFilters() ? Object.values(filters).filter(Boolean).length : 0;
+  // Calculate active filter count more accurately by counting categories rather than values
+  const getActiveFilterCount = () => {
+    if (!hasActiveFilters()) return 0;
+    
+    let count = 0;
+    
+    // Count array filters as 1 if they have any values
+    const arrayFilters = [
+      'county', 'congressionalDistricts', 'stateSenateDistricts', 'stateHouseDistricts',
+      'countyPrecincts', 'municipalPrecincts', 'scoreRanges', 'status', 'party', 'historyParty',
+      'age', 'gender', 'race', 'income', 'education', 'electionType', 'electionYear', 
+      'electionDate', 'ballotStyle', 'eventParty', 'redistrictingAffectedTypes', 'statusReason'
+    ];
+    
+    arrayFilters.forEach(key => {
+      if (Array.isArray(filters[key]) && filters[key].length > 0) {
+        count++;
+      }
+    });
+    
+    // Count string filters
+    if (filters.firstName) count++;
+    if (filters.lastName) count++;
+    if (filters.voterEventMethod) count++;
+    if (filters.notVotedSinceYear) count++;
+    
+    // Count boolean filters
+    if (filters.neverVoted) count++;
+    
+    // Count address filters as 1 if any address filters exist
+    if (residenceAddressFilters.length > 0) count++;
+    
+    return count;
+  };
+
+  // Get the accurate filter count
+  const activeFilterCount = getActiveFilterCount();
 
   return (
     <>
