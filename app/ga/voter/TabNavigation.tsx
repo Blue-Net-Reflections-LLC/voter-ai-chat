@@ -155,7 +155,7 @@ export default function TabNavigation() {
     <nav className="w-full border-b bg-background px-4 pt-2 pb-1 flex items-center justify-between gap-4">
       {!isLandingPage && (
         <div className="flex items-center gap-2 flex-shrink-0 pr-4 border-r">
-          <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">{scoreLabel}</span>
+          <span className="hidden sm:inline text-sm font-semibold text-muted-foreground whitespace-nowrap">{scoreLabel}</span>
           
           <ParticipationScoreWidget 
             score={scoreData?.score}
