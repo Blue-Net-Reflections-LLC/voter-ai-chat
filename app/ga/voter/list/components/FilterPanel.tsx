@@ -172,7 +172,7 @@ export function FilterPanel() {
 
       {/* Desktop Filter Panel */}
       <Card className={cn(
-        "h-[calc(100vh-100px)] overflow-auto pr-2 custom-scrollbar md:sticky md:top-0 hidden md:block"
+        "h-[calc(100vh-92px)] overflow-auto pr-2 custom-scrollbar md:sticky md:top-[92px] z-10 hidden md:block"
       )}>
         {hasActiveFilters() && (
           <div className="px-3 py-2 border-b">
@@ -463,10 +463,10 @@ export function FilterPanel() {
       {mobileFiltersOpen && (
         <div className="md:hidden">
           <div 
-            className="fixed inset-0 bg-black/30 z-10"
+            className="fixed inset-0 bg-black/30 z-20"
             onClick={() => setMobileFiltersOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-20 w-[85%] bg-background overflow-auto h-[100dvh]">
+          <div className="fixed inset-y-0 left-0 z-30 w-[85%] bg-background overflow-auto h-[calc(100vh-92px)] mt-[92px]">
             <div className="flex justify-between items-center px-3 py-3 border-b sticky top-0 bg-background z-10">
               <h2 className="font-semibold">Filters</h2>
               <Button 
