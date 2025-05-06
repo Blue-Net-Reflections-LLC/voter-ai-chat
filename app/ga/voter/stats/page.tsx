@@ -4,6 +4,13 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 import VotingInfoSection from "./VotingInfoSection";
 import DistrictsSection from "./DistrictsSection";
 import DemographicsSection from "./DemographicsSection";
@@ -38,6 +45,17 @@ export default function StatsDashboardPage() {
   // Get initial tab from URL or default to 'voting_info'
   const initialTab = searchParams.get('tab');
   const defaultTab = initialTab && ALL_SECTIONS.includes(initialTab as keyof SummaryData) ? initialTab : 'voting_info';
+
+  // Track the current section for display in dropdown
+  const [currentSection, setCurrentSection] = useState(defaultTab);
+  
+  // Effect to update the current section when URL changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ALL_SECTIONS.includes(tab as keyof SummaryData)) {
+      setCurrentSection(tab);
+    }
+  }, [searchParams]);
 
   const [summaryData, setSummaryData] = useState<SummaryData>({});
   const [loading, setLoading] = useState(true);
@@ -145,6 +163,9 @@ export default function StatsDashboardPage() {
     if (value === 'census') return;
     
     if (value && ALL_SECTIONS.includes(value as keyof SummaryData)) {
+      // Update our dropdown display
+      setCurrentSection(value);
+      
       // Update URL search param without page refresh
       const current = new URLSearchParams(Array.from(searchParams.entries()));
       current.set("tab", value);
@@ -154,47 +175,103 @@ export default function StatsDashboardPage() {
     }
   }, [pathname, router, searchParams]);
 
+  // Helper function to format tab title with special cases for "voting_info" and "voting_history"
+  const formatTabTitle = useCallback((section: string) => {
+    if (section === 'voting_info') return 'Info';
+    if (section === 'voting_history') return 'History';
+    return section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }, []);
+
   return (
     <div className="w-full p-2 md:p-6 xl:p-8">
-      <div className="mb-4 text-right text-sm text-muted-foreground">
-        {!loading && summaryData.voting_info && (
-           <span>Total Matching Voters: <span className="font-semibold text-foreground">{totalVoters.toLocaleString()}</span></span>
-        )}
-         {loading && !summaryData.voting_info && (
-           <span className="animate-pulse">Loading Total...</span>
-        )}
+      <div className="flex justify-between items-center mb-4">
+        {/* Mobile dropdown - now on the left */}
+        <div className="md:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[200px] justify-between">
+                <span className="truncate max-w-[160px]">{formatTabTitle(currentSection)}</span>
+                <ChevronDown className="ml-2 h-4 w-4 flex-shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[200px]">
+              {ALL_SECTIONS.map(section => {
+                if (section === 'census') return null;
+                return (
+                  <DropdownMenuItem 
+                    key={section} 
+                    onClick={() => {
+                      // This directly updates the URL which will trigger the tab change
+                      const current = new URLSearchParams(Array.from(searchParams.entries()));
+                      current.set("tab", section);
+                      const search = current.toString();
+                      const query = search ? `?${search}` : "";
+                      router.replace(`${pathname}${query}`);
+                      
+                      // Also update our display immediately
+                      setCurrentSection(section);
+                    }}
+                  >
+                    <span className="truncate">{formatTabTitle(section)}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        
+        {/* Voter count - now as the second item in the flex row */}
+        <div className="text-sm text-muted-foreground">
+          {!loading && summaryData.voting_info && (
+             <span>Voters <span className="font-semibold text-foreground">{totalVoters.toLocaleString()}</span></span>
+          )}
+           {loading && !summaryData.voting_info && (
+             <span className="animate-pulse">Loading Total...</span>
+          )}
+        </div>
       </div>
 
-      <Tabs defaultValue={defaultTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-6 mb-4">
-          {ALL_SECTIONS.map(section => (
-            <TabsTrigger key={section} value={section} disabled={section === 'census'}>
-              {section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        
-        {ALL_SECTIONS.map(section => (
-            <TabsContent key={`${section}-content`} value={section}>
-                <div className="mt-4">
-                     {section === 'voting_info' && <VotingInfoSection data={summaryData.voting_info} loading={loading && !summaryData.voting_info} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'districts' && <DistrictsSection data={summaryData.districts} loading={loading && !summaryData.districts} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'demographics' && <DemographicsSection data={summaryData.demographics} loading={loading && !summaryData.demographics} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'voting_history' && <VotingHistorySection data={summaryData.voting_history} loading={loading && !summaryData.voting_history} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'census' && <CensusSection data={summaryData.census} loading={loading && !summaryData.census} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'precincts' && (
-                        <PrecinctSectionContent 
-                          data={summaryData.precincts}
-                          loading={loading && !summaryData.precincts}
-                          error={error}
-                          totalVoters={totalVoters}
-                          onFilterChange={handleFilterChange}
-                        />
-                     )}
-                </div>
-            </TabsContent>
-        ))}
-      </Tabs>
+      {/* Desktop tabs with modified styles */}
+      <div className="hidden md:block mb-4">
+        <Tabs defaultValue={defaultTab} onValueChange={handleTabChange}>
+          <TabsList className="grid w-full grid-cols-6">
+            {ALL_SECTIONS.map(section => (
+              <TabsTrigger 
+                key={section} 
+                value={section} 
+                disabled={section === 'census'}
+              >
+                <div className="truncate max-w-full">{formatTabTitle(section)}</div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Content sections */}
+      <div>
+        {ALL_SECTIONS.map(section => {
+          if (section !== currentSection) return null;
+          return (
+            <div key={`${section}-content`} className="mt-4">
+              {section === 'voting_info' && <VotingInfoSection data={summaryData.voting_info} loading={loading && !summaryData.voting_info} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'districts' && <DistrictsSection data={summaryData.districts} loading={loading && !summaryData.districts} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'demographics' && <DemographicsSection data={summaryData.demographics} loading={loading && !summaryData.demographics} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'voting_history' && <VotingHistorySection data={summaryData.voting_history} loading={loading && !summaryData.voting_history} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'census' && <CensusSection data={summaryData.census} loading={loading && !summaryData.census} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'precincts' && (
+                <PrecinctSectionContent 
+                  data={summaryData.precincts}
+                  loading={loading && !summaryData.precincts}
+                  error={error}
+                  totalVoters={totalVoters}
+                  onFilterChange={handleFilterChange}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
