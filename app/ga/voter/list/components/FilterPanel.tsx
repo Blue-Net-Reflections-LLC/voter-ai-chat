@@ -466,6 +466,28 @@ export function FilterPanel() {
                 isLoading={isLoading}
                 compact={true}
               />
+
+              <div>
+                <div className="text-xs font-medium mb-1">Ballot Cast</div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: '', label: 'Any' },
+                    { value: 'absentee', label: 'Absentee' },
+                    { value: 'provisional', label: 'Provisional' },
+                    { value: 'supplemental', label: 'Supplemental' }
+                  ].map(opt => (
+                    <Button
+                      key={opt.value}
+                      variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => updateFilter('voterEventMethod', opt.value)}
+                      className="text-xs py-1 px-2 h-auto"
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
           </CollapsibleSection>
 
@@ -772,6 +794,28 @@ export function FilterPanel() {
                     isLoading={isLoading}
                     compact={true}
                   />
+
+                  <div>
+                    <div className="text-xs font-medium mb-1">Ballot Cast</div>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: '', label: 'Any' },
+                        { value: 'absentee', label: 'Absentee' },
+                        { value: 'provisional', label: 'Provisional' },
+                        { value: 'supplemental', label: 'Supplemental' }
+                      ].map(opt => (
+                        <Button
+                          key={opt.value}
+                          variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => updateFilter('voterEventMethod', opt.value)}
+                          className="text-xs py-1 px-2 h-auto"
+                        >
+                          {opt.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CollapsibleSection>
 
