@@ -130,15 +130,8 @@ const VoterCardGrid = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <div key={i} className="border border-border rounded-md bg-card p-3 animate-pulse">
-            <div className="h-4 bg-muted rounded mb-2 w-2/3"></div>
-            <div className="h-3 bg-muted rounded mb-1 w-full"></div>
-            <div className="h-3 bg-muted rounded mb-1 w-full"></div>
-            <div className="h-3 bg-muted rounded w-1/2 mt-2"></div>
-          </div>
-        ))}
+      <div className="flex items-center justify-center p-12">
+        <LoaderCircle className="h-12 w-12 animate-spin text-primary/70" />
       </div>
     );
   }
@@ -152,7 +145,7 @@ const VoterCardGrid = ({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 p-1">
       {voters.map((voter) => (
         <VoterCard 
           key={voter.id} 

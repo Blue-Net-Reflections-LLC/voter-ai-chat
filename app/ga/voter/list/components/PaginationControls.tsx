@@ -139,13 +139,14 @@ export function PaginationControls({
           onValueChange={handlePageSizeChange}
         >
           <SelectTrigger className="w-[60px] h-6 text-xs">
-            <SelectValue placeholder="25" />
+            <SelectValue placeholder="12" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="10">10</SelectItem>
-            <SelectItem value="25">25</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
+            <SelectItem value="12">12</SelectItem>
+            <SelectItem value="24">24</SelectItem>
+            <SelectItem value="36">36</SelectItem>
+            <SelectItem value="48">48</SelectItem>
+            <SelectItem value="60">60</SelectItem>
           </SelectContent>
         </Select>
         
