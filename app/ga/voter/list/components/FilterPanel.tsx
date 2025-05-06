@@ -362,7 +362,7 @@ export function FilterPanel() {
             />
             <div>
               <div className="text-xs font-medium mb-1">Ballot Cast</div>
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
                 {[
                   { value: '', label: 'Any' },
                   { value: 'absentee', label: 'Absentee' },
@@ -374,6 +374,7 @@ export function FilterPanel() {
                     variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => updateFilter('voterEventMethod', opt.value)}
+                    className="text-xs py-1 px-2 h-auto"
                   >
                     {opt.label}
                   </Button>
