@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, FilterX, LoaderCircle } from "lucide-react";
+import { Download, FilterX, LoaderCircle } from "lucide-react";
 import { Voter, PaginationState } from '../types';
 import VoterTable from './VoterTable';
 import PaginationControls from './PaginationControls';
@@ -116,7 +116,7 @@ export function ResultsPanel({
           <div className="text-sm text-muted-foreground">
             {totalItems > 0 ? (
               <span>
-                Showing {startItem} to {endItem} of {totalItems} voters
+                {startItem.toLocaleString()} to {endItem.toLocaleString()} of {totalItems.toLocaleString()} voters
               </span>
             ) : (
               <span>{isLoading ? 'Loading voters...' : 'No voters found matching your criteria'}</span>
@@ -124,17 +124,6 @@ export function ResultsPanel({
           </div>
           
           <div className="flex items-center gap-4">
-            <Button
-              variant="link"
-              size="sm"
-              className={cn(
-                "text-xs h-6 px-1",
-                isDownloadingCsv && "opacity-75 cursor-not-allowed"
-              )}
-              disabled={isLoading || isDownloadingCsv}
-            >
-              <Printer size={14} className="mr-1"/> Print
-            </Button>
             <Button
               variant="link"
               size="sm"
