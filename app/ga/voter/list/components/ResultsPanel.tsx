@@ -450,7 +450,7 @@ export function ResultsPanel({
                 value={`${sort.field}-${sort.direction}`}
                 onValueChange={handleSortChange}
               >
-                <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectTrigger className="h-8 w-[105px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
