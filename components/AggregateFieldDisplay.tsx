@@ -199,8 +199,7 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                         tick={{ 
                                             fontSize: 10, 
                                             fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666',
-                                            width: 300,
-                                            wordWrap: 'break-word'
+                                            width: 300
                                         }} 
                                         height={80}
                                         interval={0}
@@ -359,8 +358,7 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
                                     tick={{ 
                                         fontSize: 10, 
                                         fill: theme === 'dark' ? 'hsl(var(--muted-foreground))' : '#666',
-                                        width: 300,
-                                        wordWrap: 'break-word'
+                                        width: 300
                                     }}
                                     height={80} 
                                     interval={0}
