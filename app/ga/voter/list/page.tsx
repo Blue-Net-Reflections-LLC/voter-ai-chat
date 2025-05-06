@@ -19,17 +19,19 @@ function VoterListContent() {
   } = useVoterList();
 
   return (
-    <ResultsPanel
-      voters={voters}
-      pagination={pagination}
-      sort={sort}
-      hasActiveFilters={hasActiveFilters}
-      isLoading={isLoading}
-      currentQueryParams={currentQueryParams}
-      onPageChange={updatePage}
-      onPageSizeChange={updatePageSize}
-      onSort={updateSort}
-    />
+    <div className="px-4 py-2 md:pl-0 md:pr-4 md:py-2 w-full">
+      <ResultsPanel
+        voters={voters}
+        pagination={pagination}
+        sort={sort}
+        hasActiveFilters={hasActiveFilters}
+        isLoading={isLoading}
+        currentQueryParams={currentQueryParams}
+        onPageChange={updatePage}
+        onPageSizeChange={updatePageSize}
+        onSort={updateSort}
+      />
+    </div>
   );
 }
 

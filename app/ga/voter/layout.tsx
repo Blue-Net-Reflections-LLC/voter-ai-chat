@@ -57,20 +57,21 @@ export default function VoterLayout({
                 <div className="flex flex-1 w-full min-h-0">
                   {/* Conditionally render sidebar based on allowed paths */}
                   {showFilterPanel && (
-                    <aside 
-                      className="w-1/4 min-w-[300px] border-r bg-background flex-shrink-0 fixed left-0 bottom-0"
-                      style={{ top: FIXED_HEADER_NAV_HEIGHT }}
-                    >
-                      <div className="h-full overflow-y-auto pb-4"> {/* Make inner div scrollable */}
-                        <FilterPanel />
-                      </div>
-                    </aside>
+                    <div className="hidden md:block md:w-[280px] md:min-w-[280px] md:max-w-[320px] md:flex-shrink-0">
+                      <FilterPanel />
+                    </div>
                   )}
-                  {/* Scrollable Main content area - Adjust width/margin based on filter panel visibility */}
+                  {/* Scrollable Main content area - Adjust for responsive layout */}
                   <main 
-                    className={`flex-1 overflow-y-auto ${showFilterPanel ? 'ml-[25%] w-[75%]' : 'w-full'}`}
+                    className="flex-1 overflow-y-auto w-full"
                     style={{ height: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})` }}
                   >
+                    {/* Only show FilterPanel on mobile at the top of the main content */}
+                    {showFilterPanel && (
+                      <div className="md:hidden">
+                        <FilterPanel />
+                      </div>
+                    )}
                     {children}
                   </main>
                 </div>

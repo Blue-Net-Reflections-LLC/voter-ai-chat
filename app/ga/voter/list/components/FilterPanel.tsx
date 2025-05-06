@@ -19,14 +19,49 @@ import {
   ELECTION_DATE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, FilterX } from "lucide-react";
+import { ChevronDown, ChevronUp, FilterX, Menu, X } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 import { SCORE_RANGES } from '@/lib/participation-score/constants';
 import PrecinctFilters from './PrecinctFilters';
 
+// Collapsible Section Component
+const CollapsibleSection = ({ 
+  title, 
+  children,
+  defaultOpen = true,
+  className = ""
+}: { 
+  title: string; 
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      <button 
+        className="flex justify-between items-center w-full py-1 px-1 hover:bg-muted/50 rounded-sm"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </button>
+      <div className={cn(
+        "space-y-3 transition-all duration-200 overflow-hidden",
+        isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+      )}>
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export function FilterPanel() {
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  
   const {
     filters,
     residenceAddressFilters,
@@ -51,6 +86,14 @@ export function FilterPanel() {
     eventParties,
     statusReasons
   } = useLookupData();
+
+  // Helper function to ensure filter values are always string arrays
+  const ensureStringArray = (value: string | boolean | string[] | undefined): string[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return [value];
+    return [];
+  };
 
   // Local state for name inputs (for Apply button)
   const [firstNameInput, setFirstNameInput] = useState(filters.firstName || '');
@@ -97,294 +140,632 @@ export function FilterPanel() {
     }
   };
 
+  // Mobile filters toggle
+  const toggleMobileFilters = () => {
+    setMobileFiltersOpen(!mobileFiltersOpen);
+  };
+
+  // Determine if any filters are active to show active badge
+  const activeFilterCount = hasActiveFilters() ? Object.values(filters).filter(Boolean).length : 0;
+
   return (
-    <Card className="w-full h-full overflow-auto pr-2 custom-scrollbar">
-      {hasActiveFilters() && (
-        <div className="px-3 py-2 border-b">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800 w-full justify-start"
-            onClick={clearAllFilters}
-          >
-            <FilterX size={14} className="mr-1.5" />
-            Clear All Filters
-          </Button>
-        </div>
-      )}
-      <CardContent className="space-y-3 pt-2 px-3">
-        {/* Participation Score Filter */}
-        <div className="space-y-2">
-          <MultiSelect
-            label="Participation Score Range"
-            options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
-            value={filters.scoreRanges}
-            setValue={(value) => updateFilter('scoreRanges', value)}
-            compact={true}
-          />
-        </div>
+    <>
+      {/* Mobile Filter Toggle Button */}
+      <div className="md:hidden w-full bg-background py-2 px-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full flex justify-between items-center"
+          onClick={toggleMobileFilters}
+        >
+          <span className="flex items-center">
+            <Menu size={16} className="mr-2" />
+            Filters
+          </span>
+          {hasActiveFilters() && (
+            <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+              {activeFilterCount}
+            </span>
+          )}
+        </Button>
+      </div>
 
-        {/* Geographic Filters */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold">Geographic Filters</h3>
-
-          {/* County Filter */}
-          <div className="space-y-2">
-            <CountyMultiSelect
-              value={filters.county}
-              setValue={(value) => updateFilter('county', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
+      {/* Desktop Filter Panel */}
+      <Card className={cn(
+        "h-[calc(100vh-100px)] overflow-auto pr-2 custom-scrollbar md:sticky md:top-0 hidden md:block"
+      )}>
+        {hasActiveFilters() && (
+          <div className="px-3 py-2 border-b">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800 w-full justify-start"
+              onClick={clearAllFilters}
+            >
+              <FilterX size={14} className="mr-1.5" />
+              Clear All Filters
+            </Button>
           </div>
-
-          {/* Add Precinct Filters component */}
-          <PrecinctFilters />
-
-          {/* Congressional District Filter */}
-          <div className="space-y-2">
-            <DistrictMultiSelect
-              label="Congressional District"
-              options={congressionalDistricts.length > 0 ? congressionalDistricts : []}
-              value={filters.congressionalDistricts}
-              setValue={(value) => updateFilter('congressionalDistricts', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-
-          {/* State Senate District Filter */}
-          <div className="space-y-2">
-            <DistrictMultiSelect
-              label="State Senate District"
-              options={stateSenateDistricts.length > 0 ? stateSenateDistricts : []}
-              value={filters.stateSenateDistricts}
-              setValue={(value) => updateFilter('stateSenateDistricts', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-
-          {/* State House District Filter */}
-          <div className="space-y-2">
-            <DistrictMultiSelect
-              label="State House District"
-              options={stateHouseDistricts.length > 0 ? stateHouseDistricts : []}
-              value={filters.stateHouseDistricts}
-              setValue={(value) => updateFilter('stateHouseDistricts', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-
-          {/* Residence Address Filter */}
-          <ResidenceAddressFilter
-            addressFilters={residenceAddressFilters}
-            addAddressFilter={addAddressFilter}
-            removeAddressFilter={removeAddressFilter}
-            clearAllAddressFilters={clearAllAddressFilters}
-            updateAddressFilter={(id, field, value) => {
-              updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
-            }}
-          />
-        </div>
-        <Separator />
+        )}
         
-        {/* Voter Info Filters */}
-        <div>
-          <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voter Info</div>
-          <div className="space-y-2">
-            <div>
-              <label className="text-xs font-medium">First Name</label>
-              <Input
-                placeholder="Enter first name..."
-                className="h-8 text-xs"
-                value={firstNameInput}
-                onChange={(e)=>setFirstNameInput(e.target.value)}
-                onBlur={() => updateFilter('firstName', firstNameInput.trim())}
+        <CardContent className="space-y-4 pt-2 px-3">
+          {/* Participation Score Filter */}
+          <CollapsibleSection title="Participation Score" defaultOpen={true}>
+            <MultiSelect
+              label="Participation Score Range"
+              options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
+              value={ensureStringArray(filters.scoreRanges)}
+              setValue={(value) => updateFilter('scoreRanges', value)}
+              compact={true}
+            />
+          </CollapsibleSection>
+
+          {/* Geographic Filters */}
+          <CollapsibleSection title="Geographic Filters" defaultOpen={true}>
+            {/* County Filter */}
+            <div className="space-y-2">
+              <CountyMultiSelect
+                value={ensureStringArray(filters.county)}
+                setValue={(value) => updateFilter('county', value)}
+                isLoading={isLoading}
+                compact={true}
               />
             </div>
-            <div>
-              <label className="text-xs font-medium">Last Name</label>
-              <Input
-                placeholder="Enter last name..."
-                className="h-8 text-xs"
-                value={lastNameInput}
-                onChange={(e)=>setLastNameInput(e.target.value)}
-                onBlur={() => updateFilter('lastName', lastNameInput.trim())}
+
+            {/* Add Precinct Filters component */}
+            <PrecinctFilters />
+
+            {/* Congressional District Filter */}
+            <div className="space-y-2">
+              <DistrictMultiSelect
+                label="Congressional District"
+                options={congressionalDistricts.length > 0 ? congressionalDistricts : []}
+                value={ensureStringArray(filters.congressionalDistricts)}
+                setValue={(value) => updateFilter('congressionalDistricts', value)}
+                isLoading={isLoading}
+                compact={true}
               />
-              {/* Apply button visible on mobile or always */}
-              <Button
-                size="sm"
-                className="mt-2"
-                onClick={() => {
-                  updateFilter('firstName', firstNameInput.trim());
-                  updateFilter('lastName', lastNameInput.trim());
-                }}
-              >
-                Apply Name Filter
-              </Button>
             </div>
-            <MultiSelect
-              label="Status"
-              options={statuses.length > 0 ? statuses : []}
-              value={filters.status}
-              setValue={(value) => updateFilter('status', value)}
-              isLoading={isLoading}
-              compact={true}
+
+            {/* State Senate District Filter */}
+            <div className="space-y-2">
+              <DistrictMultiSelect
+                label="State Senate District"
+                options={stateSenateDistricts.length > 0 ? stateSenateDistricts : []}
+                value={ensureStringArray(filters.stateSenateDistricts)}
+                setValue={(value) => updateFilter('stateSenateDistricts', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+            </div>
+
+            {/* State House District Filter */}
+            <div className="space-y-2">
+              <DistrictMultiSelect
+                label="State House District"
+                options={stateHouseDistricts.length > 0 ? stateHouseDistricts : []}
+                value={ensureStringArray(filters.stateHouseDistricts)}
+                setValue={(value) => updateFilter('stateHouseDistricts', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+            </div>
+
+            {/* Residence Address Filter */}
+            <ResidenceAddressFilter
+              addressFilters={residenceAddressFilters}
+              addAddressFilter={addAddressFilter}
+              removeAddressFilter={removeAddressFilter}
+              clearAllAddressFilters={clearAllAddressFilters}
+              updateAddressFilter={(id, field, value) => {
+                updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
+              }}
             />
-            <MultiSelect
-              label="Registered Voter Party"
-              options={parties.length > 0 ? parties : []}
-              value={filters.party}
-              setValue={(value) => updateFilter('party', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-            <MultiSelect
-              label="Age Range"
-              options={AGE_RANGE_OPTIONS}
-              value={filters.age}
-              setValue={(value) => updateFilter('age', value)}
-              compact={true}
-            />
-            <MultiSelect
-              label="Gender"
-              options={genders.length > 0 ? genders : []}
-              value={filters.gender}
-              setValue={(value) => updateFilter('gender', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-            <MultiSelect
-              label="Race"
-              options={races.length > 0 ? races : []}
-              value={filters.race}
-              setValue={(value) => updateFilter('race', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-        </div>
-        <Separator />
-        
-        {/* Voting Behavior Filters */}
-        <div>
-          <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voting Behavior</div>
-          <div className="space-y-2">
-            <div className="flex flex-col space-y-1">
-              <div className="flex items-center justify-between">
-                <label htmlFor="never-voted" className="text-xs font-medium">Registered But Never Voted</label>
-                <input
-                  id="never-voted"
-                  type="checkbox"
-                  className="form-checkbox h-3 w-3"
-                  checked={neverVoted}
-                  onChange={() => {
-                    setNeverVoted(!neverVoted);
-                    updateFilter('neverVoted', !neverVoted);
+          </CollapsibleSection>
+          
+          <Separator />
+          
+          {/* Voter Info Filters */}
+          <CollapsibleSection title="Voter Info" defaultOpen={true}>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium">First Name</label>
+                <Input
+                  placeholder="Enter first name..."
+                  className="h-8 text-xs"
+                  value={firstNameInput}
+                  onChange={(e)=>setFirstNameInput(e.target.value)}
+                  onBlur={() => updateFilter('firstName', firstNameInput.trim())}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">Last Name</label>
+                <Input
+                  placeholder="Enter last name..."
+                  className="h-8 text-xs"
+                  value={lastNameInput}
+                  onChange={(e)=>setLastNameInput(e.target.value)}
+                  onBlur={() => updateFilter('lastName', lastNameInput.trim())}
+                />
+                {/* Apply button visible on mobile or always */}
+                <Button
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    updateFilter('firstName', firstNameInput.trim());
+                    updateFilter('lastName', lastNameInput.trim());
+                  }}
+                >
+                  Apply Name Filter
+                </Button>
+              </div>
+              <MultiSelect
+                label="Status"
+                options={statuses.length > 0 ? statuses : []}
+                value={ensureStringArray(filters.status)}
+                setValue={(value) => updateFilter('status', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+              <MultiSelect
+                label="Registered Voter Party"
+                options={parties.length > 0 ? parties : []}
+                value={ensureStringArray(filters.party)}
+                setValue={(value) => updateFilter('party', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+              <MultiSelect
+                label="Age Range"
+                options={AGE_RANGE_OPTIONS}
+                value={ensureStringArray(filters.age)}
+                setValue={(value) => updateFilter('age', value)}
+                compact={true}
+              />
+            </div>
+          </CollapsibleSection>
+
+          <Separator />
+
+          {/* Demographic Filters */}
+          <CollapsibleSection title="Demographics" defaultOpen={false}>
+            <div className="space-y-3">
+              <MultiSelect
+                label="Gender"
+                options={genders.length > 0 ? genders : []}
+                value={ensureStringArray(filters.gender)}
+                setValue={(value) => updateFilter('gender', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+
+              <MultiSelect
+                label="Race"
+                options={races.length > 0 ? races : []}
+                value={ensureStringArray(filters.race)}
+                setValue={(value) => updateFilter('race', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+
+              <MultiSelect
+                label="Income Level"
+                options={INCOME_LEVEL_OPTIONS}
+                value={ensureStringArray(filters.incomeLevel)}
+                setValue={(value) => updateFilter('incomeLevel', value)}
+                compact={true}
+              />
+
+              <MultiSelect
+                label="Education Level"
+                options={EDUCATION_LEVEL_OPTIONS}
+                value={ensureStringArray(filters.educationLevel)}
+                setValue={(value) => updateFilter('educationLevel', value)}
+                compact={true}
+              />
+            </div>
+          </CollapsibleSection>
+
+          <Separator />
+
+          {/* Voting History Filters */}
+          <CollapsibleSection title="Voting History" defaultOpen={false}>
+            <div className="space-y-3">
+              <MultiSelect
+                label="Has Voted In"
+                options={ELECTION_TYPE_OPTIONS}
+                value={ensureStringArray(filters.votedIn)}
+                setValue={(value) => updateFilter('votedIn', value)}
+                compact={true}
+              />
+
+              <MultiSelect
+                label="Has Voted In Year"
+                options={ELECTION_YEAR_OPTIONS}
+                value={ensureStringArray(filters.votedInYear)}
+                setValue={(value) => updateFilter('votedInYear', value)}
+                compact={true}
+              />
+
+              <MultiSelect
+                label="Has Voted On Date"
+                options={ELECTION_DATE_OPTIONS}
+                value={ensureStringArray(filters.votedOnDate)}
+                setValue={(value) => updateFilter('votedOnDate', value)}
+                compact={true}
+              />
+
+              <div>
+                <label className="text-xs font-medium">Has Not Voted Since Year</label>
+                <Input
+                  placeholder="Enter year (e.g. 2020)..."
+                  className="h-8 text-xs"
+                  value={notVotedYearInput}
+                  onChange={(e) => setNotVotedYearInput(e.target.value)}
+                  onBlur={() => {
+                    const year = notVotedYearInput.trim();
+                    if (year && !isNaN(Number(year))) {
+                      updateFilter('notVotedSinceYear', year);
+                    } else {
+                      setNotVotedYearInput(filters.notVotedSinceYear || '');
+                    }
                   }}
                 />
               </div>
-              <span className="text-[10px] text-muted-foreground italic">Note: this filter is resource‑intensive and may take several seconds to load.</span>
-            </div>
-            <div>
-              <label className="text-xs font-medium">Has Not Voted Since Year</label>
-              <Input
-                placeholder="e.g. 2020"
-                type="number"
-                min="1900"
-                max="2100"
-                value={notVotedYearInput}
-                onChange={(e) => setNotVotedYearInput(e.target.value)}
-                onBlur={() => updateFilter('notVotedSinceYear', notVotedYearInput.trim())}
-                className="h-8 text-xs"
+
+              <MultiSelect
+                label="Ballot Style"
+                options={ballotStyles.length > 0 ? ballotStyles : []}
+                value={ensureStringArray(filters.ballotStyle)}
+                setValue={(value) => updateFilter('ballotStyle', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+
+              <MultiSelect
+                label="Event Party"
+                options={eventParties.length > 0 ? eventParties : []}
+                value={ensureStringArray(filters.eventParty)}
+                setValue={(value) => updateFilter('eventParty', value)}
+                isLoading={isLoading}
+                compact={true}
               />
             </div>
-            <MultiSelect
-              label="Inactive Reasons"
-              options={statusReasons}
-              value={filters.statusReason}
-              setValue={(value) => updateFilter('statusReason', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-            <MultiSelect
-              label="Redistricting Affected"
-              options={REDISTRICTING_TYPE_OPTIONS}
-              value={filters.redistrictingAffectedTypes}
-              setValue={(value) => updateFilter('redistrictingAffectedTypes', value)}
-              compact={true}
-            />
-          </div>
-        </div>
-        <Separator />
-        
-        {/* Voter Events Filters */}
-        <div>
-          <div className="font-semibold text-xs text-muted-foreground mb-2 uppercase">Voter Events</div>
-          <div className="space-y-2">
-            <MultiSelect
-              label="Voted by Election Type"
-              options={ELECTION_TYPE_OPTIONS}
-              value={filters.electionType}
-              setValue={(value) => updateFilter('electionType', value)}
-              compact={true}
-            />
-            <MultiSelect
-              label="Election Year"
-              options={ELECTION_YEAR_OPTIONS}
-              value={filters.electionYear}
-              setValue={(value) => updateFilter('electionYear', value)}
-              compact={true}
-            />
-            <DistrictMultiSelect
-              label="Election Date"
-              options={ELECTION_DATE_OPTIONS}
-              value={filters.electionDate}
-              setValue={(value) => updateFilter('electionDate', value)}
-              compact={true}
-              formatLabel={formatDateLabel}
-            />
-            <MultiSelect
-              label="Ballot Style"
-              options={ballotStyles}
-              value={filters.ballotStyle}
-              setValue={(value) => updateFilter('ballotStyle', value)}
-              compact={true}
-            />
-            <MultiSelect
-              label="Event Party"
-              options={eventParties}
-              value={filters.eventParty}
-              setValue={(value) => updateFilter('eventParty', value)}
-              compact={true}
-            />
-            <div>
-              <div className="text-xs font-medium mb-1">Ballot Cast</div>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: '', label: 'Any' },
-                  { value: 'absentee', label: 'Absentee' },
-                  { value: 'provisional', label: 'Provisional' },
-                  { value: 'supplemental', label: 'Supplemental' }
-                ].map(opt => (
-                  <Button
-                    key={opt.value}
-                    variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => updateFilter('voterEventMethod', opt.value)}
-                    className="text-xs py-1 px-2 h-auto"
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
+          </CollapsibleSection>
+
+          <Separator />
+
+          {/* Advanced Filters */}
+          <CollapsibleSection title="Advanced" defaultOpen={false}>
+            <div className="space-y-3">
+              <MultiSelect
+                label="Status Reason"
+                options={statusReasons.length > 0 ? statusReasons : []}
+                value={ensureStringArray(filters.statusReason)}
+                setValue={(value) => updateFilter('statusReason', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+              
+              <MultiSelect
+                label="Redistricting Type"
+                options={REDISTRICTING_TYPE_OPTIONS}
+                value={ensureStringArray(filters.redistrictingType)}
+                setValue={(value) => updateFilter('redistrictingType', value)}
+                compact={true}
+              />
             </div>
+          </CollapsibleSection>
+        </CardContent>
+      </Card>
+
+      {/* Mobile Filters Panel (overlay) */}
+      {mobileFiltersOpen && (
+        <div className="md:hidden">
+          <div 
+            className="fixed inset-0 bg-black/30 z-10"
+            onClick={() => setMobileFiltersOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 z-20 w-[85%] bg-background overflow-auto h-[100dvh]">
+            <div className="flex justify-between items-center px-3 py-3 border-b sticky top-0 bg-background z-10">
+              <h2 className="font-semibold">Filters</h2>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={() => setMobileFiltersOpen(false)}
+              >
+                <X size={18} />
+              </Button>
+            </div>
+            
+            {hasActiveFilters() && (
+              <div className="px-3 py-2 border-b">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800 w-full justify-start"
+                  onClick={clearAllFilters}
+                >
+                  <FilterX size={14} className="mr-1.5" />
+                  Clear All Filters
+                </Button>
+              </div>
+            )}
+            
+            <CardContent className="space-y-4 pt-2 px-3">
+              {/* Participation Score Filter */}
+              <CollapsibleSection title="Participation Score" defaultOpen={true}>
+                <MultiSelect
+                  label="Participation Score Range"
+                  options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
+                  value={ensureStringArray(filters.scoreRanges)}
+                  setValue={(value) => updateFilter('scoreRanges', value)}
+                  compact={true}
+                />
+              </CollapsibleSection>
+
+              {/* Geographic Filters */}
+              <CollapsibleSection title="Geographic Filters" defaultOpen={true}>
+                {/* County Filter */}
+                <div className="space-y-2">
+                  <CountyMultiSelect
+                    value={ensureStringArray(filters.county)}
+                    setValue={(value) => updateFilter('county', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                </div>
+
+                {/* Add Precinct Filters component */}
+                <PrecinctFilters />
+
+                {/* Congressional District Filter */}
+                <div className="space-y-2">
+                  <DistrictMultiSelect
+                    label="Congressional District"
+                    options={congressionalDistricts.length > 0 ? congressionalDistricts : []}
+                    value={ensureStringArray(filters.congressionalDistricts)}
+                    setValue={(value) => updateFilter('congressionalDistricts', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                </div>
+
+                {/* State Senate District Filter */}
+                <div className="space-y-2">
+                  <DistrictMultiSelect
+                    label="State Senate District"
+                    options={stateSenateDistricts.length > 0 ? stateSenateDistricts : []}
+                    value={ensureStringArray(filters.stateSenateDistricts)}
+                    setValue={(value) => updateFilter('stateSenateDistricts', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                </div>
+
+                {/* State House District Filter */}
+                <div className="space-y-2">
+                  <DistrictMultiSelect
+                    label="State House District"
+                    options={stateHouseDistricts.length > 0 ? stateHouseDistricts : []}
+                    value={ensureStringArray(filters.stateHouseDistricts)}
+                    setValue={(value) => updateFilter('stateHouseDistricts', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                </div>
+
+                {/* Residence Address Filter */}
+                <ResidenceAddressFilter
+                  addressFilters={residenceAddressFilters}
+                  addAddressFilter={addAddressFilter}
+                  removeAddressFilter={removeAddressFilter}
+                  clearAllAddressFilters={clearAllAddressFilters}
+                  updateAddressFilter={(id, field, value) => {
+                    updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
+                  }}
+                />
+              </CollapsibleSection>
+              
+              <Separator />
+              
+              {/* Voter Info Filters */}
+              <CollapsibleSection title="Voter Info" defaultOpen={true}>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium">First Name</label>
+                    <Input
+                      placeholder="Enter first name..."
+                      className="h-8 text-xs"
+                      value={firstNameInput}
+                      onChange={(e)=>setFirstNameInput(e.target.value)}
+                      onBlur={() => updateFilter('firstName', firstNameInput.trim())}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">Last Name</label>
+                    <Input
+                      placeholder="Enter last name..."
+                      className="h-8 text-xs"
+                      value={lastNameInput}
+                      onChange={(e)=>setLastNameInput(e.target.value)}
+                      onBlur={() => updateFilter('lastName', lastNameInput.trim())}
+                    />
+                    {/* Apply button visible on mobile or always */}
+                    <Button
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        updateFilter('firstName', firstNameInput.trim());
+                        updateFilter('lastName', lastNameInput.trim());
+                      }}
+                    >
+                      Apply Name Filter
+                    </Button>
+                  </div>
+                  <MultiSelect
+                    label="Status"
+                    options={statuses.length > 0 ? statuses : []}
+                    value={ensureStringArray(filters.status)}
+                    setValue={(value) => updateFilter('status', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                  <MultiSelect
+                    label="Registered Voter Party"
+                    options={parties.length > 0 ? parties : []}
+                    value={ensureStringArray(filters.party)}
+                    setValue={(value) => updateFilter('party', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                  <MultiSelect
+                    label="Age Range"
+                    options={AGE_RANGE_OPTIONS}
+                    value={ensureStringArray(filters.age)}
+                    setValue={(value) => updateFilter('age', value)}
+                    compact={true}
+                  />
+                </div>
+              </CollapsibleSection>
+
+              <Separator />
+
+              {/* Demographic Filters */}
+              <CollapsibleSection title="Demographics" defaultOpen={false}>
+                <div className="space-y-3">
+                  <MultiSelect
+                    label="Gender"
+                    options={genders.length > 0 ? genders : []}
+                    value={ensureStringArray(filters.gender)}
+                    setValue={(value) => updateFilter('gender', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+
+                  <MultiSelect
+                    label="Race"
+                    options={races.length > 0 ? races : []}
+                    value={ensureStringArray(filters.race)}
+                    setValue={(value) => updateFilter('race', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+
+                  <MultiSelect
+                    label="Income Level"
+                    options={INCOME_LEVEL_OPTIONS}
+                    value={ensureStringArray(filters.incomeLevel)}
+                    setValue={(value) => updateFilter('incomeLevel', value)}
+                    compact={true}
+                  />
+
+                  <MultiSelect
+                    label="Education Level"
+                    options={EDUCATION_LEVEL_OPTIONS}
+                    value={ensureStringArray(filters.educationLevel)}
+                    setValue={(value) => updateFilter('educationLevel', value)}
+                    compact={true}
+                  />
+                </div>
+              </CollapsibleSection>
+
+              <Separator />
+
+              {/* Voting History Filters */}
+              <CollapsibleSection title="Voting History" defaultOpen={false}>
+                <div className="space-y-3">
+                  <MultiSelect
+                    label="Has Voted In"
+                    options={ELECTION_TYPE_OPTIONS}
+                    value={ensureStringArray(filters.votedIn)}
+                    setValue={(value) => updateFilter('votedIn', value)}
+                    compact={true}
+                  />
+
+                  <MultiSelect
+                    label="Has Voted In Year"
+                    options={ELECTION_YEAR_OPTIONS}
+                    value={ensureStringArray(filters.votedInYear)}
+                    setValue={(value) => updateFilter('votedInYear', value)}
+                    compact={true}
+                  />
+
+                  <MultiSelect
+                    label="Has Voted On Date"
+                    options={ELECTION_DATE_OPTIONS}
+                    value={ensureStringArray(filters.votedOnDate)}
+                    setValue={(value) => updateFilter('votedOnDate', value)}
+                    compact={true}
+                  />
+
+                  <div>
+                    <label className="text-xs font-medium">Has Not Voted Since Year</label>
+                    <Input
+                      placeholder="Enter year (e.g. 2020)..."
+                      className="h-8 text-xs"
+                      value={notVotedYearInput}
+                      onChange={(e) => setNotVotedYearInput(e.target.value)}
+                      onBlur={() => {
+                        const year = notVotedYearInput.trim();
+                        if (year && !isNaN(Number(year))) {
+                          updateFilter('notVotedSinceYear', year);
+                        } else {
+                          setNotVotedYearInput(filters.notVotedSinceYear || '');
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <MultiSelect
+                    label="Ballot Style"
+                    options={ballotStyles.length > 0 ? ballotStyles : []}
+                    value={ensureStringArray(filters.ballotStyle)}
+                    setValue={(value) => updateFilter('ballotStyle', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+
+                  <MultiSelect
+                    label="Event Party"
+                    options={eventParties.length > 0 ? eventParties : []}
+                    value={ensureStringArray(filters.eventParty)}
+                    setValue={(value) => updateFilter('eventParty', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                </div>
+              </CollapsibleSection>
+
+              <Separator />
+
+              {/* Advanced Filters */}
+              <CollapsibleSection title="Advanced" defaultOpen={false}>
+                <div className="space-y-3">
+                  <MultiSelect
+                    label="Status Reason"
+                    options={statusReasons.length > 0 ? statusReasons : []}
+                    value={ensureStringArray(filters.statusReason)}
+                    setValue={(value) => updateFilter('statusReason', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                  
+                  <MultiSelect
+                    label="Redistricting Type"
+                    options={REDISTRICTING_TYPE_OPTIONS}
+                    value={ensureStringArray(filters.redistrictingType)}
+                    setValue={(value) => updateFilter('redistrictingType', value)}
+                    compact={true}
+                  />
+                </div>
+              </CollapsibleSection>
+            </CardContent>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </>
   );
 }
 
