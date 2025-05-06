@@ -186,7 +186,7 @@ export function FilterPanel() {
   return (
     <>
       {/* Mobile Filter Toggle Button */}
-      <div className="md:hidden w-full bg-background py-2 px-4">
+      <div className="md:hidden w-full bg-background p-4">
         <Button 
           variant="outline" 
           size="sm" 

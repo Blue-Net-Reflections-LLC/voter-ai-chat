@@ -53,7 +53,7 @@ export const ParticipationScoreWidget: React.FC<ParticipationScoreWidgetProps> =
   if (isLoading) {
     const loaderIconSize = size === 'small' ? 'h-4 w-4' : size === 'medium' ? 'h-5 w-5' : 'h-6 w-6';
     return (
-      <div className={cn('inline-flex items-center justify-center h-8', className)} style={{ minWidth: '5rem' /* Adjust width as needed */ }}>
+      <div className={cn('inline-flex items-center justify-center', className)} style={{ minWidth: '5rem' /* Adjust width as needed */ }}>
         <Loader2 className={cn('animate-spin text-gray-500', loaderIconSize)} />
       </div>
     );
@@ -98,18 +98,20 @@ export const ParticipationScoreWidget: React.FC<ParticipationScoreWidgetProps> =
             )}
 
             {/* Info Tooltip Trigger */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button aria-label="Score information">
-                   <Info className={cn('text-muted-foreground hover:text-foreground', iconSizeClass)} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p className="text-xs max-w-xs">
-                  Participation Score (1.0-10.0) based on voting status, recency, frequency, and diversity over the last 8 years.
-                </p>
-              </TooltipContent>
-            </Tooltip>
+            <div className="hidden sm:block">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button aria-label="Score information">
+                     <Info className={cn('text-muted-foreground hover:text-foreground', iconSizeClass)} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs max-w-xs">
+                    Participation Score (1.0-10.0) based on voting status, recency, frequency, and diversity over the last 8 years.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         )}
       </div>

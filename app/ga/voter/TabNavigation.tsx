@@ -152,7 +152,7 @@ export default function TabNavigation() {
   const scoreLabel = isProfilePage ? "Participation Score" : "Avg. Participation Score";
 
   return (
-    <nav className="w-full border-b bg-background px-4 pt-2 pb-1 flex items-center justify-between gap-4">
+    <nav className="w-full border-b bg-background px-4 py-1.5 flex items-center justify-between gap-4">
       {!isLandingPage && (
         <div className="flex items-center gap-2 flex-shrink-0 pr-4 border-r">
           <span className="hidden sm:inline text-sm font-semibold text-muted-foreground whitespace-nowrap">{scoreLabel}</span>
@@ -188,7 +188,7 @@ export default function TabNavigation() {
               className={`flex items-center gap-1 px-2 py-1 rounded text-xs md:text-sm font-medium transition-colors whitespace-nowrap
                 ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
             >
-              <Icon className="w-3 h-3 md:w-4 md:h-4 mr-1 flex-shrink-0" />
+              <Icon className="w-5 h-4 md:w-4 md:h-4 flex-shrink-0" />
               <span className="hidden md:inline">{tab.label}</span>
             </Link>
           ) : (
@@ -196,8 +196,8 @@ export default function TabNavigation() {
               key={tab.label}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs md:text-sm font-medium text-muted-foreground opacity-50 cursor-not-allowed whitespace-nowrap"
             >
-              <Icon className="w-3 h-3 md:w-4 md:h-4 mr-1 flex-shrink-0" />
-               <span className="hidden md:inline">{tab.label}</span>
+              <Icon className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" />
+              <span className="hidden md:inline">{tab.label}</span>
             </span>
           );
         })}
