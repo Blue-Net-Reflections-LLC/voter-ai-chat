@@ -195,7 +195,7 @@ export function FilterPanel() {
         "h-[calc(100vh-92px)] overflow-auto pr-2 custom-scrollbar md:sticky md:top-[92px] z-10 hidden md:block"
       )}>
         {hasActiveFilters() && (
-          <div className="px-3 py-2 border-b">
+          <div className="px-3 py-2 pt-4 border-b">
             <Button 
               variant="ghost" 
               size="sm" 

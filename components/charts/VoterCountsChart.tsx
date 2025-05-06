@@ -66,6 +66,10 @@ export function VoterCountsChart() {
 
     const controller = new AbortController();
     const signal = controller.signal;
+    
+    // Track this specific request
+    const requestId = Date.now().toString();
+    const requestRef = { current: requestId };
 
     async function fetchChartData() {
       setIsLoading(true);
@@ -76,10 +80,15 @@ export function VoterCountsChart() {
           chartType: 'voterCountsOverTime' // Fetch counts data
         });
 
+        console.log(`[Chart Fetch] Starting request ${requestId} with params: ${params.toString()}`);
         const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`, { signal });
         const data = await response.json();
 
-        if (signal.aborted) return;
+        // Check if request was aborted or is stale
+        if (signal.aborted || requestRef.current !== requestId) {
+          console.log(`[Chart Fetch] Request ${requestId} was aborted or superseded`);
+          return;
+        }
 
         if (!response.ok) {
           const errorMessage = data.message || 'Failed to fetch chart data';
@@ -95,6 +104,7 @@ export function VoterCountsChart() {
           return;
         }
 
+        console.log(`[Chart Fetch] Request ${requestId} completed successfully`);
         setChartData(data);
         
         if (data.series) {
@@ -106,16 +116,20 @@ export function VoterCountsChart() {
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
-          console.log('Chart data fetch aborted');
+          console.log(`[Chart Fetch] Request ${requestId} aborted`);
           return;
         }
-        const errorMessage = 'An error occurred while fetching the chart data.';
-        console.error('Error fetching chart data:', err);
-        setError(errorMessage);
-        setChartData(null);
-        toast({ variant: "destructive", title: "Error loading chart data", description: errorMessage });
+        
+        // Only update error state if this is still the current request
+        if (requestRef.current === requestId) {
+          const errorMessage = 'An error occurred while fetching the chart data.';
+          console.error(`[Chart Fetch] Error in request ${requestId}:`, err);
+          setError(errorMessage);
+          setChartData(null);
+          toast({ variant: "destructive", title: "Error loading chart data", description: errorMessage });
+        }
       } finally {
-        if (!signal.aborted) {
+        if (!signal.aborted && requestRef.current === requestId) {
           setIsLoading(false);
         }
       }
@@ -124,7 +138,10 @@ export function VoterCountsChart() {
     fetchChartData();
 
     return () => {
+      // Mark this request as cancelled before aborting
+      requestRef.current = '';
       controller.abort();
+      console.log(`[Chart Fetch] Cancelling request ${requestId}`);
     };
   }, [filters, residenceAddressFilters, filtersHydrated, toast]);
 

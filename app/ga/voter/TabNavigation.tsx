@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { List, BarChart2, Map, PieChart, Landmark, Info } from "lucide-react";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useVoterFilterContext, buildQueryParams } from './VoterFilterProvider';
 import { FilterState } from './list/types';
 import { ParticipationScoreWidget } from '@/components/voter/ParticipationScoreWidget';
@@ -56,8 +56,19 @@ function useParticipationScore(
   const [scoreData, setScoreData] = useState<{ score: number | null, voterCount?: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Reference to track the latest request
+  const latestRequestRef = useRef<string>('');
 
   const { residenceAddressFilters } = useVoterFilterContext() || { residenceAddressFilters: [] };
+
+  // Create stable filter references for the effect dependency
+  const filterString = useMemo(() => {
+    return JSON.stringify(filters);
+  }, [filters]);
+  
+  const residenceFilterString = useMemo(() => {
+    return JSON.stringify(residenceAddressFilters);
+  }, [residenceAddressFilters]);
 
   useEffect(() => {
     if (pathname === '/ga/voter') {
@@ -99,7 +110,11 @@ function useParticipationScore(
       queryString = params.toString();
       console.log(`[Score Fetch] Fetching aggregate score with query: ${queryString || '(no filters - overall avg)'}`);
     }
-
+    
+    // Generate a unique request ID and store it as the latest
+    const requestId = Date.now().toString();
+    latestRequestRef.current = requestId;
+    
     fetch(`/api/ga/voter/participation-score?${queryString}`, { signal })
       .then(async (res) => {
         if (!res.ok) {
@@ -109,25 +124,34 @@ function useParticipationScore(
         return res.json();
       })
       .then(data => {
-        console.log(`[Score Fetch] Received ${isIndividualFetch ? 'individual' : 'aggregate'} score data:`, data);
-        setScoreData(data);
-        setLoading(false);
+        // Only update state if this is still the latest request
+        if (requestId === latestRequestRef.current) {
+          console.log(`[Score Fetch] Received ${isIndividualFetch ? 'individual' : 'aggregate'} score data:`, data);
+          setScoreData(data);
+          setLoading(false);
+        } else {
+          console.log(`[Score Fetch] Ignoring stale response for request ${requestId}`);
+        }
       })
       .catch(e => {
         if (e.name === 'AbortError') {
           console.log('Fetch aborted for participation score');
           return;
         }
-        console.error(`Error fetching ${isIndividualFetch ? 'individual' : 'aggregate'} participation score:`, e);
-        setError(e.message || 'An error occurred');
-        setScoreData(null);
-        setLoading(false);
+        
+        // Only update state if this is still the latest request
+        if (requestId === latestRequestRef.current) {
+          console.error(`Error fetching ${isIndividualFetch ? 'individual' : 'aggregate'} participation score:`, e);
+          setError(e.message || 'An error occurred');
+          setScoreData(null);
+          setLoading(false);
+        }
       });
 
     return () => {
       controller.abort();
     };
-  }, [filtersHydrated, JSON.stringify(filters), JSON.stringify(residenceAddressFilters), registrationNumber, pathname]);
+  }, [filtersHydrated, filterString, residenceFilterString, registrationNumber, pathname]);
 
   return { scoreData, loading, error };
 }
