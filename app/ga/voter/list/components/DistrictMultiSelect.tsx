@@ -93,7 +93,7 @@ export function DistrictMultiSelect({
           onChange={e => setSearch(e.target.value)}
           className={`mb-2 ${compact ? 'h-8 text-xs' : ''}`}
         />
-        <div className="max-h-48 overflow-y-auto border rounded bg-background shadow p-2">
+        <div className="max-h-48 overflow-y-auto border rounded bg-background shadow p-2 custom-scrollbar">
           {isLoading ? (
             <div className="flex items-center justify-center p-4">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />

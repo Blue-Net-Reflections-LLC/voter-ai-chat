@@ -98,7 +98,7 @@ export function FilterPanel() {
   };
 
   return (
-    <Card className="w-full h-full overflow-auto pr-2">
+    <Card className="w-full h-full overflow-auto pr-2 custom-scrollbar">
       {hasActiveFilters() && (
         <div className="px-3 py-2 border-b">
           <Button 
