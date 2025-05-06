@@ -127,12 +127,7 @@ export function PaginationControls({
   };
 
   return (
-    <div className="flex items-center justify-between w-full h-full">
-      <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {totalItems > 0 
-          ? `${startItem}-${endItem} of ${totalItems}` 
-          : "No results"}
-      </span>
+    <div className="flex items-center justify-end w-full h-full">
       <div className="flex items-center gap-1">
         <Select 
           value={pageSize.toString()} 

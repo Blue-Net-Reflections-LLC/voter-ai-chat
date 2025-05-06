@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FilterX, LoaderCircle, LayoutGrid, LayoutList } from "lucide-react";
+import { Download, FilterX, LoaderCircle, LayoutGrid, LayoutList, ArrowUp, ArrowDown } from "lucide-react";
 import { Voter, PaginationState } from '../types';
 import VoterTable from './VoterTable';
 import PaginationControls from './PaginationControls';
@@ -323,7 +323,27 @@ export function ResultsPanel({
 
   // Handle sort field change from dropdown
   const handleSortChange = (value: string) => {
-    onSort(value as SortField);
+    // Parse the field and direction from combined value
+    const [field, direction] = value.split('-') as [SortField, SortDirection];
+    
+    // We need to set the sort state and call onSort with the field
+    // If the field is changing, we just set it with the desired direction
+    if (field !== sort.field) {
+      // We're changing fields, so just call onSort with the new field
+      // If direction is different than default 'asc', we need to call onSort again
+      onSort(field);
+      if (direction === 'desc' && sort.direction === 'asc') {
+        // Toggle once more to get to 'desc'
+        onSort(field);
+      }
+    } else {
+      // Same field, but may need to toggle direction
+      if (direction !== sort.direction) {
+        // Need to toggle direction
+        onSort(field);
+      }
+      // If direction already matches, do nothing
+    }
   };
 
   // Return a consistent initial structure for SSR, then update with client-side effects
@@ -390,7 +410,7 @@ export function ResultsPanel({
       </CardHeader>
 
       {/* Content area with auto overflow */}
-      <CardContent className="p-0 flex-grow overflow-auto">
+      <CardContent className="p-0 overflow-auto pb-14" style={{ height: 'calc(100vh - 126px)' }}>
         {/* Always render table on server, then client can switch as needed */}
         {(!isMounted || effectiveLayout === 'table') ? (
           <VoterTable 
@@ -418,34 +438,84 @@ export function ResultsPanel({
       </CardContent>
 
       {/* Sticky Footer */}
-      <CardFooter className="py-2 px-4 border-t sticky bottom-0 z-10 bg-background flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">Sort by:</span>
-          <Select
-            value={currentSortField}
-            onValueChange={handleSortChange}
-          >
-            <SelectTrigger className="h-8 w-[110px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Name</SelectItem>
-              <SelectItem value="county">County</SelectItem>
-              <SelectItem value="address">Address</SelectItem>
-              <SelectItem value="score">Score</SelectItem>
-              <SelectItem value="status">Status</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <PaginationControls
-          currentPage={currentPage}
-          pageSize={pageSize}
-          totalItems={totalItems}
-          onPageChange={onPageChange}
-          onPageSizeChange={onPageSizeChange}
-        />
-      </CardFooter>
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
+        <CardFooter className="py-2 px-4 flex justify-between items-center max-w-screen-2xl mx-auto">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium">Sort</span>
+            <Select
+              value={`${sort.field}-${sort.direction}`}
+              onValueChange={handleSortChange}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">
+                  <div className="flex items-center">
+                    Name <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="name-desc">
+                  <div className="flex items-center">
+                    Name <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="county-asc">
+                  <div className="flex items-center">
+                    County <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="county-desc">
+                  <div className="flex items-center">
+                    County <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="address-asc">
+                  <div className="flex items-center">
+                    Address <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="address-desc">
+                  <div className="flex items-center">
+                    Address <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="score-asc">
+                  <div className="flex items-center">
+                    Score <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="score-desc">
+                  <div className="flex items-center">
+                    Score <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="status-asc">
+                  <div className="flex items-center">
+                    Status <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="status-desc">
+                  <div className="flex items-center">
+                    Status <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <PaginationControls
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        </CardFooter>
+      </div>
+      
+      {/* Add spacer to account for the fixed footer */}
+      <div className="h-14" />
     </Card>
   );
 }
