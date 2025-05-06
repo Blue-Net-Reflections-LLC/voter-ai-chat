@@ -1,10 +1,10 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React from "react";
 import ResultsPanel from "./components/ResultsPanel";
 import { useVoterList } from "./hooks/useVoterList";
 
-function VoterListContent() {
+export default function VoterListPage() {
   const {
     pagination,
     sort,
@@ -19,7 +19,7 @@ function VoterListContent() {
   } = useVoterList();
 
   return (
-    <div className="px-4 py-2 md:pl-0 md:pr-4 md:py-2 w-full">
+    <div className="w-full h-full flex flex-col">
       <ResultsPanel
         voters={voters}
         pagination={pagination}
@@ -32,13 +32,5 @@ function VoterListContent() {
         onSort={updateSort}
       />
     </div>
-  );
-}
-
-export default function VoterListPage() {
-  return (
-    <Suspense>
-      <VoterListContent />
-    </Suspense>
   );
 } 

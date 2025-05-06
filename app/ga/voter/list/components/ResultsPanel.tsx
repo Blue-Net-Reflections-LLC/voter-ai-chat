@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FilterX, LoaderCircle, LayoutGrid, LayoutList } from "lucide-react";
@@ -28,6 +28,9 @@ interface ResultsPanelProps {
   onPageSizeChange: (size: number) => void;
   onSort: (field: SortField) => void;
 }
+
+// Safe useLayoutEffect that doesn't run on the server
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 // Card component for each voter in the grid layout
 const VoterCard = ({ voter, onClick }: { voter: Voter; onClick: () => void }) => {
@@ -161,8 +164,9 @@ const VoterCardGrid = ({
   );
 };
 
-// Helper to get initial layout preference
+// Helper to get initial layout preference - client-side only
 const getInitialLayout = (): 'table' | 'card' => {
+  // Always return table for initial server render
   if (typeof window === 'undefined') return 'table';
   
   try {
@@ -192,8 +196,10 @@ export function ResultsPanel({
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const { toast } = useToast();
   
-  // State for layout selection
-  const [layout, setLayout] = useState<'table' | 'card'>(getInitialLayout);
+  // Set initial layout to 'table' for server render, will be updated on client after hydration
+  const [layout, setLayout] = useState<'table' | 'card'>('table');
+  const [effectiveLayout, setEffectiveLayout] = useState<'table' | 'card'>('table');
+  const [isMounted, setIsMounted] = useState(false);
   
   // State for the voter quickview
   const [selectedVoter, setSelectedVoter] = useState<string | undefined>(undefined);
@@ -206,34 +212,41 @@ export function ResultsPanel({
   // Get sorted field (for dropdown)
   const currentSortField = sort?.field || 'name';
 
-  // Save layout preference to localStorage
+  // Initialize client-side state after hydration
   useEffect(() => {
+    setIsMounted(true);
+    const initialLayout = getInitialLayout();
+    setLayout(initialLayout);
+    
+    // Initial check for mobile (forcing card layout)
+    const isMobile = window.innerWidth < 768;
+    setEffectiveLayout(isMobile ? 'card' : initialLayout);
+  }, []);
+
+  // Save layout preference to localStorage - only runs on client
+  useEffect(() => {
+    if (!isMounted) return;
+    
     try {
       localStorage.setItem('voterListLayout', layout);
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [layout]);
+  }, [layout, isMounted]);
 
-  // Force card layout on mobile
+  // Handle layout changes based on screen size
   useEffect(() => {
+    if (!isMounted) return;
+    
     const handleResize = () => {
-      if (typeof window !== 'undefined' && window.innerWidth < 768 && layout === 'table') {
-        // Keep current state for when they resize back to desktop
-        try {
-          localStorage.setItem('voterListLayout', 'table');
-        } catch (error) {
-          console.error('Error saving to localStorage:', error);
-        }
-      }
+      const isMobile = window.innerWidth < 768;
+      setEffectiveLayout(isMobile ? 'card' : layout);
     };
 
-    if (typeof window !== 'undefined') {
-      handleResize(); // Check on initial render
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  }, [layout]);
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [layout, isMounted]);
 
   // Handler for toggling layout
   const toggleLayout = (newLayout: 'table' | 'card') => {
@@ -320,27 +333,10 @@ export function ResultsPanel({
     onSort(value as SortField);
   };
 
-  // Determine the effective layout (force card layout on mobile)
-  const [effectiveLayout, setEffectiveLayout] = useState<'table' | 'card'>(layout);
-
-  // Update effectiveLayout based on screen size
-  useEffect(() => {
-    const updateEffectiveLayout = () => {
-      if (typeof window !== 'undefined') {
-        setEffectiveLayout(window.innerWidth < 768 ? 'card' : layout);
-      }
-    };
-    
-    updateEffectiveLayout(); // Run on first render
-    
-    if (typeof window !== 'undefined') {
-      window.addEventListener('resize', updateEffectiveLayout);
-      return () => window.removeEventListener('resize', updateEffectiveLayout);
-    }
-  }, [layout]);
-
+  // Return a consistent initial structure for SSR, then update with client-side effects
   return (
-    <Card className="flex flex-col h-full min-h-0 overflow-hidden">
+    <Card className="flex flex-col h-full w-full overflow-hidden">
+      {/* Sticky Header - will stick to top when scrolling */}
       <CardHeader className="px-4 py-3 flex-shrink-0 border-b sticky top-0 z-10 bg-background">
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
@@ -354,27 +350,29 @@ export function ResultsPanel({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Layout Toggle Buttons - Hidden on Mobile */}
-            <div className="hidden md:flex gap-1">
-              <Button
-                variant={layout === 'table' ? 'default' : 'outline'}
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => toggleLayout('table')}
-                title="Table Layout"
-              >
-                <LayoutList size={16} />
-              </Button>
-              <Button
-                variant={layout === 'card' ? 'default' : 'outline'}
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => toggleLayout('card')}
-                title="Card Layout"
-              >
-                <LayoutGrid size={16} />
-              </Button>
-            </div>
+            {/* Layout Toggle Buttons - Hidden on Mobile - Only show after client-side hydration */}
+            {isMounted && (
+              <div className="hidden md:flex gap-1">
+                <Button
+                  variant={layout === 'table' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => toggleLayout('table')}
+                  title="Table Layout"
+                >
+                  <LayoutList size={16} />
+                </Button>
+                <Button
+                  variant={layout === 'card' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => toggleLayout('card')}
+                  title="Card Layout"
+                >
+                  <LayoutGrid size={16} />
+                </Button>
+              </div>
+            )}
             
             {/* Download Button */}
             <Button
@@ -398,8 +396,10 @@ export function ResultsPanel({
         </div>
       </CardHeader>
 
-      <CardContent className="p-0 flex-grow min-h-0 overflow-auto">
-        {effectiveLayout === 'table' ? (
+      {/* Content area with auto overflow */}
+      <CardContent className="p-0 flex-grow overflow-auto">
+        {/* Always render table on server, then client can switch as needed */}
+        {(!isMounted || effectiveLayout === 'table') ? (
           <VoterTable 
             voters={voters} 
             isLoading={isLoading}
@@ -414,7 +414,7 @@ export function ResultsPanel({
           />
         )}
         
-        {/* Import VoterQuickview component and include it here */}
+        {/* VoterQuickview component */}
         {isQuickviewOpen && selectedVoter && (
           <VoterQuickview
             isOpen={isQuickviewOpen}
@@ -424,6 +424,7 @@ export function ResultsPanel({
         )}
       </CardContent>
 
+      {/* Sticky Footer */}
       <CardFooter className="py-2 px-4 border-t sticky bottom-0 z-10 bg-background flex justify-between items-center">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium">Sort by:</span>
