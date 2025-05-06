@@ -407,27 +407,28 @@ export function FilterPanel() {
           <CollapsibleSection title="Voting History" defaultOpen={false}>
             <div className="space-y-3">
               <MultiSelect
-                label="Has Voted In"
+                label="Voted by Election Type"
                 options={ELECTION_TYPE_OPTIONS}
-                value={ensureStringArray(filters.votedIn)}
-                setValue={(value) => updateFilter('votedIn', value)}
+                value={ensureStringArray(filters.electionType)}
+                setValue={(value) => updateFilter('electionType', value)}
                 compact={true}
               />
 
               <MultiSelect
-                label="Has Voted In Year"
+                label="Election Year"
                 options={ELECTION_YEAR_OPTIONS}
-                value={ensureStringArray(filters.votedInYear)}
-                setValue={(value) => updateFilter('votedInYear', value)}
+                value={ensureStringArray(filters.electionYear)}
+                setValue={(value) => updateFilter('electionYear', value)}
                 compact={true}
               />
 
-              <MultiSelect
-                label="Has Voted On Date"
+              <DistrictMultiSelect
+                label="Election Date"
                 options={ELECTION_DATE_OPTIONS}
-                value={ensureStringArray(filters.votedOnDate)}
-                setValue={(value) => updateFilter('votedOnDate', value)}
+                value={ensureStringArray(filters.electionDate)}
+                setValue={(value) => updateFilter('electionDate', value)}
                 compact={true}
+                formatLabel={formatDateLabel}
               />
 
               <div>
@@ -712,27 +713,28 @@ export function FilterPanel() {
               <CollapsibleSection title="Voting History" defaultOpen={false}>
                 <div className="space-y-3">
                   <MultiSelect
-                    label="Has Voted In"
+                    label="Voted by Election Type"
                     options={ELECTION_TYPE_OPTIONS}
-                    value={ensureStringArray(filters.votedIn)}
-                    setValue={(value) => updateFilter('votedIn', value)}
+                    value={ensureStringArray(filters.electionType)}
+                    setValue={(value) => updateFilter('electionType', value)}
                     compact={true}
                   />
 
                   <MultiSelect
-                    label="Has Voted In Year"
+                    label="Election Year"
                     options={ELECTION_YEAR_OPTIONS}
-                    value={ensureStringArray(filters.votedInYear)}
-                    setValue={(value) => updateFilter('votedInYear', value)}
+                    value={ensureStringArray(filters.electionYear)}
+                    setValue={(value) => updateFilter('electionYear', value)}
                     compact={true}
                   />
 
-                  <MultiSelect
-                    label="Has Voted On Date"
+                  <DistrictMultiSelect
+                    label="Election Date"
                     options={ELECTION_DATE_OPTIONS}
-                    value={ensureStringArray(filters.votedOnDate)}
-                    setValue={(value) => updateFilter('votedOnDate', value)}
+                    value={ensureStringArray(filters.electionDate)}
+                    setValue={(value) => updateFilter('electionDate', value)}
                     compact={true}
+                    formatLabel={formatDateLabel}
                   />
 
                   <div>
