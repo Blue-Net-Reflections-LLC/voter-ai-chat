@@ -25,10 +25,6 @@ export function PaginationControls({
   const hasNextPage = currentPage < totalPages;
   const hasPrevPage = currentPage > 1;
   
-  // Calculate displayed range for UI
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
-  
   // Handle pagination changes
   const handlePageSizeChange = (newSize: string) => {
     const size = parseInt(newSize, 10);
@@ -145,8 +141,8 @@ export function PaginationControls({
           </SelectContent>
         </Select>
         
-        {/* Page numbers */}
-        <div className="hidden md:flex items-center gap-1">
+        {/* Page numbers - now visible on all screen sizes */}
+        <div className="flex items-center gap-1">
           {renderPageNumbers()}
         </div>
         

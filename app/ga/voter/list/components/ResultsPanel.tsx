@@ -410,7 +410,7 @@ export function ResultsPanel({
       </CardHeader>
 
       {/* Content area with auto overflow */}
-      <CardContent className="p-0 overflow-auto pb-14" style={{ height: 'calc(100vh - 126px)' }}>
+      <CardContent className="p-0 overflow-auto" style={{ height: 'calc(100vh - 140px)' }}>
         {/* Always render table on server, then client can switch as needed */}
         {(!isMounted || effectiveLayout === 'table') ? (
           <VoterTable 
@@ -438,7 +438,7 @@ export function ResultsPanel({
       </CardContent>
 
       {/* Sticky Footer */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
+      <div className="sticky bottom-0 left-0 right-0 z-50 bg-background border-t">
         <CardFooter className="py-2 px-4 flex justify-between items-center max-w-screen-2xl mx-auto">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium">Sort</span>
@@ -513,9 +513,6 @@ export function ResultsPanel({
           />
         </CardFooter>
       </div>
-      
-      {/* Add spacer to account for the fixed footer */}
-      <div className="h-14" />
     </Card>
   );
 }
