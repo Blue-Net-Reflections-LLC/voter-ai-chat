@@ -41,9 +41,9 @@ const CollapsibleSection = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("", className)}>
       <button 
-        className="flex justify-between items-center w-full py-1 px-1 hover:bg-muted/50 rounded-sm"
+        className="flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm"
         onClick={() => setIsOpen(!isOpen)}
       >
         <h3 className="text-sm font-semibold">{title}</h3>
@@ -235,6 +235,8 @@ export function FilterPanel() {
             />
           </CollapsibleSection>
 
+          <Separator />
+          
           {/* Geographic Filters */}
           <CollapsibleSection title="Geographic Filters" defaultOpen={true}>
             {/* County Filter */}
@@ -538,7 +540,7 @@ export function FilterPanel() {
               </div>
             )}
             
-            <CardContent className="space-y-4 pt-2 px-3">
+            <CardContent className="space-y-4 pt-3 px-3">
               {/* Participation Score Filter */}
               <CollapsibleSection title="Participation Score" defaultOpen={true}>
                 <MultiSelect
@@ -550,6 +552,8 @@ export function FilterPanel() {
                 />
               </CollapsibleSection>
 
+              <Separator />
+              
               {/* Geographic Filters */}
               <CollapsibleSection title="Geographic Filters" defaultOpen={true}>
                 {/* County Filter */}
