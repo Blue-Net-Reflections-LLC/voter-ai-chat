@@ -410,9 +410,11 @@ export function ResultsPanel({
       </CardHeader>
 
       {/* Using flexbox for layout: content area will stretch and scroll, footer will stay at bottom */}
-      <div className="flex flex-col md:h-[calc(100%-58px)] h-[calc(100%-7.5rem)]">
+      {/* for mobile feight: calc(100% - 112px); for desktop     height: calc(100% - 58px);
+ */}
+      <div className="flex flex-col h-full">
         {/* Content area with auto overflow - will grow to fill available space */}
-        <div className="flex-grow overflow-auto">
+        <div className="flex-grow overflow-auto h-0">
           {/* Always render table on server, then client can switch as needed */}
           {(!isMounted || effectiveLayout === 'table') ? (
             <VoterTable 
@@ -448,7 +450,7 @@ export function ResultsPanel({
                 value={`${sort.field}-${sort.direction}`}
                 onValueChange={handleSortChange}
               >
-                <SelectTrigger className="h-8 w-[105px] text-xs">
+                <SelectTrigger className="h-8 w-[140px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
