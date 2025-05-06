@@ -117,6 +117,12 @@ export function VoterQuickview({ isOpen, voterId, onClose }: VoterQuickviewProps
     loading: locationLoading,
     error: locationError
   } = useVoterProfileSection(voterId, 'location');
+  
+  const {
+    data: districtsData,
+    loading: districtsLoading,
+    error: districtsError
+  } = useVoterProfileSection(voterId, 'districts');
 
   // Derive voter name for dialog title once info data is loaded
   const voterName = infoData
@@ -124,8 +130,8 @@ export function VoterQuickview({ isOpen, voterId, onClose }: VoterQuickviewProps
     : 'Voter Profile';
 
   // Check if we're still loading or have errors
-  const isLoading = infoLoading || locationLoading;
-  const hasError = infoError || locationError;
+  const isLoading = infoLoading || locationLoading || districtsLoading;
+  const hasError = infoError || locationError || districtsError;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -150,7 +156,7 @@ export function VoterQuickview({ isOpen, voterId, onClose }: VoterQuickviewProps
           </div>
         ) : hasError ? (
           <div className="text-red-500 py-2">
-            {infoError || locationError || "Failed to load voter information"}
+            {infoError || locationError || districtsError || "Failed to load voter information"}
           </div>
         ) : (
           <div className="text-sm">
@@ -176,6 +182,25 @@ export function VoterQuickview({ isOpen, voterId, onClose }: VoterQuickviewProps
               
               <p className="text-muted-foreground text-xs">County:</p>
               <p className="font-medium">{locationData?.countyName || "N/A"}</p>
+              
+              <p className="text-muted-foreground text-xs">Precinct:</p>
+              <div className="font-medium">
+                <div>
+                  {districtsData?.countyPrecinctDescription ? (
+                    `${districtsData.countyPrecinctDescription} (${districtsData.countyPrecinct})`
+                  ) : districtsData?.countyPrecinct || "N/A"}
+                </div>
+                {districtsData?.facility?.facilityName && (
+                  <div className="text-sm font-normal text-muted-foreground">
+                    {districtsData.facility.facilityName}
+                  </div>
+                )}
+                {districtsData?.facility?.facilityAddress && (
+                  <div className="text-xs font-normal text-muted-foreground">
+                    {districtsData.facility.facilityAddress}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Registration Number */}

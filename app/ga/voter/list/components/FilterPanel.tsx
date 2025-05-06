@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 import { SCORE_RANGES } from '@/lib/participation-score/constants';
+import PrecinctFilters from './PrecinctFilters';
 
 export function FilterPanel() {
   const {
@@ -97,7 +98,7 @@ export function FilterPanel() {
   };
 
   return (
-    <Card className="w-full h-full overflow-auto pr-2">
+    <Card className="w-full h-full overflow-auto pr-2 custom-scrollbar">
       {hasActiveFilters() && (
         <div className="px-3 py-2 border-b">
           <Button 
@@ -136,6 +137,9 @@ export function FilterPanel() {
               compact={true}
             />
           </div>
+
+          {/* Add Precinct Filters component */}
+          <PrecinctFilters />
 
           {/* Congressional District Filter */}
           <div className="space-y-2">
@@ -358,7 +362,7 @@ export function FilterPanel() {
             />
             <div>
               <div className="text-xs font-medium mb-1">Ballot Cast</div>
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
                 {[
                   { value: '', label: 'Any' },
                   { value: 'absentee', label: 'Absentee' },
@@ -370,6 +374,7 @@ export function FilterPanel() {
                     variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => updateFilter('voterEventMethod', opt.value)}
+                    className="text-xs py-1 px-2 h-auto"
                   >
                     {opt.label}
                   </Button>

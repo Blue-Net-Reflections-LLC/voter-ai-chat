@@ -13,12 +13,15 @@ export type VoterSummarySection =
   | 'districts'
   | 'demographics'
   | 'voting_history'
+  | 'precincts'
   | 'census';
 
 // Aggregate result for a field
 export interface AggregateItem {
   label: string;
   count: number;
+  facility_name?: string;
+  facility_address?: string;
 }
 
 // API response structure
@@ -27,6 +30,7 @@ export interface VoterSummaryResponse {
   districts: Record<string, AggregateItem[]>;
   demographics: Record<string, AggregateItem[]>;
   voting_history: Record<string, AggregateItem[]>;
+  precincts: Record<string, AggregateItem[]>;
   census: Record<string, AggregateItem[]>;
   timestamp: string;
 }
@@ -255,6 +259,118 @@ async function getCensusAggregates(whereClause: string, shouldQuery: boolean) {
   return { census_tract: censusTract };
 }
 
+// Add a new function for precinct aggregates
+async function getPrecinctAggregates(whereClause: string, shouldQuery: boolean) {
+  if (!shouldQuery) {
+    return {
+      county_precinct: [],
+      municipal_precinct: [],
+    };
+  }
+
+  // County Precincts with facility information
+  const countyPrecinctPromise = (async () => {
+    try {
+      // REFERENCE_DATA contains facility information for precincts
+      // Use JOIN to get facility data along with precinct counts
+      const extraFilter = `(v.county_precinct IS NOT NULL AND TRIM(v.county_precinct) != '')`;
+      const fullWhere = whereClause
+        ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND`)
+        : `WHERE ${extraFilter}`;
+
+      const query = `
+        SELECT 
+          COALESCE(rd.lookup_value, v.county_precinct) || ' (' || v.county_precinct || ')' AS label,
+          COUNT(*) AS count,
+          rd.lookup_meta->>'facility_name' AS facility_name,
+          rd.lookup_meta->>'facility_address' AS facility_address
+        FROM 
+          GA_VOTER_REGISTRATION_LIST v
+        LEFT JOIN 
+          REFERENCE_DATA rd ON 
+            rd.lookup_type = 'GA_COUNTY_PRECINCT_DESC' 
+            AND rd.state_code = 'GA' 
+            AND rd.county_code = v.county_code 
+            AND rd.lookup_key = v.county_precinct
+        ${fullWhere}
+        GROUP BY 
+          v.county_precinct, 
+          rd.lookup_value,
+          rd.lookup_meta->>'facility_name',
+          rd.lookup_meta->>'facility_address'
+        ORDER BY 
+          count DESC
+        LIMIT ${AGG_LIMIT}
+      `;
+      
+      const results = await sql.unsafe(query);
+      return results.map((row: any) => ({
+        label: row.label,
+        count: Number(row.count),
+        facility_name: row.facility_name,
+        facility_address: row.facility_address
+      }));
+    } catch (e) {
+      console.error(`[voter/summary] Error querying county_precinct:`, e);
+      return [];
+    }
+  })();
+
+  // Municipal Precincts with facility information
+  const municipalPrecinctPromise = (async () => {
+    try {
+      // Similar query for municipal precincts
+      const extraFilter = `(v.municipal_precinct IS NOT NULL AND TRIM(v.municipal_precinct) != '')`;
+      const fullWhere = whereClause
+        ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND`)
+        : `WHERE ${extraFilter}`;
+
+      const query = `
+        SELECT 
+          COALESCE(rd.lookup_value, v.municipal_precinct) || ' (' || v.municipal_precinct || ')' AS label,
+          COUNT(*) AS count,
+          rd.lookup_meta->>'facility_name' AS facility_name,
+          rd.lookup_meta->>'facility_address' AS facility_address
+        FROM 
+          GA_VOTER_REGISTRATION_LIST v
+        LEFT JOIN 
+          REFERENCE_DATA rd ON 
+            rd.lookup_type = 'GA_MUNICIPAL_PRECINCT_DESC' 
+            AND rd.state_code = 'GA' 
+            AND rd.county_code = v.county_code 
+            AND rd.lookup_key = v.municipal_precinct
+        ${fullWhere}
+        GROUP BY 
+          v.municipal_precinct, 
+          rd.lookup_value,
+          rd.lookup_meta->>'facility_name',
+          rd.lookup_meta->>'facility_address'
+        ORDER BY 
+          count DESC
+        LIMIT ${AGG_LIMIT}
+      `;
+      
+      const results = await sql.unsafe(query);
+      return results.map((row: any) => ({
+        label: row.label,
+        count: Number(row.count),
+        facility_name: row.facility_name,
+        facility_address: row.facility_address
+      }));
+    } catch (e) {
+      console.error(`[voter/summary] Error querying municipal_precinct:`, e);
+      return [];
+    }
+  })();
+
+  const [county_precinct, municipal_precinct] = await Promise.all([
+    countyPrecinctPromise,
+    municipalPrecinctPromise,
+  ]);
+
+  return { county_precinct, municipal_precinct };
+}
+
 // --- API Handler ---
 
 export async function GET(req: NextRequest) {
@@ -272,6 +388,7 @@ export async function GET(req: NextRequest) {
     const shouldQueryDistricts = !section || section === 'districts';
     const shouldQueryDemographics = !section || section === 'demographics';
     const shouldQueryVotingHistory = !section || section === 'voting_history';
+    const shouldQueryPrecincts = !section || section === 'precincts';
     const shouldQueryCensus = !section || section === 'census';
     // TODO: Add flags for other sections
 
@@ -280,6 +397,7 @@ export async function GET(req: NextRequest) {
     const districts = await getDistrictsAggregates(whereClause, shouldQueryDistricts);
     const demographics = await getDemographicsAggregates(whereClause, shouldQueryDemographics);
     const voting_history = await getVotingHistoryAggregates(whereClause, shouldQueryVotingHistory);
+    const precincts = await getPrecinctAggregates(whereClause, shouldQueryPrecincts);
     const census = await getCensusAggregates(whereClause, shouldQueryCensus);
     // TODO: Call other section functions
 
@@ -289,6 +407,7 @@ export async function GET(req: NextRequest) {
       districts: districts,
       demographics: demographics,
       voting_history: voting_history,
+      precincts: precincts,
       census: census,
       timestamp: new Date().toISOString(),
     };

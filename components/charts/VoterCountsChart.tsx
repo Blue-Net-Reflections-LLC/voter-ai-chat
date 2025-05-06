@@ -285,20 +285,20 @@ export function VoterCountsChart() {
   const renderTableView = () => {
       if (!tableData || tableData.length === 0) return null;
       return (
-        <div className="mt-4 md:mt-0"> {/* Adjusted margin */}
+        <div className="mt-4 md:mt-0">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="w-[20px]"></TableHead> {/* Color swatch */}
+                        <TableHead className="w-[20px]"></TableHead>
                         <TableHead>Combination</TableHead>
-                        <TableHead className="text-right">Latest Count</TableHead> {/* Value column */}
+                        <TableHead className="text-right">Latest Count</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                 {tableData.map((item) => (
                     <TableRow 
                         key={item.name}
-                        onClick={() => handleTableRowClick(item.name)} // Toggle on row click
+                        onClick={() => handleTableRowClick(item.name)}
                         className={`cursor-pointer ${!item.isVisible ? 'opacity-50' : ''}`}
                         style={{ textDecoration: !item.isVisible ? 'line-through' : 'none' }}
                     >
@@ -366,9 +366,8 @@ export function VoterCountsChart() {
           </div>
         )}
         {!isLoading && !error && chartData && (
-          // Reverted Layout: Chart above Table
           <div>
-            <div className="md:col-span-2"> {/* Keep chart responsive, remove grid parent */}
+            <div className="md:col-span-2">
                <ResponsiveContainer width="100%" height={400}>
                  <ChartComponent 
                     data={formattedChartData} 
@@ -383,7 +382,6 @@ export function VoterCountsChart() {
                       allowDataOverflow={!autoScale} 
                       width={80} 
                     />
-                   {/* Apply consistent theme styling to the tooltip */}
                    <Tooltip 
                      formatter={tooltipFormatter} 
                      contentStyle={{
@@ -399,7 +397,6 @@ export function VoterCountsChart() {
                  </ChartComponent>
                </ResponsiveContainer>
             </div>
-            {/* Render table below chart */} 
             {renderTableView()}
           </div>
         )}
