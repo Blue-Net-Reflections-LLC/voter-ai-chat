@@ -285,17 +285,6 @@ export function FilterPanel() {
                 compact={true}
               />
             </div>
-
-            {/* Residence Address Filter */}
-            <ResidenceAddressFilter
-              addressFilters={residenceAddressFilters}
-              addAddressFilter={addAddressFilter}
-              removeAddressFilter={removeAddressFilter}
-              clearAllAddressFilters={clearAllAddressFilters}
-              updateAddressFilter={(id, field, value) => {
-                updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
-              }}
-            />
           </CollapsibleSection>
           
           <Separator />
@@ -303,6 +292,15 @@ export function FilterPanel() {
           {/* Voter Info Filters */}
           <CollapsibleSection title="Voter Info" defaultOpen={true}>
             <div className="space-y-3">
+              <MultiSelect
+                label="Status"
+                options={statuses.length > 0 ? statuses : []}
+                value={ensureStringArray(filters.status)}
+                setValue={(value) => updateFilter('status', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+              
               <div>
                 <label className="text-xs font-medium">First Name</label>
                 <Input
@@ -334,27 +332,24 @@ export function FilterPanel() {
                   Apply Name Filter
                 </Button>
               </div>
-              <MultiSelect
-                label="Status"
-                options={statuses.length > 0 ? statuses : []}
-                value={ensureStringArray(filters.status)}
-                setValue={(value) => updateFilter('status', value)}
-                isLoading={isLoading}
-                compact={true}
+
+              {/* Residence Address Filter */}
+              <ResidenceAddressFilter
+                addressFilters={residenceAddressFilters}
+                addAddressFilter={addAddressFilter}
+                removeAddressFilter={removeAddressFilter}
+                clearAllAddressFilters={clearAllAddressFilters}
+                updateAddressFilter={(id, field, value) => {
+                  updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
+                }}
               />
+              
               <MultiSelect
                 label="Registered Voter Party"
                 options={parties.length > 0 ? parties : []}
                 value={ensureStringArray(filters.party)}
                 setValue={(value) => updateFilter('party', value)}
                 isLoading={isLoading}
-                compact={true}
-              />
-              <MultiSelect
-                label="Age Range"
-                options={AGE_RANGE_OPTIONS}
-                value={ensureStringArray(filters.age)}
-                setValue={(value) => updateFilter('age', value)}
                 compact={true}
               />
             </div>
@@ -365,6 +360,14 @@ export function FilterPanel() {
           {/* Demographic Filters */}
           <CollapsibleSection title="Demographics" defaultOpen={false}>
             <div className="space-y-3">
+              <MultiSelect
+                label="Age Range"
+                options={AGE_RANGE_OPTIONS}
+                value={ensureStringArray(filters.age)}
+                setValue={(value) => updateFilter('age', value)}
+                compact={true}
+              />
+              
               <MultiSelect
                 label="Gender"
                 options={genders.length > 0 ? genders : []}
@@ -380,22 +383,6 @@ export function FilterPanel() {
                 value={ensureStringArray(filters.race)}
                 setValue={(value) => updateFilter('race', value)}
                 isLoading={isLoading}
-                compact={true}
-              />
-
-              <MultiSelect
-                label="Income Level"
-                options={INCOME_LEVEL_OPTIONS}
-                value={ensureStringArray(filters.incomeLevel)}
-                setValue={(value) => updateFilter('incomeLevel', value)}
-                compact={true}
-              />
-
-              <MultiSelect
-                label="Education Level"
-                options={EDUCATION_LEVEL_OPTIONS}
-                value={ensureStringArray(filters.educationLevel)}
-                setValue={(value) => updateFilter('educationLevel', value)}
                 compact={true}
               />
             </div>
@@ -613,17 +600,6 @@ export function FilterPanel() {
                     compact={true}
                   />
                 </div>
-
-                {/* Residence Address Filter */}
-                <ResidenceAddressFilter
-                  addressFilters={residenceAddressFilters}
-                  addAddressFilter={addAddressFilter}
-                  removeAddressFilter={removeAddressFilter}
-                  clearAllAddressFilters={clearAllAddressFilters}
-                  updateAddressFilter={(id, field, value) => {
-                    updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
-                  }}
-                />
               </CollapsibleSection>
               
               <Separator />
@@ -631,6 +607,15 @@ export function FilterPanel() {
               {/* Voter Info Filters */}
               <CollapsibleSection title="Voter Info" defaultOpen={true}>
                 <div className="space-y-3">
+                  <MultiSelect
+                    label="Status"
+                    options={statuses.length > 0 ? statuses : []}
+                    value={ensureStringArray(filters.status)}
+                    setValue={(value) => updateFilter('status', value)}
+                    isLoading={isLoading}
+                    compact={true}
+                  />
+                  
                   <div>
                     <label className="text-xs font-medium">First Name</label>
                     <Input
@@ -662,27 +647,24 @@ export function FilterPanel() {
                       Apply Name Filter
                     </Button>
                   </div>
-                  <MultiSelect
-                    label="Status"
-                    options={statuses.length > 0 ? statuses : []}
-                    value={ensureStringArray(filters.status)}
-                    setValue={(value) => updateFilter('status', value)}
-                    isLoading={isLoading}
-                    compact={true}
+
+                  {/* Residence Address Filter */}
+                  <ResidenceAddressFilter
+                    addressFilters={residenceAddressFilters}
+                    addAddressFilter={addAddressFilter}
+                    removeAddressFilter={removeAddressFilter}
+                    clearAllAddressFilters={clearAllAddressFilters}
+                    updateAddressFilter={(id, field, value) => {
+                      updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
+                    }}
                   />
+                  
                   <MultiSelect
                     label="Registered Voter Party"
                     options={parties.length > 0 ? parties : []}
                     value={ensureStringArray(filters.party)}
                     setValue={(value) => updateFilter('party', value)}
                     isLoading={isLoading}
-                    compact={true}
-                  />
-                  <MultiSelect
-                    label="Age Range"
-                    options={AGE_RANGE_OPTIONS}
-                    value={ensureStringArray(filters.age)}
-                    setValue={(value) => updateFilter('age', value)}
                     compact={true}
                   />
                 </div>
@@ -693,6 +675,14 @@ export function FilterPanel() {
               {/* Demographic Filters */}
               <CollapsibleSection title="Demographics" defaultOpen={false}>
                 <div className="space-y-3">
+                  <MultiSelect
+                    label="Age Range"
+                    options={AGE_RANGE_OPTIONS}
+                    value={ensureStringArray(filters.age)}
+                    setValue={(value) => updateFilter('age', value)}
+                    compact={true}
+                  />
+                  
                   <MultiSelect
                     label="Gender"
                     options={genders.length > 0 ? genders : []}
@@ -708,22 +698,6 @@ export function FilterPanel() {
                     value={ensureStringArray(filters.race)}
                     setValue={(value) => updateFilter('race', value)}
                     isLoading={isLoading}
-                    compact={true}
-                  />
-
-                  <MultiSelect
-                    label="Income Level"
-                    options={INCOME_LEVEL_OPTIONS}
-                    value={ensureStringArray(filters.incomeLevel)}
-                    setValue={(value) => updateFilter('incomeLevel', value)}
-                    compact={true}
-                  />
-
-                  <MultiSelect
-                    label="Education Level"
-                    options={EDUCATION_LEVEL_OPTIONS}
-                    value={ensureStringArray(filters.educationLevel)}
-                    setValue={(value) => updateFilter('educationLevel', value)}
                     compact={true}
                   />
                 </div>
