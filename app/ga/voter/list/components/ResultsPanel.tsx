@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FilterX, LoaderCircle } from "lucide-react";
+import { Download, FilterX, LoaderCircle, LayoutGrid, LayoutList } from "lucide-react";
 import { Voter, PaginationState } from '../types';
 import VoterTable from './VoterTable';
 import PaginationControls from './PaginationControls';
 import { SortField, SortDirection } from '../hooks/useVoterList';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { VoterQuickview } from "@/components/ga/voter/quickview/VoterQuickview";
+import { ParticipationScoreWidget } from "@/components/voter/ParticipationScoreWidget";
 
 interface ResultsPanelProps {
   voters: Voter[];
@@ -26,6 +29,154 @@ interface ResultsPanelProps {
   onSort: (field: SortField) => void;
 }
 
+// Card component for each voter in the grid layout
+const VoterCard = ({ voter, onClick }: { voter: Voter; onClick: () => void }) => {
+  const getStatusProps = (status: string | undefined) => {
+    if (!status) {
+      return {
+        className: 'bg-gray-700 text-gray-200',
+        text: 'Unknown'
+      };
+    }
+  
+    const statusUpper = status.toUpperCase();
+    
+    if (statusUpper === 'ACTIVE') {
+      return {
+        className: 'bg-green-950 text-green-400 border border-green-700',
+        text: 'Active'
+      };
+    } else if (statusUpper === 'INACTIVE') {
+      return {
+        className: 'bg-amber-950 text-amber-300 border border-amber-700',
+        text: 'Inactive'
+      };
+    } else if (statusUpper.includes('CANCEL')) {
+      return {
+        className: 'bg-red-950 text-red-400 border border-red-700',
+        text: statusUpper.includes('PENDING') ? 'Pending Cancel' : 'Canceled'
+      };
+    } else {
+      return {
+        className: 'bg-gray-800 text-gray-300 border border-gray-700',
+        text: status
+      };
+    }
+  };
+  
+  const formatFullName = (voter: Voter) => {
+    const middlePart = voter.middleName ? `${voter.middleName.charAt(0)}. ` : ""; 
+    const nameParts = [voter.firstName, middlePart, voter.lastName].filter(Boolean);
+    let fullName = nameParts.join(" ");
+    if (voter.nameSuffix) {
+      fullName += `, ${voter.nameSuffix}`;
+    }
+    return fullName;
+  };
+
+  const formatAddress = (address: Voter['address']) => {
+    if (!address) return "N/A";
+    const addressParts = [
+      address.preDirection,
+      address.streetName,
+      address.postDirection,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const streetNumber = address.streetNumber ? `${address.streetNumber} ` : "";
+    const fullAddressLine = `${streetNumber}${addressParts}`;
+    return address.zipcode ? `${fullAddressLine}, ${address.zipcode}` : fullAddressLine;
+  };
+
+  const statusProps = getStatusProps(voter.status);
+  
+  return (
+    <div 
+      className="border border-border rounded-md bg-card p-3 hover:bg-muted/50 cursor-pointer"
+      onClick={onClick}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <h3 className="font-medium text-sm">{formatFullName(voter)}</h3>
+        <span className={cn("inline-flex items-center justify-center text-[10px] font-semibold rounded px-2 py-0.5", statusProps.className)}>
+          {statusProps.text.toUpperCase()}
+        </span>
+      </div>
+      <div className="text-xs text-muted-foreground mb-2">
+        <div className="mb-1"><span className="font-medium text-foreground mr-1">County:</span> {voter.county || "N/A"}</div>
+        <div><span className="font-medium text-foreground mr-1">Address:</span> {formatAddress(voter.address)}</div>
+      </div>
+      <div className="flex justify-between items-center mt-2">
+        <div className="text-xs">
+          <span className="font-medium mr-1">Score:</span> 
+          <ParticipationScoreWidget score={voter.participationScore} size="small" variant="compact" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Grid layout component
+const VoterCardGrid = ({ 
+  voters, 
+  isLoading,
+  onVoterClick
+}: { 
+  voters: Voter[]; 
+  isLoading: boolean;
+  onVoterClick: (voterId: string) => void;
+}) => {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <div key={i} className="border border-border rounded-md bg-card p-3 animate-pulse">
+            <div className="h-4 bg-muted rounded mb-2 w-2/3"></div>
+            <div className="h-3 bg-muted rounded mb-1 w-full"></div>
+            <div className="h-3 bg-muted rounded mb-1 w-full"></div>
+            <div className="h-3 bg-muted rounded w-1/2 mt-2"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (voters.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-8 text-muted-foreground">
+        No voters found matching your criteria
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+      {voters.map((voter) => (
+        <VoterCard 
+          key={voter.id} 
+          voter={voter} 
+          onClick={() => onVoterClick(voter.id)}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Helper to get initial layout preference
+const getInitialLayout = (): 'table' | 'card' => {
+  if (typeof window === 'undefined') return 'table';
+  
+  try {
+    const savedLayout = localStorage.getItem('voterListLayout');
+    if (savedLayout === 'table' || savedLayout === 'card') {
+      return savedLayout;
+    }
+  } catch (error) {
+    console.error('Error accessing localStorage:', error);
+  }
+  
+  return 'table';
+};
+
 export function ResultsPanel({
   voters,
   pagination,
@@ -41,9 +192,64 @@ export function ResultsPanel({
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const { toast } = useToast();
   
+  // State for layout selection
+  const [layout, setLayout] = useState<'table' | 'card'>(getInitialLayout);
+  
+  // State for the voter quickview
+  const [selectedVoter, setSelectedVoter] = useState<string | undefined>(undefined);
+  const [isQuickviewOpen, setIsQuickviewOpen] = useState(false);
+  
   // Calculate display range
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
+
+  // Get sorted field (for dropdown)
+  const currentSortField = sort?.field || 'name';
+
+  // Save layout preference to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('voterListLayout', layout);
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  }, [layout]);
+
+  // Force card layout on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined' && window.innerWidth < 768 && layout === 'table') {
+        // Keep current state for when they resize back to desktop
+        try {
+          localStorage.setItem('voterListLayout', 'table');
+        } catch (error) {
+          console.error('Error saving to localStorage:', error);
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      handleResize(); // Check on initial render
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [layout]);
+
+  // Handler for toggling layout
+  const toggleLayout = (newLayout: 'table' | 'card') => {
+    setLayout(newLayout);
+  };
+
+  // Handle row click to open quickview
+  const handleVoterClick = (voterId: string) => {
+    setSelectedVoter(voterId);
+    setIsQuickviewOpen(true);
+  };
+
+  // Close quickview
+  const handleCloseQuickview = () => {
+    setIsQuickviewOpen(false);
+  };
 
   // Handler for the download button using fetch
   const handleDownloadCsv = async () => {
@@ -109,9 +315,33 @@ export function ResultsPanel({
     }
   };
 
+  // Handle sort field change from dropdown
+  const handleSortChange = (value: string) => {
+    onSort(value as SortField);
+  };
+
+  // Determine the effective layout (force card layout on mobile)
+  const [effectiveLayout, setEffectiveLayout] = useState<'table' | 'card'>(layout);
+
+  // Update effectiveLayout based on screen size
+  useEffect(() => {
+    const updateEffectiveLayout = () => {
+      if (typeof window !== 'undefined') {
+        setEffectiveLayout(window.innerWidth < 768 ? 'card' : layout);
+      }
+    };
+    
+    updateEffectiveLayout(); // Run on first render
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateEffectiveLayout);
+      return () => window.removeEventListener('resize', updateEffectiveLayout);
+    }
+  }, [layout]);
+
   return (
-    <Card className="flex flex-col h-full min-h-0">
-      <CardHeader className="px-4 py-3 flex-shrink-0">
+    <Card className="flex flex-col h-full min-h-0 overflow-hidden">
+      <CardHeader className="px-4 py-3 flex-shrink-0 border-b sticky top-0 z-10 bg-background">
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
             {totalItems > 0 ? (
@@ -123,12 +353,35 @@ export function ResultsPanel({
             )}
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {/* Layout Toggle Buttons - Hidden on Mobile */}
+            <div className="hidden md:flex gap-1">
+              <Button
+                variant={layout === 'table' ? 'default' : 'outline'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => toggleLayout('table')}
+                title="Table Layout"
+              >
+                <LayoutList size={16} />
+              </Button>
+              <Button
+                variant={layout === 'card' ? 'default' : 'outline'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => toggleLayout('card')}
+                title="Card Layout"
+              >
+                <LayoutGrid size={16} />
+              </Button>
+            </div>
+            
+            {/* Download Button */}
             <Button
-              variant="link"
+              variant="outline"
               size="sm"
               className={cn(
-                "text-xs h-6 px-1",
+                "text-xs h-8 px-2",
                 isDownloadingCsv && "opacity-75 cursor-not-allowed"
               )}
               onClick={handleDownloadCsv}
@@ -139,22 +392,58 @@ export function ResultsPanel({
               ) : (
                 <Download size={14} className="mr-1"/>
               )}
-              Download CSV {isDownloadingCsv ? '(Processing...)' : ''}
+              Download CSV
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 py-0 flex-grow min-h-0">
-        <div className="h-full overflow-auto min-h-0 relative">
+
+      <CardContent className="p-0 flex-grow min-h-0 overflow-auto">
+        {effectiveLayout === 'table' ? (
           <VoterTable 
             voters={voters} 
             isLoading={isLoading}
             sort={sort}
             onSort={onSort}
           />
-        </div>
+        ) : (
+          <VoterCardGrid
+            voters={voters}
+            isLoading={isLoading}
+            onVoterClick={handleVoterClick}
+          />
+        )}
+        
+        {/* Import VoterQuickview component and include it here */}
+        {isQuickviewOpen && selectedVoter && (
+          <VoterQuickview
+            isOpen={isQuickviewOpen}
+            voterId={selectedVoter}
+            onClose={handleCloseQuickview}
+          />
+        )}
       </CardContent>
-      <CardFooter className="py-0 px-4 flex-shrink-0 max-h-[50px] border-t">
+
+      <CardFooter className="py-2 px-4 border-t sticky bottom-0 z-10 bg-background flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium">Sort by:</span>
+          <Select
+            value={currentSortField}
+            onValueChange={handleSortChange}
+          >
+            <SelectTrigger className="h-8 w-[110px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="county">County</SelectItem>
+              <SelectItem value="address">Address</SelectItem>
+              <SelectItem value="score">Score</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
         <PaginationControls
           currentPage={currentPage}
           pageSize={pageSize}
