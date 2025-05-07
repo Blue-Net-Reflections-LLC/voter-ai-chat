@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useParams } from "next/navigation";
-import { List, BarChart2, Map, PieChart, Landmark, Info } from "lucide-react";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { usePathname, useParams } from "next/navigation";
+import { Info } from "lucide-react";
 import { useVoterFilterContext, buildQueryParams } from './VoterFilterProvider';
 import { FilterState } from './list/types';
 import { ParticipationScoreWidget } from '@/components/voter/ParticipationScoreWidget';
@@ -13,39 +12,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-const tabs = [
-  {
-    label: "List",
-    href: "/ga/voter/list",
-    icon: List,
-    enabled: true,
-  },
-  {
-    label: "Stats",
-    href: "/ga/voter/stats",
-    icon: BarChart2,
-    enabled: true,
-  },
-  {
-    label: "Maps",
-    href: "/ga/voter/map",
-    icon: Map,
-    enabled: true,
-  },
-  {
-    label: "Charts",
-    href: "/ga/voter/charts",
-    icon: PieChart,
-    enabled: true,
-  },
-  {
-    label: "Census",
-    href: "#",
-    icon: Landmark,
-    enabled: false,
-  },
-];
 
 function useParticipationScore(
     filters: FilterState | null | undefined,
@@ -167,59 +133,39 @@ export default function TabNavigation() {
     error: scoreError 
   } = useParticipationScore(filters, filtersHydrated, registrationNumber, pathname);
 
-  const scoreLabel = isProfilePage ? "Participation Score" : "Avg. Participation Score";
+  const scoreLabel = isProfilePage ? "Score" : "Score";
+
+  if (isLandingPage) {
+    return null;
+  }
 
   return (
-    <nav className="w-full border-b bg-background px-4 py-1.5 flex items-center justify-between gap-4">
-      {!isLandingPage && (
-        <div className="flex items-center gap-2 flex-shrink-0 pr-4 border-r">
-          <span className="hidden sm:inline text-sm font-semibold text-muted-foreground whitespace-nowrap">{scoreLabel}</span>
-          
-          <ParticipationScoreWidget 
-            score={scoreData?.score}
-            isLoading={scoreLoading} 
-            size="small"
-          />
-          {scoreError && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 text-red-500" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs">Error: {scoreError}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </div>
-      )}
-      
-      <div className={`flex-grow flex justify-end space-x-2 md:space-x-4 overflow-x-auto no-scrollbar ${isLandingPage ? 'w-full' : ''}`}>
-        {tabs.map((tab) => {
-          const isActive = tab.enabled && pathname.startsWith(tab.href);
-          const Icon = tab.icon;
-          return tab.enabled ? (
-            <Link
-              key={tab.label}
-              href={tab.href}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-xs md:text-sm font-medium transition-colors whitespace-nowrap
-                ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-            >
-              <Icon className="w-5 h-4 md:w-4 md:h-4 flex-shrink-0" />
-              <span className="hidden md:inline">{tab.label}</span>
-            </Link>
-          ) : (
-            <span
-              key={tab.label}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs md:text-sm font-medium text-muted-foreground opacity-50 cursor-not-allowed whitespace-nowrap"
-            >
-              <Icon className="w-4 h-4 md:w-4 md:h-4 flex-shrink-0" />
-              <span className="hidden md:inline">{tab.label}</span>
-            </span>
-          );
-        })}
+    <div className="w-full bg-background flex items-center py-1 px-4 border-b">
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <span className="text-sm font-semibold text-muted-foreground whitespace-nowrap">{scoreLabel}</span>
+        
+        <ParticipationScoreWidget 
+          score={scoreData?.score}
+          isLoading={scoreLoading} 
+          size="small"
+        />
+        
+        {scoreError && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-red-500" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Error: {scoreError}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
-    </nav>
+
+      {/* The filters component will expand to fill remaining space */}
+      <div className="flex-grow"></div>
+    </div>
   );
 } 

@@ -4,13 +4,15 @@ import React, { Suspense, useState, useEffect } from "react";
 import { Metadata } from 'next';
 import VoterHeader from "./VoterHeader";
 import { Toaster } from "@/components/ui/toaster";
-import { VoterFilterProvider } from './VoterFilterProvider';
+import { VoterFilterProvider, useVoterFilterContext } from './VoterFilterProvider';
 import FilterPanel from './list/components/FilterPanel';
 import TabNavigation from "./TabNavigation";
 import { VoterListProvider } from "./VoterListContext";
 import { MapStateProvider } from '@/context/MapStateContext';
 import { usePathname } from 'next/navigation';
-import { Filter } from "lucide-react";
+import { Filter, Menu, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Note: Metadata export might not work reliably in a 'use client' layout.
 // Consider moving it to a parent server component layout if needed.
@@ -30,15 +32,69 @@ const filterPanelVisiblePaths = [
   '/ga/voter/charts'
 ];
 
+// Helper function to count total active filters
+const countActiveFilters = (filters: any, residenceAddressFilters: any[]) => {
+  let count = 0;
+  
+  // Count array filters
+  Object.entries(filters).forEach(([key, value]) => {
+    if (Array.isArray(value) && value.length > 0) {
+      count += value.length;
+    }
+  });
+  
+  // Count string filters
+  if (filters.firstName) count++;
+  if (filters.lastName) count++;
+  if (filters.notVotedSinceYear) count++;
+  if (filters.voterEventMethod) count++;
+  
+  // Count address filters
+  count += residenceAddressFilters.length;
+  
+  return count;
+};
+
+// Separate component that will be rendered inside the VoterFilterProvider
+const FilterButton = ({ onClick }: { onClick: () => void }) => {
+  const { filters, residenceAddressFilters, hasActiveFilters } = useVoterFilterContext();
+  const totalFilterCount = countActiveFilters(filters, residenceAddressFilters);
+  
+  return (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      className="w-full flex justify-between items-center h-8"
+      onClick={onClick}
+    >
+      <span className="flex items-center">
+        <Menu size={16} className="mr-2" />
+        Filters
+      </span>
+      {hasActiveFilters() && (
+        <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+          {totalFilterCount}
+        </span>
+      )}
+    </Button>
+  );
+};
+
 export default function VoterLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname(); // Get pathname using the hook
+  const pathname = usePathname();
   // Determine if the filter panel should be shown based on the current path
   const showFilterPanel = filterPanelVisiblePaths.includes(pathname);
   const [filterPanelVisible, setFilterPanelVisible] = useState(true);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  
+  // Toggle mobile filters
+  const toggleMobileFilters = () => {
+    setMobileFiltersOpen(!mobileFiltersOpen);
+  };
   
   // Listen for custom toggle-filter-panel event
   useEffect(() => {
@@ -59,58 +115,95 @@ export default function VoterLayout({
   }, []);
 
   return (
-    // Wrap EVERYTHING in the providers
-    <Suspense> { /* Suspense might need to be outside if providers fetch data */}
+    <Suspense>
       <VoterListProvider>
         <VoterFilterProvider>
           <MapStateProvider>
-            <>
-              {/* Fixed Header and Nav (Now inside providers) */}
-              <div className="fixed top-0 left-0 right-0 z-50 bg-background shadow-sm">
-                <VoterHeader />
-                <TabNavigation /> { /* TabNavigation can now access VoterFilterContext */}
+            <div className="flex flex-col min-h-screen">
+              {/* Main header with tabs */}
+              <VoterHeader />
+              
+              {/* Secondary header with participation score and filters */}
+              <div className="flex w-full items-center">
+                {/* Score information */}
+                <TabNavigation />
+                
+                {/* Filter button on mobile - Now showing on all pages where filter panel is visible */}
+                {showFilterPanel && (
+                  <div className="md:hidden flex-grow pr-4 pl-2">
+                    <FilterButton onClick={toggleMobileFilters} />
+                  </div>
+                )}
               </div>
-
-              {/* Apply padding-top via inline style */}
-              <div className={`w-full h-screen flex flex-col`} style={{ paddingTop: FIXED_HEADER_NAV_HEIGHT }}>
-                 {/* Flex container for sidebar and main content */}
-                <div className="flex flex-1 w-full min-h-0">
-                  {/* Conditionally render sidebar based on allowed paths */}
-                  {showFilterPanel && (
-                    <div className={`hidden md:block md:w-[280px] md:min-w-[280px] md:max-w-[320px] md:flex-shrink-0 ${!filterPanelVisible ? 'md:hidden' : ''}`}>
-                      <div className="sticky" style={{ top: FIXED_HEADER_NAV_HEIGHT, maxHeight: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})` }}>
-                        <FilterPanel />
-                      </div>
+              
+              {/* Content area with sidebar and main content */}
+              <div className="flex flex-grow relative">
+                {/* Filter panel - desktop visible, mobile slide out */}
+                {showFilterPanel && (
+                  <>
+                    {/* Desktop filter panel */}
+                    <div 
+                      className={cn(
+                        "md:w-[280px] md:flex-shrink-0 border-r overflow-y-auto",
+                        !filterPanelVisible ? "md:hidden" : "md:block",
+                        "hidden" // Hide on mobile, show in slide-out
+                      )}
+                      style={{ maxHeight: 'calc(100vh - 126px)' }}
+                    >
+                      <FilterPanel />
                     </div>
+                  </>
+                )}
+                
+                {/* Main content area */}
+                <main 
+                  className={cn(
+                    "flex-grow overflow-y-auto",
+                    showFilterPanel && filterPanelVisible ? "md:w-[calc(100%-280px)]" : "w-full"
                   )}
-                  {/* Scrollable Main content area - Adjust for responsive layout */}
-                  <main 
-                    className="flex-1 overflow-y-auto w-full"
-                    style={{ height: `calc(100vh - ${FIXED_HEADER_NAV_HEIGHT})` }}
-                  >
-                    {/* Only show FilterPanel on mobile at the top of the main content */}
-                    {showFilterPanel && (
-                      <div className="md:hidden">
-                        <FilterPanel />
-                      </div>
-                    )}
-                    {children}
-                  </main>
-                </div>
-                <Toaster />
+                  style={{ height: 'calc(100vh - 126px)' }}
+                >
+                  {children}
+                </main>
               </div>
 
-              {/* Toggle button to show filter panel when hidden */}
+              {/* Toggle button for desktop filter panel when hidden */}
               {showFilterPanel && !filterPanelVisible && (
                 <button 
-                  className="fixed left-0 top-[92px] z-10 bg-background border border-l-0 rounded-r-md p-2 hidden md:block"
+                  className="fixed left-0 top-[126px] z-10 bg-background border border-l-0 rounded-r-md p-2 hidden md:block"
                   onClick={() => setFilterPanelVisible(true)}
                   aria-label="Show filters"
                 >
                   <Filter size={16} />
                 </button>
               )}
-            </>
+              
+              {/* Mobile filter panel - separate from the layout flow */}
+              {showFilterPanel && mobileFiltersOpen && (
+                <div className="md:hidden fixed inset-0 z-[20000]">
+                  {/* Semi-transparent backdrop */}
+                  <div 
+                    className="absolute inset-0 bg-black/50" 
+                    onClick={toggleMobileFilters}
+                  />
+                  
+                  {/* Filter panel */}
+                  <div className="absolute left-0 top-0 bottom-0 w-[85%] max-w-[300px] bg-background flex flex-col h-full shadow-lg">
+                    <div className="flex items-center justify-between p-4 border-b">
+                      <h3 className="font-medium">Filters</h3>
+                      <button onClick={toggleMobileFilters} className="p-1 rounded-full hover:bg-gray-200">
+                        <X size={20} />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2">
+                      <FilterPanel />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <Toaster />
+            </div>
           </MapStateProvider>
         </VoterFilterProvider>
       </VoterListProvider>

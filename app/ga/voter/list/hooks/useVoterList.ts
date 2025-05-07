@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
 import { FilterState, ResidenceAddressFilterState, PaginationState, Voter } from '../types';
 import { useVoterFilterContext, buildQueryParams } from '../../VoterFilterProvider';
 import { useVoterListContext } from '../../VoterListContext';
@@ -38,7 +39,7 @@ const initialFilterState: FilterState = {
 
 // Initial address filter state
 const initialAddressFilterState: ResidenceAddressFilterState = {
-  id: crypto.randomUUID(),
+  id: uuidv4(),
   residence_street_number: '',
   residence_pre_direction: '',
   residence_street_name: '',
