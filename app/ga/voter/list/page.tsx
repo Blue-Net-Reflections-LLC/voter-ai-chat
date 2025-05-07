@@ -10,6 +10,7 @@ export default function VoterListPage() {
     sort,
     voters,
     isLoading,
+    hasFetchedOnce,
     clearAllFilters,
     updatePage,
     updatePageSize,
@@ -30,6 +31,7 @@ export default function VoterListPage() {
         onPageChange={updatePage}
         onPageSizeChange={updatePageSize}
         onSort={updateSort}
+        hasFetchedOnce={hasFetchedOnce}
       />
     </div>
   );

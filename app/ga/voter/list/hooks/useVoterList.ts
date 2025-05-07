@@ -112,7 +112,8 @@ export function useVoterList() {
     direction: (searchParams.get('sortDirection') as SortDirection) || initialSortState.direction,
   }));
   
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   
   // Refs for request lock and URL updates
   const isUpdatingUrl = useRef(false);
@@ -253,6 +254,7 @@ export function useVoterList() {
       setVoters(data.voters || []);
       setPagination(prev => ({ ...prev, totalItems: data.pagination?.totalItems || 0 }));
       lastQueryParams.current = paramsString;
+      setHasFetchedOnce(true);
       
     } catch (error) {
       if (!isMountedRef.current) return;
@@ -337,6 +339,7 @@ export function useVoterList() {
     sort,
     voters,
     isLoading: isLoading || !filtersHydrated,
+    hasFetchedOnce,
     setFilters,
     setResidenceAddressFilters,
     updateFilter,

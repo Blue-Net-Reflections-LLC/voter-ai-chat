@@ -19,6 +19,7 @@ interface VoterTableProps {
     direction: SortDirection;
   };
   onSort?: (field: SortField) => void;
+  hasFetchedOnce?: boolean;
 }
 
 interface SortButtonProps {
@@ -117,7 +118,8 @@ export function VoterTable({
   voters, 
   isLoading = false, 
   sort,
-  onSort 
+  onSort,
+  hasFetchedOnce = false
 }: VoterTableProps) {
   // State for the voter quickview
   const [selectedVoter, setSelectedVoter] = useState<string | undefined>(undefined);
@@ -141,113 +143,114 @@ export function VoterTable({
           <LoaderCircle className="h-12 w-12 animate-spin text-primary/70" />
         </div>
       )}
-      <Table className="relative border-separate border-spacing-0 w-full h-full" style={{ tableLayout: 'fixed' }}>
-        <TableHeader className="border-b border-gray-700">
-          <TableRow className="h-7">
-            <TableHead 
-              style={{ 
-                width: '30%', 
-                position: 'sticky', 
-                top: 0, 
-                zIndex: 2, 
-                background: '#18181b',
-                borderBottom: '1px solid #4b5563' // gray-600
-              }} 
-              className="py-1.5 px-3 text-white font-normal"
-            >
-              <SortButton field="name" label="Full Name" currentSort={sort} onSort={onSort} />
-            </TableHead>
-            <TableHead 
-              style={{ 
-                width: '15%', 
-                position: 'sticky', 
-                top: 0, 
-                zIndex: 2, 
-                background: '#18181b',
-                borderBottom: '1px solid #4b5563' // gray-600
-              }} 
-              className="py-1.5 px-3 text-white font-normal"
-            >
-              <SortButton field="county" label="County" currentSort={sort} onSort={onSort} />
-            </TableHead>
-            <TableHead 
-              style={{ 
-                width: '30%', 
-                position: 'sticky', 
-                top: 0, 
-                zIndex: 2, 
-                background: '#18181b',
-                borderBottom: '1px solid #4b5563' // gray-600
-              }} 
-              className="py-1.5 px-3 text-white font-normal text-left"
-            >
-              <SortButton field="address" label="Resident Address" currentSort={sort} onSort={onSort} />
-            </TableHead>
-            <TableHead 
-              style={{ 
-                width: '10%', 
-                position: 'sticky', 
-                top: 0, 
-                zIndex: 2, 
-                background: '#18181b',
-                borderBottom: '1px solid #4b5563' // gray-600
-              }} 
-              className="py-1.5 px-3 text-white font-normal"
-            >
-              <SortButton field="score" label="Score" currentSort={sort} onSort={onSort} />
-            </TableHead>
-            <TableHead 
-              style={{ 
-                width: '15%', 
-                position: 'sticky', 
-                top: 0, 
-                zIndex: 2, 
-                background: '#18181b',
-                borderBottom: '1px solid #4b5563' // gray-600
-              }} 
-              className="py-1.5 px-3 text-white font-normal"
-            >
-              <SortButton field="status" label="Status" currentSort={sort} onSort={onSort} />
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {voters.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                No voters found matching your criteria
-              </TableCell>
+      {(!isLoading && hasFetchedOnce) && (
+        <Table className="relative border-separate border-spacing-0 w-full h-full" style={{ tableLayout: 'fixed' }}>
+          <TableHeader className="border-b border-gray-700">
+            <TableRow className="h-7">
+              <TableHead 
+                style={{ 
+                  width: '30%', 
+                  position: 'sticky', 
+                  top: 0, 
+                  zIndex: 2, 
+                  background: '#18181b',
+                  borderBottom: '1px solid #4b5563' // gray-600
+                }} 
+                className="py-1.5 px-3 text-white font-normal"
+              >
+                <SortButton field="name" label="Full Name" currentSort={sort} onSort={onSort} />
+              </TableHead>
+              <TableHead 
+                style={{ 
+                  width: '15%', 
+                  position: 'sticky', 
+                  top: 0, 
+                  zIndex: 2, 
+                  background: '#18181b',
+                  borderBottom: '1px solid #4b5563' // gray-600
+                }} 
+                className="py-1.5 px-3 text-white font-normal"
+              >
+                <SortButton field="county" label="County" currentSort={sort} onSort={onSort} />
+              </TableHead>
+              <TableHead 
+                style={{ 
+                  width: '30%', 
+                  position: 'sticky', 
+                  top: 0, 
+                  zIndex: 2, 
+                  background: '#18181b',
+                  borderBottom: '1px solid #4b5563' // gray-600
+                }} 
+                className="py-1.5 px-3 text-white font-normal text-left"
+              >
+                <SortButton field="address" label="Resident Address" currentSort={sort} onSort={onSort} />
+              </TableHead>
+              <TableHead 
+                style={{ 
+                  width: '10%', 
+                  position: 'sticky', 
+                  top: 0, 
+                  zIndex: 2, 
+                  background: '#18181b',
+                  borderBottom: '1px solid #4b5563' // gray-600
+                }} 
+                className="py-1.5 px-3 text-white font-normal"
+              >
+                <SortButton field="score" label="Score" currentSort={sort} onSort={onSort} />
+              </TableHead>
+              <TableHead 
+                style={{ 
+                  width: '15%', 
+                  position: 'sticky', 
+                  top: 0, 
+                  zIndex: 2, 
+                  background: '#18181b',
+                  borderBottom: '1px solid #4b5563' // gray-600
+                }} 
+                className="py-1.5 px-3 text-white font-normal"
+              >
+                <SortButton field="status" label="Status" currentSort={sort} onSort={onSort} />
+              </TableHead>
             </TableRow>
-          ) : (
-            voters.map((voter, index) => {
-              const statusProps = getStatusProps(voter.status);
-              return (
-                <TableRow 
-                  key={voter.id} 
-                  className={cn(
-                    "border-b border-gray-800 hover:bg-gray-900/20 cursor-pointer",
-                    index % 2 === 1 ? "bg-zinc-900/60" : "bg-transparent"
-                  )}
-                  onClick={() => handleRowClick(voter.id)}
-                >
-                  <TableCell style={{ width: '30%' }} className="py-2 px-3 text-xs">{formatFullName(voter)}</TableCell>
-                  <TableCell style={{ width: '15%' }} className="py-2 px-3 text-xs">{voter.county || "N/A"}</TableCell>
-                  <TableCell style={{ width: '30%' }} className="py-2 px-3 text-xs">{formatAddress(voter.address)}</TableCell>
-                  <TableCell style={{ width: '10%' }} className="py-2 px-3 text-xs">
-                    <ParticipationScoreWidget score={voter.participationScore} size="small" variant="compact" />
-                  </TableCell>
-                  <TableCell style={{ width: '15%' }} className="py-2 px-3">
-                    <span className={cn("inline-flex items-center justify-center text-[10px] font-semibold rounded px-2 py-0.5", statusProps.className)}>
-                      {statusProps.text.toUpperCase()}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
-
+          </TableHeader>
+          <TableBody>
+            {hasFetchedOnce && !isLoading && voters.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                  No voters found matching your criteria
+                </TableCell>
+              </TableRow>
+            ) : (
+              voters.map((voter, index) => {
+                const statusProps = getStatusProps(voter.status);
+                return (
+                  <TableRow 
+                    key={voter.id} 
+                    className={cn(
+                      "border-b border-gray-800 hover:bg-gray-900/20 cursor-pointer",
+                      index % 2 === 1 ? "bg-zinc-900/60" : "bg-transparent"
+                    )}
+                    onClick={() => handleRowClick(voter.id)}
+                  >
+                    <TableCell style={{ width: '30%' }} className="py-2 px-3 text-xs">{formatFullName(voter)}</TableCell>
+                    <TableCell style={{ width: '15%' }} className="py-2 px-3 text-xs">{voter.county || "N/A"}</TableCell>
+                    <TableCell style={{ width: '30%' }} className="py-2 px-3 text-xs">{formatAddress(voter.address)}</TableCell>
+                    <TableCell style={{ width: '10%' }} className="py-2 px-3 text-xs">
+                      <ParticipationScoreWidget score={voter.participationScore} size="small" variant="compact" />
+                    </TableCell>
+                    <TableCell style={{ width: '15%' }} className="py-2 px-3">
+                      <span className={cn("inline-flex items-center justify-center text-[10px] font-semibold rounded px-2 py-0.5", statusProps.className)}>
+                        {statusProps.text.toUpperCase()}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      )}
       {/* Voter Quickview Modal */}
       <VoterQuickview
         isOpen={isQuickviewOpen}

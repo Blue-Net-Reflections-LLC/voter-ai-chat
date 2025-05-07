@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VoterQuickview } from "@/components/ga/voter/quickview/VoterQuickview";
 import { ParticipationScoreWidget } from "@/components/voter/ParticipationScoreWidget";
+import { useVoterList } from '../hooks/useVoterList';
 
 interface ResultsPanelProps {
   voters: Voter[];
@@ -122,10 +123,12 @@ const VoterCard = ({ voter, onClick }: { voter: Voter; onClick: () => void }) =>
 const VoterCardGrid = ({ 
   voters, 
   isLoading,
+  hasFetchedOnce,
   onVoterClick
 }: { 
   voters: Voter[]; 
   isLoading: boolean;
+  hasFetchedOnce: boolean;
   onVoterClick: (voterId: string) => void;
 }) => {
   return (
@@ -136,7 +139,7 @@ const VoterCardGrid = ({
         </div>
       )}
       
-      {voters.length === 0 ? (
+      {hasFetchedOnce && !isLoading && voters.length === 0 ? (
         <div className="flex items-center justify-center min-h-[400px] h-full text-muted-foreground">
           No voters found matching your criteria
         </div>
@@ -182,7 +185,8 @@ export function ResultsPanel({
   onPageChange,
   onPageSizeChange,
   onSort,
-}: ResultsPanelProps) {
+  hasFetchedOnce,
+}: ResultsPanelProps & { hasFetchedOnce: boolean }) {
   const { currentPage, pageSize, totalItems } = pagination;
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const { toast } = useToast();
@@ -420,11 +424,13 @@ export function ResultsPanel({
               isLoading={isLoading}
               sort={sort}
               onSort={onSort}
+              hasFetchedOnce={hasFetchedOnce}
             />
           ) : (
             <VoterCardGrid
               voters={voters}
               isLoading={isLoading}
+              hasFetchedOnce={hasFetchedOnce}
               onVoterClick={handleVoterClick}
             />
           )}
