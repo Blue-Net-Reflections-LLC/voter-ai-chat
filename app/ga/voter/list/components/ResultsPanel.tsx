@@ -128,31 +128,29 @@ const VoterCardGrid = ({
   isLoading: boolean;
   onVoterClick: (voterId: string) => void;
 }) => {
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px] h-full">
-        <LoaderCircle className="h-12 w-12 animate-spin text-primary/70" />
-      </div>
-    );
-  }
-
-  if (voters.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px] h-full text-muted-foreground">
-        No voters found matching your criteria
-      </div>
-    );
-  }
-
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 p-1">
-      {voters.map((voter) => (
-        <VoterCard 
-          key={voter.id} 
-          voter={voter} 
-          onClick={() => onVoterClick(voter.id)}
-        />
-      ))}
+    <div className="relative min-h-[400px] h-full">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/50 z-10">
+          <LoaderCircle className="h-12 w-12 animate-spin text-primary/70" />
+        </div>
+      )}
+      
+      {voters.length === 0 ? (
+        <div className="flex items-center justify-center min-h-[400px] h-full text-muted-foreground">
+          No voters found matching your criteria
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 p-1">
+          {voters.map((voter) => (
+            <VoterCard 
+              key={voter.id} 
+              voter={voter} 
+              onClick={() => onVoterClick(voter.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

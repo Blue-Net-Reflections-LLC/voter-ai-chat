@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMobileView } from "@/hooks/useWindowSize";
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -25,26 +26,8 @@ export function PaginationControls({
   const hasNextPage = currentPage < totalPages;
   const hasPrevPage = currentPage > 1;
   
-  // Track window width for responsive behavior
-  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  const isMobileView = windowWidth < 640;
-  
-  // Listen for window resize events
-  useEffect(() => {
-    // Only run on client
-    if (typeof window === 'undefined') return;
-    
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    
-    // Set initial width
-    setWindowWidth(window.innerWidth);
-    
-    // Add event listener
-    window.addEventListener('resize', handleResize);
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Use the custom hook to detect mobile view
+  const isMobileView = useMobileView();
   
   // Handle pagination changes
   const handlePageSizeChange = (newSize: string) => {
