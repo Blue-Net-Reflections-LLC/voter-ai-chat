@@ -299,7 +299,7 @@ export function useVoterList() {
       fetchVoters();
     }
     // eslint-disable-next-line
-  }, [filtersHydrated, filters, residenceAddressFilters, pagination.currentPage, pagination.pageSize, sort.field, sort.direction, searchParams]);
+  }, [filtersHydrated, filters, residenceAddressFilters, pagination.currentPage, pagination.pageSize, sort.field, sort.direction]);
   
   // Helper functions for state updates
   const updatePage = (page: number) => {
