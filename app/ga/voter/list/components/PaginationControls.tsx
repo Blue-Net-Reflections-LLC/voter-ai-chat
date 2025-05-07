@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -25,6 +25,27 @@ export function PaginationControls({
   const hasNextPage = currentPage < totalPages;
   const hasPrevPage = currentPage > 1;
   
+  // Track window width for responsive behavior
+  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  const isMobileView = windowWidth < 640;
+  
+  // Listen for window resize events
+  useEffect(() => {
+    // Only run on client
+    if (typeof window === 'undefined') return;
+    
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    
+    // Set initial width
+    setWindowWidth(window.innerWidth);
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   // Handle pagination changes
   const handlePageSizeChange = (newSize: string) => {
     const size = parseInt(newSize, 10);
@@ -47,23 +68,21 @@ export function PaginationControls({
     onPageChange(page);
   };
 
-  // Function to generate page number buttons - now with responsive handling
+  // Function to generate page number buttons
   const renderPageNumbers = () => {
-    const pageNumbers = [];
-    
-    // Determine if we're in mobile view based on how many pages there are
-    // For very large page counts, we'll use a more compact display
-    const isCompactView = totalPages > 100;
-    const maxPageButtons = isCompactView ? 1 : 3; // Show fewer buttons in compact mode
-    
-    // On mobile or with large page counts, just show current/total instead of numbers
-    if (isCompactView) {
+    // Special case for very large page counts on small screens
+    // Check if we need a simplified view based on totalPages and screen size
+    const isVeryLargePageCount = totalPages > 1000;
+    if (isVeryLargePageCount && isMobileView) {
       return (
         <span className="text-xs font-medium px-1 whitespace-nowrap">
           {currentPage} / {totalPages}
         </span>
       );
     }
+    
+    const pageNumbers = [];
+    const maxPageButtons = 3; // Reduced from 5 to 3 for more compact layout
     
     let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
     let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
@@ -80,17 +99,17 @@ export function PaginationControls({
           key="first" 
           variant="outline" 
           size="sm" 
-          className="h-6 w-6 text-xs hidden sm:inline-flex"
+          className="h-6 w-6 text-xs"
           onClick={() => goToPage(1)}
         >
           1
         </Button>
       );
       
-      // Ellipsis if needed - hide on smaller screens
+      // Ellipsis if needed
       if (startPage > 2) {
         pageNumbers.push(
-          <span key="ellipsis1" className="px-1 text-xs hidden sm:inline-block">...</span>
+          <span key="ellipsis1" className="px-1 text-xs">...</span>
         );
       }
     }
@@ -110,12 +129,12 @@ export function PaginationControls({
       );
     }
     
-    // Last page button - hide on smaller screens
+    // Last page button
     if (endPage < totalPages) {
       // Ellipsis if needed
       if (endPage < totalPages - 1) {
         pageNumbers.push(
-          <span key="ellipsis2" className="px-1 text-xs hidden sm:inline-block">...</span>
+          <span key="ellipsis2" className="px-1 text-xs">...</span>
         );
       }
       
@@ -124,7 +143,7 @@ export function PaginationControls({
           key="last" 
           variant="outline" 
           size="sm" 
-          className="h-6 w-6 text-xs hidden sm:inline-flex"
+          className="h-6 w-6 text-xs"
           onClick={() => goToPage(totalPages)}
         >
           {totalPages}
@@ -154,35 +173,32 @@ export function PaginationControls({
           </SelectContent>
         </Select>
         
-        {/* Page numbers with responsive handling */}
-        <div className="flex items-center gap-1 ml-1">
-          {/* Previous button */}
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="h-6 w-6" 
-            disabled={!hasPrevPage}
-            onClick={goToPrevPage}
-            aria-label="Previous page"
-          >
-            <ChevronLeft size={12} />
-          </Button>
-          
-          {/* Page numbers */}
+        {/* Page numbers - now visible on all screen sizes */}
+        <div className="flex items-center gap-1">
           {renderPageNumbers()}
-          
-          {/* Next button */}
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="h-6 w-6" 
-            disabled={!hasNextPage}
-            onClick={goToNextPage}
-            aria-label="Next page"
-          >
-            <ChevronRight size={12} />
-          </Button>
         </div>
+        
+        {/* Previous/Next buttons */}
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="h-6 w-6" 
+          disabled={!hasPrevPage}
+          onClick={goToPrevPage}
+          aria-label="Previous page"
+        >
+          <ChevronLeft size={12} />
+        </Button>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="h-6 w-6" 
+          disabled={!hasNextPage}
+          onClick={goToNextPage}
+          aria-label="Next page"
+        >
+          <ChevronRight size={12} />
+        </Button>
       </div>
     </div>
   );

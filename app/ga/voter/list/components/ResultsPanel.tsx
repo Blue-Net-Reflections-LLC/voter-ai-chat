@@ -130,7 +130,7 @@ const VoterCardGrid = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-12">
+      <div className="flex items-center justify-center min-h-[400px] h-full">
         <LoaderCircle className="h-12 w-12 animate-spin text-primary/70" />
       </div>
     );
@@ -138,7 +138,7 @@ const VoterCardGrid = ({
 
   if (voters.length === 0) {
     return (
-      <div className="flex items-center justify-center p-8 text-muted-foreground">
+      <div className="flex items-center justify-center min-h-[400px] h-full text-muted-foreground">
         No voters found matching your criteria
       </div>
     );
