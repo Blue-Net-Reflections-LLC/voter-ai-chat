@@ -42,6 +42,16 @@ export default function StatsDashboardPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
+  console.log('[stats] Rendering StatsDashboardPage');
+  
+  // Component lifecycle logging
+  useEffect(() => {
+    console.log('[stats] Component MOUNTED');
+    return () => {
+      console.log('[stats] Component UNMOUNTED');
+    };
+  }, []);
+  
   // Get initial tab from URL or default to 'voting_info'
   const initialTab = searchParams.get('tab');
   const defaultTab = initialTab && ALL_SECTIONS.includes(initialTab as keyof SummaryData) ? initialTab : 'voting_info';
@@ -163,6 +173,7 @@ export default function StatsDashboardPage() {
         
     return () => {
       // Abort all requests when the effect cleanup runs
+      console.log("Aborting all requests when the effect cleanup runs");
       currentControllersRef.current.forEach(controller => {
         controller.abort();
       });
@@ -221,12 +232,12 @@ export default function StatsDashboardPage() {
       // Update our dropdown display
       setCurrentSection(value);
       
-      // Update URL search param without page refresh
+      // Update URL search param without page refresh, using shallow routing
       const current = new URLSearchParams(Array.from(searchParams.entries()));
       current.set("tab", value);
       const search = current.toString();
       const query = search ? `?${search}` : "";
-      router.replace(`${pathname}${query}`, { scroll: false });
+      router.replace(`${pathname}${query}`, { shallow: true, scroll: false });
     }
   }, [pathname, router, searchParams]);
 
@@ -261,7 +272,7 @@ export default function StatsDashboardPage() {
                       current.set("tab", section);
                       const search = current.toString();
                       const query = search ? `?${search}` : "";
-                      router.replace(`${pathname}${query}`);
+                      router.replace(`${pathname}${query}`, { shallow: true, scroll: false });
                       
                       // Also update our display immediately
                       setCurrentSection(section);

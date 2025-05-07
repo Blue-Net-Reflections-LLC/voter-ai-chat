@@ -24,7 +24,9 @@
     "ga:update:geocode": "cross-env NODE_OPTIONS=\" --max-old-space-size=4096\" tsx lib/ga-voter-registration/import/geocode-addresses.ts",
     "ga:update:redistricting": "cross-env NODE_OPTIONS=\" --max-old-space-size=4096\" tsx lib/ga-voter-registration/import/update-redistricting-flags.ts",
     "ga:enrich:boundaries": "cross-env NODE_OPTIONS=\" --max-old-space-size=8192\" tsx lib/ga-voter-registration/import/enrich-voter-boundaries.ts",
-    "ga:calculate:participation-score": "cross-env NODE_OPTIONS=\" --max-old-space-size=8192\" tsx lib/ga-voter-registration/import/calculate-ga-scores.ts"
+    "ga:calculate:participation-score": "cross-env NODE_OPTIONS=\" --max-old-space-size=8192\" tsx lib/ga-voter-registration/import/calculate-ga-scores.ts",
+    "ga:import:history": "pnpm run build && node dist/lib/ga-voter-history/import/parse-history-csv.js",
+    "ga:import:census-staging": "cross-env NODE_OPTIONS=\" --max-old-space-size=4096\" tsx lib/ga-voter-registration/import/populateStgCensusTractData.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.5",
