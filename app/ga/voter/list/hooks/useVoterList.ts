@@ -6,16 +6,6 @@ import { FilterState, ResidenceAddressFilterState, PaginationState, Voter } from
 import { useVoterFilterContext, buildQueryParams } from '../../VoterFilterProvider';
 import { useVoterListContext } from '../../VoterListContext';
 
-// Debounce utility
-function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
-  
-  return function (...args: Parameters<T>) {
-    if (timeout) clearTimeout(timeout);
-    
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
 
 // Initial filter state
 const initialFilterState: FilterState = {
@@ -171,10 +161,25 @@ export function useVoterList() {
     // eslint-disable-next-line
   }, [pagination.currentPage, pagination.pageSize, sort.field, sort.direction]);
   
+  // Track current active request controller
+  const currentControllerRef = useRef<AbortController | null>(null);
+
+  // Safely abort the current request if one exists
+  const safelyAbortCurrentRequest = useCallback(() => {
+    if (currentControllerRef.current && !currentControllerRef.current.signal.aborted) {
+      try {
+        currentControllerRef.current.abort();
+      } catch (err) {
+        console.error('[Voter List] Error aborting previous request:', err);
+      } finally {
+        currentControllerRef.current = null;
+      }
+    }
+  }, []);
+
   // Fetch voters from API (no debounce)
   const fetchVoters = useCallback(async () => {
     if (!isMountedRef.current) return;
-    if (isRequestInProgress.current) return;
 
     const paramsString = buildQueryParams(filters, residenceAddressFilters, {
       page: pagination.currentPage,
@@ -183,31 +188,104 @@ export function useVoterList() {
       sortDirection: sort.direction
     }).toString();
 
-    // Skip if same request is in progress or params haven't changed
-    if (paramsString === requestParams.current) return;
-
+    // Generate a unique request ID for tracking
+    const requestId = Date.now().toString();
+    
+    // If a request is in progress, abort it before starting a new one
+    if (isRequestInProgress.current) {
+      safelyAbortCurrentRequest();
+    }
+    
     isRequestInProgress.current = true;
     requestParams.current = paramsString;
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/ga/voter/list?${paramsString}`);
-      if (!isMountedRef.current) return;
+      // Create a controller so we can abort if needed
+      const controller = new AbortController();
+      
+      // Store the current controller so it can be aborted if needed
+      currentControllerRef.current = controller;
+      
+      // Make the actual fetch request
+      let response;
+      try {
+        response = await fetch(`/api/ga/voter/list?${paramsString}`, { 
+          signal: controller.signal 
+        });
+      } catch (fetchError) {
+        // Handle fetch errors especially AbortError
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          return; // Just return, don't throw
+        }
+        throw fetchError; // Re-throw other errors
+      }
+      
+      // If component unmounted during request, abort and return
+      if (!isMountedRef.current) {
+        safelyAbortCurrentRequest();
+        return;
+      }
+      
       if (!response.ok) throw new Error(`API error: ${response.status}`);
-      const data = await response.json();
-      if (!isMountedRef.current) return;
+      
+      // Parse JSON with error handling
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        if (!isMountedRef.current || requestParams.current !== paramsString) {
+          return; // Just return, no need to throw
+        }
+        throw jsonError; // Re-throw for other JSON parsing errors
+      }
+      
+      // Check again after JSON parsing
+      if (!isMountedRef.current) {
+        return;
+      }
+      
+      // Compare with latest query to see if this is stale
+      if (requestParams.current !== paramsString) {
+        return;
+      }
+      
       setVoters(data.voters || []);
       setPagination(prev => ({ ...prev, totalItems: data.pagination?.totalItems || 0 }));
       lastQueryParams.current = paramsString;
+      
     } catch (error) {
-      if (isMountedRef.current) setVoters([]);
+      if (!isMountedRef.current) return;
+      
+      // Log but don't throw for AbortError
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      
+      console.error(`[Voter List] Error:`, error);
+      
+      // Only update UI if this is still current
+      if (requestParams.current === paramsString) {
+        setVoters([]);
+      }
     } finally {
-      if (isMountedRef.current) setIsLoading(false);
-      setTimeout(() => {
+      // Always update UI state if component is mounted AND this was the latest request
+      if (isMountedRef.current && requestParams.current === paramsString) {
+        setIsLoading(false);
+      }
+      
+      // Clear this controller reference if it matches the current one
+      if (currentControllerRef.current && 
+          (currentControllerRef.current.signal.aborted || requestParams.current !== paramsString)) {
+        currentControllerRef.current = null;
+      }
+      
+      // Release the request lock if this was the most recent request
+      if (requestParams.current === paramsString) {
         isRequestInProgress.current = false;
-      }, 300);
+      }
     }
-  }, [filters, residenceAddressFilters, pagination, sort]);
+  }, [filters, residenceAddressFilters, pagination, sort, safelyAbortCurrentRequest]);
   
   useEffect(() => {
     if (!filtersHydrated) return;

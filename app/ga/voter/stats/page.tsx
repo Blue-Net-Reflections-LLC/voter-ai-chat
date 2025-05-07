@@ -62,58 +62,113 @@ export default function StatsDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const lastFetchKey = useRef<string | null>(null);
   const isFetchingRef = useRef<boolean>(false);
+  const currentControllersRef = useRef<Map<string, AbortController>>(new Map());
+
+  // Create stable filter references for dependency tracking
+  const filterString = useMemo(() => JSON.stringify(filters), [filters]);
+  const residenceFilterString = useMemo(() => JSON.stringify(residenceAddressFilters), [residenceAddressFilters]);
 
   useEffect(() => {
-    if (!filtersHydrated || isFetchingRef.current) {
-        return;
-    }
+    if (!filtersHydrated) return;
+    
     const currentFetchKey = JSON.stringify({ filters, residenceAddressFilters });
     if (currentFetchKey === lastFetchKey.current) {
       if (loading) setLoading(false);
       return;
     }
+    
+    // Abort any in-flight requests
+    currentControllersRef.current.forEach((controller, section) => {
+      controller.abort();
+    });
+    currentControllersRef.current.clear();
+    
     isFetchingRef.current = true;
     lastFetchKey.current = currentFetchKey;
     setLoading(true);
     setError(null);
     setSummaryData({});
 
+    // Creating a new set of abort controllers for this batch of requests
     const fetchPromises = ALL_SECTIONS.map(sectionKey => {
+      const controller = new AbortController();
+      currentControllersRef.current.set(sectionKey, controller);
+      
       const params = buildQueryParams(filters, residenceAddressFilters, { section: sectionKey });
       const url = `/api/ga/voter/summary?${params.toString()}`;
-      return fetch(url)
+      
+      return fetch(url, { signal: controller.signal })
         .then(async (res) => {
+            // Check if the request was aborted
+            if (controller.signal.aborted) {
+              return { section: sectionKey, status: 'aborted' };
+            }
+            
             if (!res.ok) {
                 const errorText = await res.text();
-                console.error(`[Stats Fetch] Error fetching ${sectionKey}: ${res.status} - ${errorText}`);
                 throw { section: sectionKey, status: res.status, message: errorText || `Failed to fetch ${sectionKey}` };
             }
+            
             const data = await res.json();
+            
+            // Check again after JSON parsing if the request is still valid
+            if (controller.signal.aborted || lastFetchKey.current !== currentFetchKey) {
+              return { section: sectionKey, status: 'aborted' };
+            }
+            
             const sectionData = data[sectionKey] || data;
             setSummaryData(prev => ({ ...prev, [sectionKey]: sectionData }));
             return { section: sectionKey, status: 'fulfilled' };
         })
         .catch(err => {
-            const errorPayload = { section: sectionKey, message: err.message || `Network error fetching ${sectionKey}`, isNetworkError: !err.status };
-            console.error(`[Stats Fetch] Network/Catch Error fetching ${sectionKey}:`, errorPayload);
-            return Promise.reject({ section: sectionKey, status: 'rejected', reason: errorPayload });
+            // Don't report errors for aborted requests
+            if (err.name === 'AbortError' || controller.signal.aborted) {
+              return { section: sectionKey, status: 'aborted' };
+            }
+            
+            console.error(`Error fetching ${sectionKey}:`, err);
+            return Promise.reject({ 
+              section: sectionKey, 
+              status: 'rejected', 
+              reason: { 
+                section: sectionKey, 
+                message: err.message || `Error fetching ${sectionKey}`, 
+                isNetworkError: !err.status 
+              }
+            });
+        })
+        .finally(() => {
+          // Remove the controller reference when done
+          currentControllersRef.current.delete(sectionKey);
         });
     });
 
     Promise.allSettled(fetchPromises)
         .then(results => {
+            // Only process if this is still the current fetch
+            if (lastFetchKey.current !== currentFetchKey) return;
+            
             let errorsFound = false;
+            
             results.forEach(result => {
-                 if (result.status === 'rejected') {
+                if (result.status === 'rejected') {
                     errorsFound = true;
-                    console.error(`[Stats Fetch] Settled Error for ${result.reason?.section}:`, result.reason?.reason?.message);
-                    setError(prevError => prevError || `Error loading data for ${result.reason?.section}.`); 
-                 }
+                    setError(prevError => prevError || `Error loading data.`);
+                }
             });
+            
             isFetchingRef.current = false;
             setLoading(false);
         });
-  }, [filters, residenceAddressFilters, filtersHydrated]);
+        
+    return () => {
+      // Abort all requests when the effect cleanup runs
+      currentControllersRef.current.forEach(controller => {
+        controller.abort();
+      });
+      currentControllersRef.current.clear();
+    };
+  }, [filtersHydrated, filterString, residenceFilterString]);
 
   const totalVoters = useMemo(() => {
     if (!summaryData?.voting_info?.status) return 0;

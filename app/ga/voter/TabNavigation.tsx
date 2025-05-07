@@ -98,7 +98,6 @@ function useParticipationScore(
       const params = new URLSearchParams();
       params.set('registrationNumber', registrationNumber as string);
       queryString = params.toString();
-      console.log(`[Score Fetch] Fetching individual score for: ${registrationNumber}`);
     } else {
       const relevantFilters = { ...(filters || {}) };
       delete (relevantFilters as any).page;
@@ -108,7 +107,6 @@ function useParticipationScore(
 
       const params = buildQueryParams(relevantFilters as FilterState, residenceAddressFilters);
       queryString = params.toString();
-      console.log(`[Score Fetch] Fetching aggregate score with query: ${queryString || '(no filters - overall avg)'}`);
     }
     
     // Generate a unique request ID and store it as the latest
@@ -126,22 +124,18 @@ function useParticipationScore(
       .then(data => {
         // Only update state if this is still the latest request
         if (requestId === latestRequestRef.current) {
-          console.log(`[Score Fetch] Received ${isIndividualFetch ? 'individual' : 'aggregate'} score data:`, data);
           setScoreData(data);
           setLoading(false);
-        } else {
-          console.log(`[Score Fetch] Ignoring stale response for request ${requestId}`);
         }
       })
       .catch(e => {
         if (e.name === 'AbortError') {
-          console.log('Fetch aborted for participation score');
           return;
         }
         
         // Only update state if this is still the latest request
         if (requestId === latestRequestRef.current) {
-          console.error(`Error fetching ${isIndividualFetch ? 'individual' : 'aggregate'} participation score:`, e);
+          console.error(`Error fetching participation score:`, e);
           setError(e.message || 'An error occurred');
           setScoreData(null);
           setLoading(false);
