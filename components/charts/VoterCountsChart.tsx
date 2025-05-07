@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LineChart,
   Line,
@@ -60,16 +60,30 @@ export function VoterCountsChart() {
   const [autoScale, setAutoScale] = useState<boolean>(true);
   const [activeView, setActiveView] = useState<ChartViewType>('line'); // State for Line/Bar/Area
   const { toast } = useToast();
+  
+  // Create stable filter references for dependency tracking
+  const filterString = useMemo(() => JSON.stringify(filters), [filters]);
+  const residenceFilterString = useMemo(() => JSON.stringify(residenceAddressFilters), [residenceAddressFilters]);
+  
+  // Keep track of the current controller
+  const controllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef<string>('');
 
   useEffect(() => {
     if (!filtersHydrated) return;
 
-    const controller = new AbortController();
-    const signal = controller.signal;
+    // Cancel any previous request
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
     
-    // Track this specific request
+    // Create a new controller for this request
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    
+    // Generate unique ID for this request
     const requestId = Date.now().toString();
-    const requestRef = { current: requestId };
+    requestIdRef.current = requestId;
 
     async function fetchChartData() {
       setIsLoading(true);
@@ -80,13 +94,29 @@ export function VoterCountsChart() {
           chartType: 'voterCountsOverTime' // Fetch counts data
         });
 
-        console.log(`[Chart Fetch] Starting request ${requestId} with params: ${params.toString()}`);
-        const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`, { signal });
-        const data = await response.json();
+        const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`, { 
+          signal: controller.signal 
+        });
+        
+        // Check if this request was aborted or component unmounted
+        if (controller.signal.aborted || requestIdRef.current !== requestId) {
+          return;
+        }
 
-        // Check if request was aborted or is stale
-        if (signal.aborted || requestRef.current !== requestId) {
-          console.log(`[Chart Fetch] Request ${requestId} was aborted or superseded`);
+        // Parse the JSON response with its own try/catch
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          // If aborted during JSON parsing, just return
+          if (controller.signal.aborted || requestIdRef.current !== requestId) {
+            return;
+          }
+          throw jsonError;
+        }
+
+        // Check again after parsing if request is still valid
+        if (controller.signal.aborted || requestIdRef.current !== requestId) {
           return;
         }
 
@@ -104,7 +134,6 @@ export function VoterCountsChart() {
           return;
         }
 
-        console.log(`[Chart Fetch] Request ${requestId} completed successfully`);
         setChartData(data);
         
         if (data.series) {
@@ -115,21 +144,21 @@ export function VoterCountsChart() {
           setVisibleSeries(initialVisibility);
         }
       } catch (err) {
+        // Ignore AbortError
         if (err instanceof Error && err.name === 'AbortError') {
-          console.log(`[Chart Fetch] Request ${requestId} aborted`);
           return;
         }
         
         // Only update error state if this is still the current request
-        if (requestRef.current === requestId) {
-          const errorMessage = 'An error occurred while fetching the chart data.';
-          console.error(`[Chart Fetch] Error in request ${requestId}:`, err);
-          setError(errorMessage);
+        if (requestIdRef.current === requestId && !controller.signal.aborted) {
+          console.error(`Error fetching chart data:`, err);
+          setError('An error occurred while fetching the chart data.');
           setChartData(null);
-          toast({ variant: "destructive", title: "Error loading chart data", description: errorMessage });
+          toast({ variant: "destructive", title: "Error loading chart data", description: 'Failed to load chart data' });
         }
       } finally {
-        if (!signal.aborted && requestRef.current === requestId) {
+        // Update UI only if this is still the current request
+        if (requestIdRef.current === requestId && !controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -138,12 +167,11 @@ export function VoterCountsChart() {
     fetchChartData();
 
     return () => {
-      // Mark this request as cancelled before aborting
-      requestRef.current = '';
+      // Clean up on unmount or when dependencies change
       controller.abort();
-      console.log(`[Chart Fetch] Cancelling request ${requestId}`);
+      controllerRef.current = null;
     };
-  }, [filters, residenceAddressFilters, filtersHydrated, toast]);
+  }, [filtersHydrated, filterString, residenceFilterString, toast]);
 
   const handleTableRowClick = (dataKey: string) => {
     setVisibleSeries(prev => ({
