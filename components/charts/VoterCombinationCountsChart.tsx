@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   BarChart,
   Bar,
@@ -108,12 +108,30 @@ export function VoterCombinationCountsChart() {
   const [activeView, setActiveView] = useState<ChartViewType>('bar'); // Default to bar
   const [visibleCombinations, setVisibleCombinations] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+  
+  // Create stable filter references for dependency tracking
+  const filterString = useMemo(() => JSON.stringify(filters), [filters]);
+  const residenceFilterString = useMemo(() => JSON.stringify(residenceAddressFilters), [residenceAddressFilters]);
+  
+  // Keep track of the current controller
+  const controllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef<string>('');
 
   useEffect(() => {
     if (!filtersHydrated) return;
-
+    
+    // Cancel any previous request
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+    
+    // Create a new controller for this request
     const controller = new AbortController();
-    const signal = controller.signal;
+    controllerRef.current = controller;
+    
+    // Generate unique ID for this request
+    const requestId = Date.now().toString();
+    requestIdRef.current = requestId;
 
     async function fetchChartData() {
       setIsLoading(true);
@@ -124,10 +142,31 @@ export function VoterCombinationCountsChart() {
           chartType: 'voterCombinationCounts' // Fetch combination counts data
         });
 
-        const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`, { signal });
-        const data = await response.json();
+        const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`, { 
+          signal: controller.signal 
+        });
+        
+        // Check if this request was aborted or component unmounted
+        if (controller.signal.aborted || requestIdRef.current !== requestId) {
+          return;
+        }
 
-        if (signal.aborted) return;
+        // Parse the JSON response with its own try/catch
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          // If aborted during JSON parsing, just return
+          if (controller.signal.aborted || requestIdRef.current !== requestId) {
+            return;
+          }
+          throw jsonError;
+        }
+
+        // Check again after parsing if request is still valid
+        if (controller.signal.aborted || requestIdRef.current !== requestId) {
+          return;
+        }
 
         if (!response.ok) {
           const errorMessage = data.message || 'Failed to fetch chart data';
@@ -156,18 +195,22 @@ export function VoterCombinationCountsChart() {
         }
         
       } catch (err) {
+        // Ignore AbortError
         if (err instanceof Error && err.name === 'AbortError') {
-          console.log('Chart data fetch aborted');
           return;
         }
-        const errorMessage = 'An error occurred while fetching the chart data.';
-        console.error('Error fetching chart data:', err);
-        setError(errorMessage);
-        setChartData(null);
-        setVisibleCombinations({});
-        toast({ variant: "destructive", title: "Error loading chart data", description: errorMessage });
+        
+        // Only update error state if this is still the current request
+        if (requestIdRef.current === requestId && !controller.signal.aborted) {
+          console.error('Error fetching chart data:', err);
+          setError('An error occurred while fetching the chart data.');
+          setChartData(null);
+          setVisibleCombinations({});
+          toast({ variant: "destructive", title: "Error loading chart data", description: 'Failed to load chart data' });
+        }
       } finally {
-        if (!signal.aborted) {
+        // Update UI only if this is still the current request
+        if (requestIdRef.current === requestId && !controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -176,9 +219,11 @@ export function VoterCombinationCountsChart() {
     fetchChartData();
 
     return () => {
+      // Clean up on unmount or when dependencies change
       controller.abort();
+      controllerRef.current = null;
     };
-  }, [filters, residenceAddressFilters, filtersHydrated, toast]);
+  }, [filtersHydrated, filterString, residenceFilterString, toast]);
 
   const handleTableRowClick = (dataKey: string) => {
     setVisibleCombinations(prev => ({

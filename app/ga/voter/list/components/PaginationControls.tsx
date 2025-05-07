@@ -4,6 +4,7 @@ import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMobileView } from "@/hooks/useWindowSize";
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -25,9 +26,8 @@ export function PaginationControls({
   const hasNextPage = currentPage < totalPages;
   const hasPrevPage = currentPage > 1;
   
-  // Calculate displayed range for UI
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
+  // Use the custom hook to detect mobile view
+  const isMobileView = useMobileView();
   
   // Handle pagination changes
   const handlePageSizeChange = (newSize: string) => {
@@ -53,6 +53,17 @@ export function PaginationControls({
 
   // Function to generate page number buttons
   const renderPageNumbers = () => {
+    // Special case for very large page counts on small screens
+    // Check if we need a simplified view based on totalPages and screen size
+    const isVeryLargePageCount = totalPages > 1000;
+    if (isVeryLargePageCount && isMobileView) {
+      return (
+        <span className="text-xs font-medium px-1 whitespace-nowrap">
+          {currentPage} / {totalPages}
+        </span>
+      );
+    }
+    
     const pageNumbers = [];
     const maxPageButtons = 3; // Reduced from 5 to 3 for more compact layout
     
@@ -127,30 +138,26 @@ export function PaginationControls({
   };
 
   return (
-    <div className="flex items-center justify-between w-full h-full">
-      <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {totalItems > 0 
-          ? `${startItem}-${endItem} of ${totalItems}` 
-          : "No results"}
-      </span>
+    <div className="flex items-center justify-end w-full h-full">
       <div className="flex items-center gap-1">
         <Select 
           value={pageSize.toString()} 
           onValueChange={handlePageSizeChange}
         >
           <SelectTrigger className="w-[60px] h-6 text-xs">
-            <SelectValue placeholder="25" />
+            <SelectValue placeholder="12" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="10">10</SelectItem>
-            <SelectItem value="25">25</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
+            <SelectItem value="12">12</SelectItem>
+            <SelectItem value="24">24</SelectItem>
+            <SelectItem value="36">36</SelectItem>
+            <SelectItem value="48">48</SelectItem>
+            <SelectItem value="60">60</SelectItem>
           </SelectContent>
         </Select>
         
-        {/* Page numbers */}
-        <div className="hidden md:flex items-center gap-1">
+        {/* Page numbers - now visible on all screen sizes */}
+        <div className="flex items-center gap-1">
           {renderPageNumbers()}
         </div>
         

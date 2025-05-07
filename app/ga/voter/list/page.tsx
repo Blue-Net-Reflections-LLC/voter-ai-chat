@@ -1,15 +1,16 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React from "react";
 import ResultsPanel from "./components/ResultsPanel";
 import { useVoterList } from "./hooks/useVoterList";
 
-function VoterListContent() {
+export default function VoterListPage() {
   const {
     pagination,
     sort,
     voters,
     isLoading,
+    hasFetchedOnce,
     clearAllFilters,
     updatePage,
     updatePageSize,
@@ -19,24 +20,19 @@ function VoterListContent() {
   } = useVoterList();
 
   return (
-    <ResultsPanel
-      voters={voters}
-      pagination={pagination}
-      sort={sort}
-      hasActiveFilters={hasActiveFilters}
-      isLoading={isLoading}
-      currentQueryParams={currentQueryParams}
-      onPageChange={updatePage}
-      onPageSizeChange={updatePageSize}
-      onSort={updateSort}
-    />
-  );
-}
-
-export default function VoterListPage() {
-  return (
-    <Suspense>
-      <VoterListContent />
-    </Suspense>
+    <div className="w-full flex flex-col md:h-[calc(100vh-92px)] h-[calc(100vh-158px)]">
+      <ResultsPanel
+        voters={voters}
+        pagination={pagination}
+        sort={sort}
+        hasActiveFilters={hasActiveFilters}
+        isLoading={isLoading}
+        currentQueryParams={currentQueryParams}
+        onPageChange={updatePage}
+        onPageSizeChange={updatePageSize}
+        onSort={updateSort}
+        hasFetchedOnce={hasFetchedOnce}
+      />
+    </div>
   );
 } 
