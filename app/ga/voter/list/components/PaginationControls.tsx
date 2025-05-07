@@ -47,10 +47,23 @@ export function PaginationControls({
     onPageChange(page);
   };
 
-  // Function to generate page number buttons
+  // Function to generate page number buttons - now with responsive handling
   const renderPageNumbers = () => {
     const pageNumbers = [];
-    const maxPageButtons = 3; // Reduced from 5 to 3 for more compact layout
+    
+    // Determine if we're in mobile view based on how many pages there are
+    // For very large page counts, we'll use a more compact display
+    const isCompactView = totalPages > 100;
+    const maxPageButtons = isCompactView ? 1 : 3; // Show fewer buttons in compact mode
+    
+    // On mobile or with large page counts, just show current/total instead of numbers
+    if (isCompactView) {
+      return (
+        <span className="text-xs font-medium px-1 whitespace-nowrap">
+          {currentPage} / {totalPages}
+        </span>
+      );
+    }
     
     let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
     let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
@@ -67,17 +80,17 @@ export function PaginationControls({
           key="first" 
           variant="outline" 
           size="sm" 
-          className="h-6 w-6 text-xs"
+          className="h-6 w-6 text-xs hidden sm:inline-flex"
           onClick={() => goToPage(1)}
         >
           1
         </Button>
       );
       
-      // Ellipsis if needed
+      // Ellipsis if needed - hide on smaller screens
       if (startPage > 2) {
         pageNumbers.push(
-          <span key="ellipsis1" className="px-1 text-xs">...</span>
+          <span key="ellipsis1" className="px-1 text-xs hidden sm:inline-block">...</span>
         );
       }
     }
@@ -97,12 +110,12 @@ export function PaginationControls({
       );
     }
     
-    // Last page button
+    // Last page button - hide on smaller screens
     if (endPage < totalPages) {
       // Ellipsis if needed
       if (endPage < totalPages - 1) {
         pageNumbers.push(
-          <span key="ellipsis2" className="px-1 text-xs">...</span>
+          <span key="ellipsis2" className="px-1 text-xs hidden sm:inline-block">...</span>
         );
       }
       
@@ -111,7 +124,7 @@ export function PaginationControls({
           key="last" 
           variant="outline" 
           size="sm" 
-          className="h-6 w-6 text-xs"
+          className="h-6 w-6 text-xs hidden sm:inline-flex"
           onClick={() => goToPage(totalPages)}
         >
           {totalPages}
@@ -141,32 +154,35 @@ export function PaginationControls({
           </SelectContent>
         </Select>
         
-        {/* Page numbers - now visible on all screen sizes */}
-        <div className="flex items-center gap-1">
+        {/* Page numbers with responsive handling */}
+        <div className="flex items-center gap-1 ml-1">
+          {/* Previous button */}
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-6 w-6" 
+            disabled={!hasPrevPage}
+            onClick={goToPrevPage}
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={12} />
+          </Button>
+          
+          {/* Page numbers */}
           {renderPageNumbers()}
+          
+          {/* Next button */}
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-6 w-6" 
+            disabled={!hasNextPage}
+            onClick={goToNextPage}
+            aria-label="Next page"
+          >
+            <ChevronRight size={12} />
+          </Button>
         </div>
-        
-        {/* Previous/Next buttons */}
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="h-6 w-6" 
-          disabled={!hasPrevPage}
-          onClick={goToPrevPage}
-          aria-label="Previous page"
-        >
-          <ChevronLeft size={12} />
-        </Button>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="h-6 w-6" 
-          disabled={!hasNextPage}
-          onClick={goToNextPage}
-          aria-label="Next page"
-        >
-          <ChevronRight size={12} />
-        </Button>
       </div>
     </div>
   );
