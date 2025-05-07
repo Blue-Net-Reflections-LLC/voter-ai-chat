@@ -17,6 +17,12 @@ export type LookupData = {
   timestamp: string;
 };
 
+// Cache keys
+const LOOKUP_CACHE_KEY = 'voter-lookup-data-cache';
+const LOOKUP_CACHE_TIMESTAMP_KEY = 'voter-lookup-data-timestamp';
+// Cache expiration time - 1 hour in milliseconds
+const CACHE_EXPIRATION = 60 * 60 * 1000;
+
 // Helper function to convert text to Title Case
 const toTitleCase = (text: string): string => {
   return text
@@ -34,10 +40,146 @@ const toOptions = (values: string[]): MultiSelectOption[] => {
   }));
 };
 
+// Create a singleton instance to ensure the data is only fetched once across components
+let globalLookupData: LookupData | null = null;
+let isGlobalFetchInProgress = false;
+let fetchPromise: Promise<LookupData | null> | null = null;
+
+async function fetchLookupDataFromAPI(): Promise<LookupData | null> {
+  try {
+    // Fetch district, registration, demographic, and voter_events data in parallel
+    const [districtResponse, registrationResponse, demographicResponse, eventsResponse] = await Promise.all([
+      fetch('/api/ga/voter/list/lookup?category=district'),
+      fetch('/api/ga/voter/list/lookup?category=registration'),
+      fetch('/api/ga/voter/list/lookup?category=demographic'),
+      fetch('/api/ga/voter/list/lookup?category=voter_events')
+    ]);
+    
+    if (!districtResponse.ok || !registrationResponse.ok || !demographicResponse.ok || !eventsResponse.ok) {
+      throw new Error(`API error: ${!districtResponse.ok ? districtResponse.status : 
+                                  !registrationResponse.ok ? registrationResponse.status : 
+                                  !demographicResponse.ok ? demographicResponse.status : eventsResponse.status}`);
+    }
+    
+    const districtData = await districtResponse.json();
+    const registrationData = await registrationResponse.json();
+    const demographicData = await demographicResponse.json();
+    const eventsData = await eventsResponse.json();
+    
+    // Combine all data sets including voter_events
+    const combinedData = {
+      fields: [
+        ...districtData.fields,
+        ...registrationData.fields,
+        ...demographicData.fields,
+        ...eventsData.fields
+      ],
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log("Lookup API data fetched successfully");
+    return combinedData;
+  } catch (err) {
+    console.error('Error fetching lookup data:', err);
+    return null;
+  }
+}
+
+// Helper to save data to localStorage
+function saveLookupDataToCache(data: LookupData): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem(LOOKUP_CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(LOOKUP_CACHE_TIMESTAMP_KEY, Date.now().toString());
+    console.log("Lookup data saved to localStorage cache");
+  } catch (error) {
+    console.error("Error saving lookup data to localStorage:", error);
+  }
+}
+
+// Helper to load data from localStorage
+function loadLookupDataFromCache(): LookupData | null {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const timestamp = localStorage.getItem(LOOKUP_CACHE_TIMESTAMP_KEY);
+    // Check if cache is expired
+    if (timestamp && Date.now() - parseInt(timestamp) < CACHE_EXPIRATION) {
+      const cachedData = localStorage.getItem(LOOKUP_CACHE_KEY);
+      if (cachedData) {
+        console.log("Using cached lookup data from localStorage");
+        return JSON.parse(cachedData);
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Error loading lookup data from localStorage:", error);
+    return null;
+  }
+}
+
 export function useLookupData() {
-  const [lookupData, setLookupData] = useState<LookupData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [lookupData, setLookupData] = useState<LookupData | null>(globalLookupData);
+  const [isLoading, setIsLoading] = useState<boolean>(!globalLookupData);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // If global data already exists, use it immediately
+    if (globalLookupData) {
+      setLookupData(globalLookupData);
+      setIsLoading(false);
+      return;
+    }
+    
+    async function initializeLookupData() {
+      // Only start a new fetch if no fetch is already in progress
+      if (isGlobalFetchInProgress) {
+        // Wait for existing fetch to complete
+        if (fetchPromise) {
+          const result = await fetchPromise;
+          if (result) {
+            setLookupData(result);
+          }
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      // Try to load from localStorage first
+      const cachedData = loadLookupDataFromCache();
+      if (cachedData) {
+        globalLookupData = cachedData;
+        setLookupData(cachedData);
+        setIsLoading(false);
+        return;
+      }
+      
+      // If no cached data, fetch from API
+      setIsLoading(true);
+      isGlobalFetchInProgress = true;
+      fetchPromise = fetchLookupDataFromAPI();
+      
+      try {
+        const data = await fetchPromise;
+        if (data) {
+          globalLookupData = data;
+          setLookupData(data);
+          // Save to localStorage for future component mounts
+          saveLookupDataToCache(data);
+        }
+      } catch (err) {
+        console.error('Error in lookup data initialization:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setIsLoading(false);
+        isGlobalFetchInProgress = false;
+        fetchPromise = null;
+      }
+    }
+    
+    initializeLookupData();
+  }, []);
 
   // Helper function to get values for a specific field
   const getValuesForField = (fieldName: string): string[] => {
@@ -72,56 +214,6 @@ export function useLookupData() {
   // Hardcoded Voter Events options
   const ballotStyles = BALLOT_STYLE_OPTIONS;
   const eventParties = EVENT_PARTY_OPTIONS;
-
-  // Fetch lookup data on component mount
-  useEffect(() => {
-    async function fetchLookupData() {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Fetch district, registration, demographic, and voter_events data in parallel
-        const [districtResponse, registrationResponse, demographicResponse, eventsResponse] = await Promise.all([
-          fetch('/api/ga/voter/list/lookup?category=district'),
-          fetch('/api/ga/voter/list/lookup?category=registration'),
-          fetch('/api/ga/voter/list/lookup?category=demographic'),
-          fetch('/api/ga/voter/list/lookup?category=voter_events')
-        ]);
-        
-        if (!districtResponse.ok || !registrationResponse.ok || !demographicResponse.ok || !eventsResponse.ok) {
-          throw new Error(`API error: ${!districtResponse.ok ? districtResponse.status : 
-                                      !registrationResponse.ok ? registrationResponse.status : 
-                                      !demographicResponse.ok ? demographicResponse.status : eventsResponse.status}`);
-        }
-        
-        const districtData = await districtResponse.json();
-        const registrationData = await registrationResponse.json();
-        const demographicData = await demographicResponse.json();
-        const eventsData = await eventsResponse.json();
-        
-        // Combine all data sets including voter_events
-        const combinedData = {
-          fields: [
-            ...districtData.fields,
-            ...registrationData.fields,
-            ...demographicData.fields,
-            ...eventsData.fields
-          ],
-          timestamp: new Date().toISOString()
-        };
-        
-        console.log("Lookup API Combined Data:", combinedData); // Log the full fetched data
-        setLookupData(combinedData);
-      } catch (err) {
-        console.error('Error fetching lookup data:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
-    fetchLookupData();
-  }, []);
 
   // Add logging after data is set
   return {

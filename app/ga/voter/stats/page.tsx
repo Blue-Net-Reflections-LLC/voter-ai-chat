@@ -4,6 +4,13 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 import VotingInfoSection from "./VotingInfoSection";
 import DistrictsSection from "./DistrictsSection";
 import DemographicsSection from "./DemographicsSection";
@@ -39,63 +46,129 @@ export default function StatsDashboardPage() {
   const initialTab = searchParams.get('tab');
   const defaultTab = initialTab && ALL_SECTIONS.includes(initialTab as keyof SummaryData) ? initialTab : 'voting_info';
 
+  // Track the current section for display in dropdown
+  const [currentSection, setCurrentSection] = useState(defaultTab);
+  
+  // Effect to update the current section when URL changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ALL_SECTIONS.includes(tab as keyof SummaryData)) {
+      setCurrentSection(tab);
+    }
+  }, [searchParams]);
+
   const [summaryData, setSummaryData] = useState<SummaryData>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const lastFetchKey = useRef<string | null>(null);
   const isFetchingRef = useRef<boolean>(false);
+  const currentControllersRef = useRef<Map<string, AbortController>>(new Map());
+
+  // Create stable filter references for dependency tracking
+  const filterString = useMemo(() => JSON.stringify(filters), [filters]);
+  const residenceFilterString = useMemo(() => JSON.stringify(residenceAddressFilters), [residenceAddressFilters]);
 
   useEffect(() => {
-    if (!filtersHydrated || isFetchingRef.current) {
-        return;
-    }
+    if (!filtersHydrated) return;
+    
     const currentFetchKey = JSON.stringify({ filters, residenceAddressFilters });
     if (currentFetchKey === lastFetchKey.current) {
       if (loading) setLoading(false);
       return;
     }
+    
+    // Abort any in-flight requests
+    currentControllersRef.current.forEach((controller, section) => {
+      controller.abort();
+    });
+    currentControllersRef.current.clear();
+    
     isFetchingRef.current = true;
     lastFetchKey.current = currentFetchKey;
     setLoading(true);
     setError(null);
     setSummaryData({});
 
+    // Creating a new set of abort controllers for this batch of requests
     const fetchPromises = ALL_SECTIONS.map(sectionKey => {
+      const controller = new AbortController();
+      currentControllersRef.current.set(sectionKey, controller);
+      
       const params = buildQueryParams(filters, residenceAddressFilters, { section: sectionKey });
       const url = `/api/ga/voter/summary?${params.toString()}`;
-      return fetch(url)
+      
+      return fetch(url, { signal: controller.signal })
         .then(async (res) => {
+            // Check if the request was aborted
+            if (controller.signal.aborted) {
+              return { section: sectionKey, status: 'aborted' };
+            }
+            
             if (!res.ok) {
                 const errorText = await res.text();
-                console.error(`[Stats Fetch] Error fetching ${sectionKey}: ${res.status} - ${errorText}`);
                 throw { section: sectionKey, status: res.status, message: errorText || `Failed to fetch ${sectionKey}` };
             }
+            
             const data = await res.json();
+            
+            // Check again after JSON parsing if the request is still valid
+            if (controller.signal.aborted || lastFetchKey.current !== currentFetchKey) {
+              return { section: sectionKey, status: 'aborted' };
+            }
+            
             const sectionData = data[sectionKey] || data;
             setSummaryData(prev => ({ ...prev, [sectionKey]: sectionData }));
             return { section: sectionKey, status: 'fulfilled' };
         })
         .catch(err => {
-            const errorPayload = { section: sectionKey, message: err.message || `Network error fetching ${sectionKey}`, isNetworkError: !err.status };
-            console.error(`[Stats Fetch] Network/Catch Error fetching ${sectionKey}:`, errorPayload);
-            return Promise.reject({ section: sectionKey, status: 'rejected', reason: errorPayload });
+            // Don't report errors for aborted requests
+            if (err.name === 'AbortError' || controller.signal.aborted) {
+              return { section: sectionKey, status: 'aborted' };
+            }
+            
+            console.error(`Error fetching ${sectionKey}:`, err);
+            return Promise.reject({ 
+              section: sectionKey, 
+              status: 'rejected', 
+              reason: { 
+                section: sectionKey, 
+                message: err.message || `Error fetching ${sectionKey}`, 
+                isNetworkError: !err.status 
+              }
+            });
+        })
+        .finally(() => {
+          // Remove the controller reference when done
+          currentControllersRef.current.delete(sectionKey);
         });
     });
 
     Promise.allSettled(fetchPromises)
         .then(results => {
+            // Only process if this is still the current fetch
+            if (lastFetchKey.current !== currentFetchKey) return;
+            
             let errorsFound = false;
+            
             results.forEach(result => {
-                 if (result.status === 'rejected') {
+                if (result.status === 'rejected') {
                     errorsFound = true;
-                    console.error(`[Stats Fetch] Settled Error for ${result.reason?.section}:`, result.reason?.reason?.message);
-                    setError(prevError => prevError || `Error loading data for ${result.reason?.section}.`); 
-                 }
+                    setError(prevError => prevError || `Error loading data.`);
+                }
             });
+            
             isFetchingRef.current = false;
             setLoading(false);
         });
-  }, [filters, residenceAddressFilters, filtersHydrated]);
+        
+    return () => {
+      // Abort all requests when the effect cleanup runs
+      currentControllersRef.current.forEach(controller => {
+        controller.abort();
+      });
+      currentControllersRef.current.clear();
+    };
+  }, [filtersHydrated, filterString, residenceFilterString]);
 
   const totalVoters = useMemo(() => {
     if (!summaryData?.voting_info?.status) return 0;
@@ -145,6 +218,9 @@ export default function StatsDashboardPage() {
     if (value === 'census') return;
     
     if (value && ALL_SECTIONS.includes(value as keyof SummaryData)) {
+      // Update our dropdown display
+      setCurrentSection(value);
+      
       // Update URL search param without page refresh
       const current = new URLSearchParams(Array.from(searchParams.entries()));
       current.set("tab", value);
@@ -154,47 +230,103 @@ export default function StatsDashboardPage() {
     }
   }, [pathname, router, searchParams]);
 
+  // Helper function to format tab title with special cases for "voting_info" and "voting_history"
+  const formatTabTitle = useCallback((section: string) => {
+    if (section === 'voting_info') return 'Info';
+    if (section === 'voting_history') return 'History';
+    return section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }, []);
+
   return (
     <div className="w-full p-2 md:p-6 xl:p-8">
-      <div className="mb-4 text-right text-sm text-muted-foreground">
-        {!loading && summaryData.voting_info && (
-           <span>Total Matching Voters: <span className="font-semibold text-foreground">{totalVoters.toLocaleString()}</span></span>
-        )}
-         {loading && !summaryData.voting_info && (
-           <span className="animate-pulse">Loading Total...</span>
-        )}
+      <div className="flex justify-between items-center mb-4">
+        {/* Mobile dropdown - now on the left */}
+        <div className="md:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[200px] justify-between">
+                <span className="truncate max-w-[160px]">{formatTabTitle(currentSection)}</span>
+                <ChevronDown className="ml-2 h-4 w-4 flex-shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-[200px]">
+              {ALL_SECTIONS.map(section => {
+                if (section === 'census') return null;
+                return (
+                  <DropdownMenuItem 
+                    key={section} 
+                    onClick={() => {
+                      // This directly updates the URL which will trigger the tab change
+                      const current = new URLSearchParams(Array.from(searchParams.entries()));
+                      current.set("tab", section);
+                      const search = current.toString();
+                      const query = search ? `?${search}` : "";
+                      router.replace(`${pathname}${query}`);
+                      
+                      // Also update our display immediately
+                      setCurrentSection(section);
+                    }}
+                  >
+                    <span className="truncate">{formatTabTitle(section)}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        
+        {/* Voter count - now as the second item in the flex row */}
+        <div className="text-sm text-muted-foreground">
+          {!loading && summaryData.voting_info && (
+             <span>Voters <span className="font-semibold text-foreground">{totalVoters.toLocaleString()}</span></span>
+          )}
+           {loading && !summaryData.voting_info && (
+             <span className="animate-pulse">Loading Total...</span>
+          )}
+        </div>
       </div>
 
-      <Tabs defaultValue={defaultTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-6 mb-4">
-          {ALL_SECTIONS.map(section => (
-            <TabsTrigger key={section} value={section} disabled={section === 'census'}>
-              {section.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        
-        {ALL_SECTIONS.map(section => (
-            <TabsContent key={`${section}-content`} value={section}>
-                <div className="mt-4">
-                     {section === 'voting_info' && <VotingInfoSection data={summaryData.voting_info} loading={loading && !summaryData.voting_info} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'districts' && <DistrictsSection data={summaryData.districts} loading={loading && !summaryData.districts} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'demographics' && <DemographicsSection data={summaryData.demographics} loading={loading && !summaryData.demographics} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'voting_history' && <VotingHistorySection data={summaryData.voting_history} loading={loading && !summaryData.voting_history} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'census' && <CensusSection data={summaryData.census} loading={loading && !summaryData.census} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-                     {section === 'precincts' && (
-                        <PrecinctSectionContent 
-                          data={summaryData.precincts}
-                          loading={loading && !summaryData.precincts}
-                          error={error}
-                          totalVoters={totalVoters}
-                          onFilterChange={handleFilterChange}
-                        />
-                     )}
-                </div>
-            </TabsContent>
-        ))}
-      </Tabs>
+      {/* Desktop tabs with modified styles */}
+      <div className="hidden md:block mb-4">
+        <Tabs defaultValue={defaultTab} onValueChange={handleTabChange}>
+          <TabsList className="grid w-full grid-cols-6">
+            {ALL_SECTIONS.map(section => (
+              <TabsTrigger 
+                key={section} 
+                value={section} 
+                disabled={section === 'census'}
+              >
+                <div className="truncate max-w-full">{formatTabTitle(section)}</div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Content sections */}
+      <div>
+        {ALL_SECTIONS.map(section => {
+          if (section !== currentSection) return null;
+          return (
+            <div key={`${section}-content`} className="mt-4">
+              {section === 'voting_info' && <VotingInfoSection data={summaryData.voting_info} loading={loading && !summaryData.voting_info} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'districts' && <DistrictsSection data={summaryData.districts} loading={loading && !summaryData.districts} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'demographics' && <DemographicsSection data={summaryData.demographics} loading={loading && !summaryData.demographics} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'voting_history' && <VotingHistorySection data={summaryData.voting_history} loading={loading && !summaryData.voting_history} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'census' && <CensusSection data={summaryData.census} loading={loading && !summaryData.census} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'precincts' && (
+                <PrecinctSectionContent 
+                  data={summaryData.precincts}
+                  loading={loading && !summaryData.precincts}
+                  error={error}
+                  totalVoters={totalVoters}
+                  onFilterChange={handleFilterChange}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

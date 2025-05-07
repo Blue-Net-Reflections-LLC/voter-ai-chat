@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LineChart,
   Line,
@@ -60,12 +60,30 @@ export function VoterCountsChart() {
   const [autoScale, setAutoScale] = useState<boolean>(true);
   const [activeView, setActiveView] = useState<ChartViewType>('line'); // State for Line/Bar/Area
   const { toast } = useToast();
+  
+  // Create stable filter references for dependency tracking
+  const filterString = useMemo(() => JSON.stringify(filters), [filters]);
+  const residenceFilterString = useMemo(() => JSON.stringify(residenceAddressFilters), [residenceAddressFilters]);
+  
+  // Keep track of the current controller
+  const controllerRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef<string>('');
 
   useEffect(() => {
     if (!filtersHydrated) return;
 
+    // Cancel any previous request
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+    
+    // Create a new controller for this request
     const controller = new AbortController();
-    const signal = controller.signal;
+    controllerRef.current = controller;
+    
+    // Generate unique ID for this request
+    const requestId = Date.now().toString();
+    requestIdRef.current = requestId;
 
     async function fetchChartData() {
       setIsLoading(true);
@@ -76,10 +94,31 @@ export function VoterCountsChart() {
           chartType: 'voterCountsOverTime' // Fetch counts data
         });
 
-        const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`, { signal });
-        const data = await response.json();
+        const response = await fetch(`/api/ga/voter/chart-data?${params.toString()}`, { 
+          signal: controller.signal 
+        });
+        
+        // Check if this request was aborted or component unmounted
+        if (controller.signal.aborted || requestIdRef.current !== requestId) {
+          return;
+        }
 
-        if (signal.aborted) return;
+        // Parse the JSON response with its own try/catch
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          // If aborted during JSON parsing, just return
+          if (controller.signal.aborted || requestIdRef.current !== requestId) {
+            return;
+          }
+          throw jsonError;
+        }
+
+        // Check again after parsing if request is still valid
+        if (controller.signal.aborted || requestIdRef.current !== requestId) {
+          return;
+        }
 
         if (!response.ok) {
           const errorMessage = data.message || 'Failed to fetch chart data';
@@ -105,17 +144,21 @@ export function VoterCountsChart() {
           setVisibleSeries(initialVisibility);
         }
       } catch (err) {
+        // Ignore AbortError
         if (err instanceof Error && err.name === 'AbortError') {
-          console.log('Chart data fetch aborted');
           return;
         }
-        const errorMessage = 'An error occurred while fetching the chart data.';
-        console.error('Error fetching chart data:', err);
-        setError(errorMessage);
-        setChartData(null);
-        toast({ variant: "destructive", title: "Error loading chart data", description: errorMessage });
+        
+        // Only update error state if this is still the current request
+        if (requestIdRef.current === requestId && !controller.signal.aborted) {
+          console.error(`Error fetching chart data:`, err);
+          setError('An error occurred while fetching the chart data.');
+          setChartData(null);
+          toast({ variant: "destructive", title: "Error loading chart data", description: 'Failed to load chart data' });
+        }
       } finally {
-        if (!signal.aborted) {
+        // Update UI only if this is still the current request
+        if (requestIdRef.current === requestId && !controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -124,9 +167,11 @@ export function VoterCountsChart() {
     fetchChartData();
 
     return () => {
+      // Clean up on unmount or when dependencies change
       controller.abort();
+      controllerRef.current = null;
     };
-  }, [filters, residenceAddressFilters, filtersHydrated, toast]);
+  }, [filtersHydrated, filterString, residenceFilterString, toast]);
 
   const handleTableRowClick = (dataKey: string) => {
     setVisibleSeries(prev => ({
@@ -321,37 +366,39 @@ export function VoterCountsChart() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
+        <div className="flex flex-col space-y-2">
+          <div className="flex justify-between items-center">
             <CardTitle>Voter Counts Over Time</CardTitle>
-            <CardDescription>Absolute number of participating voters based on selected filters.</CardDescription>
+            <div className="flex items-center space-x-4">
+              {/* View Switcher Buttons */}
+              <div className="flex justify-center space-x-1 border p-1 rounded-md bg-muted">
+                <button 
+                  className={`px-3 py-1 rounded text-xs ${activeView === 'line' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                  onClick={() => setActiveView('line')}
+                >Line</button>
+                <button 
+                  className={`px-3 py-1 rounded text-xs ${activeView === 'bar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                  onClick={() => setActiveView('bar')}
+                >Bar</button>
+                <button 
+                  className={`px-3 py-1 rounded text-xs ${activeView === 'area' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                  onClick={() => setActiveView('area')}
+                >Area</button>
+              </div>
+              {/* Auto-Scale Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="autoScaleCounts"
+                  checked={autoScale}
+                  onCheckedChange={setAutoScale}
+                />
+                <Label htmlFor="autoScaleCounts" className="text-sm whitespace-nowrap">Auto-Scale Y-Axis</Label>
+              </div>
+            </div>
           </div>
-           <div className="flex items-center space-x-4">
-                {/* View Switcher Buttons */}
-                <div className="flex justify-center space-x-1 border p-1 rounded-md bg-muted">
-                    <button 
-                    className={`px-3 py-1 rounded text-xs ${activeView === 'line' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                    onClick={() => setActiveView('line')}
-                    >Line</button>
-                    <button 
-                    className={`px-3 py-1 rounded text-xs ${activeView === 'bar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                    onClick={() => setActiveView('bar')}
-                    >Bar</button>
-                    <button 
-                    className={`px-3 py-1 rounded text-xs ${activeView === 'area' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                    onClick={() => setActiveView('area')}
-                    >Area</button>
-                </div>
-                {/* Auto-Scale Toggle */}
-                <div className="flex items-center space-x-2">
-                    <Switch
-                    id="autoScaleCounts"
-                    checked={autoScale}
-                    onCheckedChange={setAutoScale}
-                    />
-                    <Label htmlFor="autoScaleCounts" className="text-sm whitespace-nowrap">Auto-Scale Y-Axis</Label>
-                </div>
-           </div>
+          <CardDescription className="text-sm !-mt-[0px]">
+            Absolute number of participating voters based on selected filters.
+          </CardDescription>
         </div>
       </CardHeader>
       <CardContent>

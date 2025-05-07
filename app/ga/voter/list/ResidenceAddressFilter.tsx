@@ -187,10 +187,10 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
           <AddressDataProvider 
             initialFilter={{ id: newFilterId }}
           >
-            {/* Address fields grid */}
-            <div className="w-full grid grid-cols-12 gap-1 mb-3">
+            {/* Address fields grid - now responsive */}
+            <div className="w-full grid grid-cols-1 sm:grid-cols-12 gap-1 mb-3 pb-6">
               {/* Row 1: Street Number, Pre Direction, Street Name, Type, Post Direction */}
-              <div className="col-span-2 min-w-[80px]">
+              <div className="col-span-1 sm:col-span-2 min-w-[80px] pb-4">
                 <div className="text-xs font-medium mb-1">Street #</div>
                 <ReactSelectAutocomplete
                   label="Street #"
@@ -199,7 +199,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                   hideLabel
                 />
               </div>
-              <div className="col-span-2 min-w-[50px]">
+              <div className="col-span-1 sm:col-span-2 min-w-[50px] pb-4">
                 <div className="text-xs font-medium mb-1">Dir.</div>
                 <ReactSelectAutocomplete
                   label="Dir."
@@ -208,7 +208,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                   hideLabel
                 />
               </div>
-              <div className="col-span-4">
+              <div className="col-span-1 sm:col-span-4 pb-4">
                 <div className="text-xs font-medium mb-1">Street Name</div>
                 <ReactSelectAutocomplete
                   label="Street Name"
@@ -216,7 +216,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                   hideLabel
                 />
               </div>
-              <div className="col-span-2 min-w-[80px]">
+              <div className="col-span-1 sm:col-span-2 min-w-[80px] pb-4">
                 <div className="text-xs font-medium mb-1">Type</div>
                 <ReactSelectAutocomplete
                   label="Type"
@@ -225,7 +225,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                   hideLabel
                 />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-1 sm:col-span-2 pb-4">
                 <div className="text-xs font-medium mb-1">Dir.</div>
                 <ReactSelectAutocomplete
                   label="Dir."
@@ -235,7 +235,7 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                 />
               </div>
               {/* Row 2: Apt/Unit Number (full width) */}
-              <div className="col-span-12 mt-1">
+              <div className="col-span-1 sm:col-span-12 mt-1 pb-4">
                 <div className="text-xs font-medium mb-1">Apt/Unit Number</div>
                 <ReactSelectAutocomplete
                   label="Apt/Unit Number"
@@ -244,14 +244,14 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
                 />
               </div>
               {/* Row 3: City (dropdown, flex), Zipcode (right portion) */}
-              <div className="col-span-8 mt-1">
+              <div className="col-span-1 sm:col-span-8 mt-1 pb-4 pr-4">
                 <div className="text-xs font-medium mb-1">City</div>
                 <CitySelect
                   label="City"
                   hideLabel
                 />
               </div>
-              <div className="col-span-4 mt-1 min-w-[120px]">
+              <div className="col-span-1 sm:col-span-4 mt-1 min-w-[120px] pb-4">
                 <div className="text-xs font-medium mb-1">Zipcode</div>
                 <ReactSelectAutocomplete
                   label="Zipcode"
@@ -268,8 +268,6 @@ export const ResidenceAddressFilter: React.FC<ResidenceAddressFilterProps> = ({
               <AddressDataConsumer onConfirm={handleFilterConfirmed} />
             </DialogFooter>
           </AddressDataProvider>
-          
-          {/* REMOVED DialogFooter from here */}
         </DialogContent>
       </Dialog>
 
