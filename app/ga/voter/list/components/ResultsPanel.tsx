@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FilterX, LoaderCircle, LayoutGrid, LayoutList, ArrowUp, ArrowDown } from "lucide-react";
@@ -190,6 +190,7 @@ export function ResultsPanel({
   const { currentPage, pageSize, totalItems } = pagination;
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const { toast } = useToast();
+  const resultsRef = useRef<HTMLDivElement>(null);
   
   // Set initial layout to 'table' for server render, will be updated on client after hydration
   const [layout, setLayout] = useState<'table' | 'card'>('table');
@@ -348,6 +349,13 @@ export function ResultsPanel({
     }
   };
 
+  // Smooth scroll to top on page change
+  useEffect(() => {
+    if (resultsRef.current) {
+      resultsRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage]);
+
   // Return a consistent initial structure for SSR, then update with client-side effects
   return (
     <Card className="flex flex-col h-full w-full overflow-hidden">
@@ -416,7 +424,7 @@ export function ResultsPanel({
  */}
       <div className="flex flex-col h-full">
         {/* Content area with auto overflow - will grow to fill available space */}
-        <div className="flex-grow overflow-auto h-0">
+        <div ref={resultsRef} className="flex-grow overflow-auto h-0">
           {/* Always render table on server, then client can switch as needed */}
           {(!isMounted || effectiveLayout === 'table') ? (
             <VoterTable 
