@@ -138,12 +138,7 @@ export function VoterTable({
 
   return (
     <div className="w-full h-full relative">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/50 z-10">
-          <LoaderCircle className="h-12 w-12 animate-spin text-primary/70" />
-        </div>
-      )}
-      {(!isLoading && hasFetchedOnce) && (
+      {hasFetchedOnce && (
         <Table className="relative border-separate border-spacing-0 w-full h-full" style={{ tableLayout: 'fixed' }}>
           <TableHeader className="border-b border-gray-700">
             <TableRow className="h-7">
@@ -250,6 +245,11 @@ export function VoterTable({
             )}
           </TableBody>
         </Table>
+      )}
+      {isLoading && hasFetchedOnce && (
+        <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/50 z-10">
+          <LoaderCircle className="h-12 w-12 animate-spin text-primary/70" />
+        </div>
       )}
       {/* Voter Quickview Modal */}
       <VoterQuickview
