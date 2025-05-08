@@ -227,7 +227,6 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     setInViewScoreData(null);
     
     setIsLoading(true);
-    setVoterFeatures([]);
     
     try {
       // Construct URL with apiParams and filters
@@ -382,7 +381,6 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       } else {
         console.error("Error fetching map data:", error);
         setIsLoading(false);
-        setVoterFeatures([]);
         setInViewScoreData(null); // Clear overlay on error
         controllerRef.current = null;
       }
