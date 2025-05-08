@@ -42,16 +42,6 @@ export default function StatsDashboardPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  console.log('[stats] Rendering StatsDashboardPage');
-  
-  // Component lifecycle logging
-  useEffect(() => {
-    console.log('[stats] Component MOUNTED');
-    return () => {
-      console.log('[stats] Component UNMOUNTED');
-    };
-  }, []);
-  
   // Get initial tab from URL or default to 'voting_info'
   const initialTab = searchParams.get('tab');
   const defaultTab = initialTab && ALL_SECTIONS.includes(initialTab as keyof SummaryData) ? initialTab : 'voting_info';
@@ -87,9 +77,13 @@ export default function StatsDashboardPage() {
       return;
     }
     
-    // Abort any in-flight requests
+    // Always abort in-flight requests when filters change
     currentControllersRef.current.forEach((controller, section) => {
-      controller.abort();
+      try {
+        controller.abort();
+      } catch (e) {
+        console.warn(`Error aborting request for ${section}:`, e);
+      }
     });
     currentControllersRef.current.clear();
     
@@ -97,8 +91,7 @@ export default function StatsDashboardPage() {
     lastFetchKey.current = currentFetchKey;
     setLoading(true);
     setError(null);
-    setSummaryData({});
-
+    
     // Creating a new set of abort controllers for this batch of requests
     const fetchPromises = ALL_SECTIONS.map(sectionKey => {
       const controller = new AbortController();
@@ -171,11 +164,18 @@ export default function StatsDashboardPage() {
             setLoading(false);
         });
         
+    // Cleanup function - only runs when component unmounts or dependencies change
     return () => {
-      // Abort all requests when the effect cleanup runs
-      console.log("Aborting all requests when the effect cleanup runs");
-      currentControllersRef.current.forEach(controller => {
-        controller.abort();
+      // When the component truly unmounts, this will be called with the latest version
+      // of the controllers ref, so we need to abort any pending requests
+      console.log(`[stats] Cleanup running, controllers count: ${currentControllersRef.current.size}`);
+      currentControllersRef.current.forEach((controller, section) => {
+        try {
+          console.log(`[stats] Aborting request for ${section} during cleanup`);
+          controller.abort();
+        } catch (e) {
+          console.warn('Error aborting controller during cleanup:', e);
+        }
       });
       currentControllersRef.current.clear();
     };
@@ -232,12 +232,12 @@ export default function StatsDashboardPage() {
       // Update our dropdown display
       setCurrentSection(value);
       
-      // Update URL search param without page refresh, using shallow routing
+      // Update URL search param without page refresh
       const current = new URLSearchParams(Array.from(searchParams.entries()));
       current.set("tab", value);
       const search = current.toString();
       const query = search ? `?${search}` : "";
-      router.replace(`${pathname}${query}`, { shallow: true, scroll: false });
+      router.replace(`${pathname}${query}`, { scroll: false });
     }
   }, [pathname, router, searchParams]);
 
@@ -272,7 +272,7 @@ export default function StatsDashboardPage() {
                       current.set("tab", section);
                       const search = current.toString();
                       const query = search ? `?${search}` : "";
-                      router.replace(`${pathname}${query}`, { shallow: true, scroll: false });
+                      router.replace(`${pathname}${query}`);
                       
                       // Also update our display immediately
                       setCurrentSection(section);
