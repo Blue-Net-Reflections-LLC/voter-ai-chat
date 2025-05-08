@@ -145,9 +145,9 @@ Task List
 - [ ] Task: Test performance, stability, and UX.
 - [ ] Task: Implement smarter zoom/pan control (e.g., avoid refetching if zoom crosses aggregation thresholds but bounds haven't significantly changed).
 - [ ] Task: Improve loading experience: Avoid clearing layers before fetch to reduce flashing; enhance loading indicator.
-- [ ] Task: Re-evaluate and potentially re-introduce SSE for data loading if backend query performance is confirmed fast and JSON generation/transfer is the bottleneck.
+- [x] Task: Re-evaluate and potentially re-introduce SSE for data loading if backend query performance is confirmed fast and JSON generation/transfer is the bottleneck. *(Implemented with CR-002)*
 - [ ] Task: Code review, cross-browser/device testing.
-- [ ] Task: Update documentation.
+- [x] Task: Update documentation. *(This document reflects the SSE implementation)*
 
 ## Change Requests
 
@@ -159,4 +159,49 @@ Task List
     - Updated `MapboxMapView.tsx` to store these stats in local state (`inViewScoreData`).
     - Added an overlay `div` positioned in the top-right corner of the map to display the `score` (using `ParticipationScoreWidget`) and `voterCount`.
   - **Status:** Completed.
+
+- **CR-002: Implement Progressive Data Loading via Server-Sent Events (SSE)**
+  - **Requirement:** To enhance map loading performance and user experience when dealing with potentially large datasets for a given view and filter combination, implement progressive data loading using Server-Sent Events. This will allow voter points (or aggregated shapes) to appear on the map in batches as they are processed and sent by the server, rather than waiting for a single, potentially large GeoJSON payload from the standard fetch.
+  - **Context:**
+    - The current "Standard Fetch" method for `/api/ga/voter/map-data` (detailed in sections 3 & 4 of the Task List) returns a single GeoJSON payload. For views with many filtered voters, this payload can be large, leading to delays before data appears.
+    - A full Vector Tile pipeline was considered but has been deferred due to the current complexity it would add to the data pipeline.
+    - SSE offers a way to stream data in manageable chunks, improving perceived performance by showing data to the user more quickly, making it a good alternative for enhancing the current dynamic data loading strategy.
+  - **Approach:**
+    1.  **Backend API (New or Modified Endpoint for SSE):**
+        -   A new endpoint (e.g., `/api/ga/voter/map-data-sse`) will be created, or the existing `/api/ga/voter/map-data` will be enhanced to support an SSE mode (e.g., based on an `Accept` header or query parameter).
+        -   It will reuse the core logic for filtering (sidebar filters + bounding box) and aggregation (county/zip/address based on zoom).
+        -   The endpoint will establish an SSE connection (`Content-Type: text/event-stream`).
+        -   As the server processes query results, it will group them into small batches (e.g., 100-500 features).
+        -   Each batch will be sent as a separate SSE `data` message, formatted as a GeoJSON FeatureCollection string (e.g., `data: {"type": "FeatureCollection", "features": [...]}\n\n`).
+        -   The `inViewStats` (average score, voter count) will be sent as a distinct initial SSE event (e.g., `event: stats\ndata: {...}\n\n`) or as part of the first data batch.
+        -   A final message (e.g., `event: end\ndata: done\n\n`) will be sent to indicate the completion of the stream.
+    2.  **Frontend (`MapboxMapView.tsx`):**
+        -   The map component will be updated to use `EventSource` to connect to the SSE endpoint when map view or filters change (debounced).
+        -   Existing logic for aborting/clearing previous requests will be adapted: any active `EventSource` will be closed before a new one is initiated.
+        -   On receiving an `event: stats` message, the `inViewScoreData` state will be updated.
+        -   On receiving a `data` message (feature batch), the client will parse the GeoJSON batch and append features to its local `voterFeatures` state. The map's data source will update reactively.
+        -   On receiving an `event: end` message, the loading state will be cleared, and the `EventSource` connection will be closed.
+        -   Error handling for the SSE connection will be implemented, closing the connection and updating loading state on error.
+        -   The loading indicator will remain active until the `end` event is received or an error occurs.
+  - **Tasks:**
+    -   **Backend API (for SSE):**
+        -   [x] Task: Design and implement the SSE endpoint (new or modify existing `/api/ga/voter/map-data`). *(Implemented as new endpoint `/api/ga/voter/map-data-sse`)*
+        -   [x] Task: Configure the route for `Content-Type: text/event-stream` and SSE message formatting.
+        -   [x] Task: Adapt database query and processing logic to support streaming/batching of GeoJSON feature results. *(Implemented using database cursor for streaming and a fallback for in-memory batching)*
+        -   [x] Task: Implement sending `inViewStats` as an initial named SSE event. *(Stats were moved to a separate API endpoint `/api/ga/voter/map-stats` and are fetched independently, not via the feature SSE stream)*
+        -   [x] Task: Implement sending GeoJSON feature batches as SSE `data` messages.
+        -   [x] Task: Implement sending an `event: end` message upon completion.
+        -   [x] Task: Ensure robust error handling and graceful connection termination on the server.
+    -   **Frontend (`MapboxMapView.tsx` - SSE Integration):**
+        -   [x] Task: Refactor data fetching logic to use `EventSource` for map data. *(Implemented using `@microsoft/fetch-event-source` library)*
+        -   [x] Task: Implement `EventSource` instantiation, including URL construction with filters, zoom, and bounds.
+        -   [x] Task: Add `EventSource` event listeners for `stats`, `message` (for data batches), `end`, and `error`. *(Stats are handled by a separate fetch; `end` event is processed in `onclose`, errors in `onerror`)*
+        -   [x] Task: Manage `EventSource` lifecycle: close existing connections before starting new ones. *(Managed with `AbortController`)*
+        -   [x] Task: Update `voterFeatures` state by appending features from incoming batches. *(Implemented an "Upsert then Prune" strategy for feature updates)*
+        -   [x] Task: Update `inViewScoreData` state from the `stats` event. *(Handled by the separate `fetchMapStats` function)*
+        -   [x] Task: Ensure `isLoading` state is correctly managed throughout the SSE lifecycle.
+        -   [x] Task: Verify progressive rendering of features and correct display of `inViewStats`.
+    -   **Documentation & Review:**
+        -   [x] Task: Update this document (`ga-mapping.md`) with any further refinements or decisions made during SSE implementation. *(This update reflects the implementation)*
+        -   [ ] Task: Review and test the SSE implementation thoroughly for performance, stability, and error handling. *(Ongoing, recent fixes and improvements have been applied)*
 
