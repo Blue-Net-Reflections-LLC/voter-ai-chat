@@ -146,8 +146,6 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   const fetchData = useCallback(async () => {
     console.log('fetchData triggered for SSE (features only)');
     setIsLoading(true);
-    setVoterFeatures([]); 
-    setInViewScoreData(null);
     setPopupInfo(null);
 
     if (controllerRef.current) {
@@ -180,6 +178,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     console.log('SSE Request URL:', sseUrl);
 
     let featuresAccumulator: VoterAddressFeature[] = [];
+    let isFirstBatchProcessed = false; // Flag to track if the first batch of features for this fetch has been processed
     
     try {
       await fetchEventSource(sseUrl, {
@@ -192,7 +191,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           if (!response.headers.get('content-type')?.startsWith('text/event-stream')) {
             throw new Error(`SSE Invalid Content-Type: ${response.headers.get('content-type')}`);
           }
-          featuresAccumulator = []; // Reset accumulator on new connection
+          // Reset for the new stream
+          featuresAccumulator = []; 
+          isFirstBatchProcessed = false; 
         },
         onmessage: (msg: EventSourceMessage) => {
           if (msg.event === 'end') {
@@ -200,14 +201,21 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           } else if (msg.event === 'error') {
             console.error('SSE Error event received:', msg.data);
             // Potentially close the stream or indicate an error to the user
-          } else { // Assumed to be feature data if no specific event
+          } else { // Assumed to be feature data
             try {
               const batchData = JSON.parse(msg.data) as FeatureCollection;
               if (batchData && batchData.features && batchData.features.length > 0) {
                 const newFeatures = batchData.features as VoterAddressFeature[];
-                featuresAccumulator = [...featuresAccumulator, ...newFeatures];
-                console.log(`SSE Data: Appending batch of ${newFeatures.length}. Total now: ${featuresAccumulator.length}`);
-                setVoterFeatures([...featuresAccumulator]); 
+                if (!isFirstBatchProcessed) {
+                  console.log(`SSE Data: Setting first batch of ${newFeatures.length} features.`);
+                  setVoterFeatures(newFeatures); // Replace with the first batch
+                  featuresAccumulator = newFeatures; // Initialize accumulator with first batch
+                  isFirstBatchProcessed = true;
+                } else {
+                  featuresAccumulator = [...featuresAccumulator, ...newFeatures];
+                  console.log(`SSE Data: Appending batch of ${newFeatures.length}. Total now: ${featuresAccumulator.length}`);
+                  setVoterFeatures([...featuresAccumulator]); // Update with accumulated features
+                }
               }
             } catch (e) {
               console.error('Error parsing SSE data event:', e, msg.data);
@@ -217,11 +225,16 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         onclose: () => {
           console.log('SSE Connection Closed by server.');
           setIsLoading(false);
-          // Final state update with all accumulated features
-          // This might be redundant if setVoterFeatures in onmessage covers it,
-          // but good as a final confirmation.
-          setVoterFeatures([...featuresAccumulator]); 
-          if (controllerRef.current === controller) { // Check if it's the current controller
+          // If no features were processed at all during this fetch (e.g., filters return empty set)
+          // ensure the map is cleared.
+          if (!isFirstBatchProcessed) {
+            console.log('SSE: No feature batches were processed, clearing features.');
+            setVoterFeatures([]);
+          }
+          // The featuresAccumulator should reflect the final state if batches were received,
+          // and setVoterFeatures would have been called with it already.
+          // If isFirstBatchProcessed is true, setVoterFeatures was already called with the latest data.
+          if (controllerRef.current === controller) {
              controllerRef.current = null;
           }
         },
