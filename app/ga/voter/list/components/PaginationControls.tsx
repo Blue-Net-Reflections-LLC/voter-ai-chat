@@ -53,10 +53,8 @@ export function PaginationControls({
 
   // Function to generate page number buttons
   const renderPageNumbers = () => {
-    // Special case for very large page counts on small screens
-    // Check if we need a simplified view based on totalPages and screen size
-    const isVeryLargePageCount = totalPages > 1000;
-    if (isVeryLargePageCount && isMobileView) {
+    // Always show simplified view on mobile
+    if (isMobileView) {
       return (
         <span className="text-xs font-medium px-1 whitespace-nowrap">
           {currentPage} / {totalPages}
