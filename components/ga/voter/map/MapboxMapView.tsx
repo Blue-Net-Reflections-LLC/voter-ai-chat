@@ -66,6 +66,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   const prevFiltersRef = useRef<FilterState | null>(null); // Keep for filter change detection if needed, or remove if useEffect handles all.
   const controllerRef = useRef<AbortController | null>(null);
   const isInitialLoadPendingRef = useRef<boolean>(true); // Flag for initial fitBounds
+  const isUnboundedQueryRunningRef = useRef<boolean>(false); // Track unbounded query state
   
   // Local state for tracking if a map is ready for fetching
   const [mapReady, setMapReady] = useState(false);
@@ -146,8 +147,8 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   }, [setApiParams]);
 
   // --- Refactored Data Fetching using fetchEventSource ---
-  const fetchData = useCallback(async () => {
-    console.log('fetchData triggered for SSE (features only) - Upsert then Prune');
+  const fetchData = useCallback(async (skipBounds = false) => {
+    console.log(`fetchData triggered${skipBounds ? ' (UNBOUNDED QUERY)' : ''} for SSE`);
     setIsLoading(true);
     setPopupInfo(null); // Close any open popups when new data is fetched
 
@@ -164,14 +165,28 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       setIsLoading(false);
       return;
     }
-    const bounds = currentMap.getBounds();
-    if (!bounds) {
-      console.warn('Map bounds not available, skipping SSE fetch');
-      setIsLoading(false);
-      return;
-    }
+    
+    // For zoom we always use current map zoom
     const zoom = currentMap.getZoom();
-    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    
+    // For bbox, we either use the current bounds or skip bounds entirely
+    let bbox: string;
+    
+    if (skipBounds) {
+      // Use all of Georgia (rough bounds) for unbounded query
+      // These are the approximate bounds of Georgia
+      bbox = "-85.605165,30.355644,-80.742567,35.000659";
+      console.log('Using Georgia-wide bounding box for unbounded query:', bbox);
+    } else {
+      // Use current map bounds
+      const bounds = currentMap.getBounds();
+      if (!bounds) {
+        console.warn('Map bounds not available, skipping SSE fetch');
+        setIsLoading(false);
+        return;
+      }
+      bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    }
 
     // --- Build URL with filters ---
     const sseUrlParams = buildQueryParams(filters, residenceAddressFilters);
@@ -181,6 +196,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     console.log('SSE Request URL:', sseUrl);
 
     let receivedFeatureIdsThisStream = new Set<string | number>(); // Tracks IDs for the current stream for final pruning
+    let anyFeaturesReceived = false; // Track if we've received any features
     
     try {
       await fetchEventSource(sseUrl, {
@@ -194,6 +210,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             throw new Error(`SSE Invalid Content-Type: ${response.headers.get('content-type')}`);
           }
           receivedFeatureIdsThisStream.clear(); // Reset for the new stream
+          anyFeaturesReceived = false; // Reset tracker
         },
         onmessage: (msg: EventSourceMessage) => {
           if (msg.event === 'end') {
@@ -206,6 +223,8 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             try {
               const batchData = JSON.parse(msg.data) as FeatureCollection;
               if (batchData && batchData.features && batchData.features.length > 0) {
+                anyFeaturesReceived = true; // Flag that we received at least one feature
+                
                 const newFeaturesFromBatch = batchData.features as VoterAddressFeature[];
                 
                 newFeaturesFromBatch.forEach(feature => {
@@ -236,7 +255,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           }
         },
         onclose: () => {
-          console.log('SSE Connection Closed by server. Pruning features...');
+          console.log(`SSE Connection Closed by server${skipBounds ? ' (unbounded query)' : ''}. Pruning features...`);
           setIsLoading(false);
           
           console.log(`SSE onclose: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} before pruning.`);
@@ -250,6 +269,66 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
             const filteredFeatures = prevVoterFeatures.filter(f => f.properties?.id && receivedFeatureIdsThisStream.has(f.properties.id));
             console.log(`Pruning complete. Prev features: ${prevVoterFeatures.length}. Kept ${filteredFeatures.length} features that were part of this stream's ID set.`);
+            
+            // --- Handle the unbounded query results ---
+            if (skipBounds) {
+              isUnboundedQueryRunningRef.current = false; // Reset our tracking flag
+              
+              if (filteredFeatures.length > 0) {
+                console.log(`Unbounded query found ${filteredFeatures.length} features. Fitting bounds to them.`);
+                
+                // Fit bounds to these features
+                const map = mapRef.current?.getMap();
+                if (map) {
+                  const bounds = new LngLatBounds();
+                  filteredFeatures.forEach(feature => {
+                    if (feature.geometry) {
+                      if (feature.geometry.type === 'Point') {
+                        bounds.extend(feature.geometry.coordinates as [number, number]);
+                      } else if (feature.geometry.type === 'Polygon') {
+                        feature.geometry.coordinates.forEach(ring => 
+                          ring.forEach(coord => bounds.extend(coord as [number, number]))
+                        );
+                      } else if (feature.geometry.type === 'MultiPolygon') {
+                        feature.geometry.coordinates.forEach(polygon => 
+                          polygon.forEach(ring => 
+                            ring.forEach(coord => bounds.extend(coord as [number, number]))
+                          )
+                        );
+                      }
+                    }
+                  });
+
+                  if (!bounds.isEmpty()) {
+                    setIsFittingBounds(true);
+                    map.once('moveend', () => {
+                      console.log('fitBounds moveend after unbounded query, setting isFittingBounds to false');
+                      setIsFittingBounds(false);
+                    });
+                    map.fitBounds(bounds, {
+                      padding: 40,
+                      maxZoom: ZOOM_ZIP_LEVEL
+                    });
+                    console.log('fitBounds called after unbounded query.');
+                  }
+                }
+              } else {
+                console.log('Unbounded query returned no features. There are truly no matching results.');
+              }
+            } 
+            // --- Handle the case where we need to try an unbounded query ---
+            else if (!skipBounds && filteredFeatures.length === 0 && 
+                     !isUnboundedQueryRunningRef.current && // Not already running unbounded query
+                     !isInitialLoadPendingRef.current) { // Not initial load
+              // No features in current view, immediately try an unbounded query
+              console.log('No features in current view. Automatically running unbounded query...');
+              isUnboundedQueryRunningRef.current = true;
+              
+              // Small delay to ensure state updates are complete
+              setTimeout(() => {
+                fetchData(true); // Run fetchData with skipBounds=true
+              }, 100);
+            }
             
             // --- Fit bounds on initial load logic (MOVED INSIDE THE CALLBACK) ---
             if (isInitialLoadPendingRef.current && filteredFeatures.length > 0) {
@@ -313,7 +392,10 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             console.log('SSE Fetch aborted successfully.');
           } else {
             setIsLoading(false); 
-            // Potentially set an error state for the UI
+            // Reset tracking flag if this was an unbounded query
+            if (skipBounds) {
+              isUnboundedQueryRunningRef.current = false;
+            }
           }
           if (controllerRef.current === controller) { // Check if it's the current controller
              controllerRef.current = null;
@@ -327,6 +409,11 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
          if (error.name !== 'AbortError') {
              console.error("Caught final error from fetchEventSource:", error);
              setIsLoading(false);
+             
+             // Reset tracking flag if this was an unbounded query
+             if (skipBounds) {
+               isUnboundedQueryRunningRef.current = false;
+             }
          }
          // Ensure controllerRef is cleared if it's the one that errored/was aborted
          if (controllerRef.current === controller) {
@@ -337,7 +424,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     filters, 
     residenceAddressFilters, 
     setIsLoading, 
-    setVoterFeatures, 
+    setVoterFeatures,
     // mapRef is stable, so not needed in deps. currentMap is derived from it.
     // zoom and bounds are derived inside, so apiParams not needed here if mapRef is source of truth at fetch time.
   ]);
