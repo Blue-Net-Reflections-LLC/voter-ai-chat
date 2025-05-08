@@ -7,17 +7,17 @@ import { buildVoterListWhereClause } from '@/lib/voter/build-where-clause';
 
 // --- Helper function to send SSE messages ---
 function sendSseMessage(controller: ReadableStreamDefaultController<any>, eventName: string, data: any) {
-    const message = `event: ${eventName}\\ndata: ${JSON.stringify(data)}\\n\\n`;
+    const message = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
     controller.enqueue(new TextEncoder().encode(message));
 }
 
 function sendSseData(controller: ReadableStreamDefaultController<any>, data: any) {
-    const message = `data: ${JSON.stringify(data)}\\n\\n`;
+    const message = `data: ${JSON.stringify(data)}\n\n`;
     controller.enqueue(new TextEncoder().encode(message));
 }
 
 function sendSseEnd(controller: ReadableStreamDefaultController<any>) {
-    const message = `event: end\\ndata: done\\n\\n`;
+    const message = `event: end\ndata: done\n\n`;
     controller.enqueue(new TextEncoder().encode(message));
     controller.close();
 }
@@ -63,24 +63,9 @@ export async function GET(request: NextRequest) {
                 const baseFilterParams = result?.params || []; // Default to empty array
 
                 // --- 4. Fetch inViewStats (Average Score and Total Voter Count) ---
-                let statsParamIndex = baseFilterParams.length + 1; // Now safe to access .length
-                const statsQuery = `
-                    SELECT 
-                        AVG(vrl.participation_score) AS avg_score,
-                        COUNT(DISTINCT vrl.voter_registration_number) AS total_voters
-                    FROM ga_voter_registration_list vrl
-                    WHERE ${baseFilterWhereClause.replace(/WHERE/i, '').trim() ? baseFilterWhereClause : '1=1'} 
-                      AND ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${statsParamIndex++}))
-                `;
-                // Use sql.unsafe for querying with dynamic parts, similar to the working route
-                const statsResult = await sql.unsafe(statsQuery, [...baseFilterParams, bboxGeoJsonStr]);
-                
-                const inViewStats = {
-                    score: statsResult && statsResult.length > 0 && statsResult[0].avg_score ? parseFloat(parseFloat(statsResult[0].avg_score).toFixed(1)) : null,
-                    voterCount: statsResult && statsResult.length > 0 ? parseInt(statsResult[0].total_voters, 10) : 0,
-                };
-                sendSseMessage(controller, 'stats', inViewStats);
-                console.log("SSE: Sent stats event", inViewStats);
+                // Removed statsQuery and related logic
+                // Removed sendSseMessage(controller, 'stats', inViewStats);
+                // console.log("SSE: Sent stats event", inViewStats);
 
                 let featureQueryText: string;
                 let featureQueryParams: any[] = [...baseFilterParams]; 
