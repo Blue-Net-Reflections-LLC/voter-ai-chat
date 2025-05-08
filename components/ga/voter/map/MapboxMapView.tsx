@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import Map, { Source, Layer, Popup, type MapRef, type ViewStateChangeEvent, type MapMouseEvent } from 'react-map-gl/mapbox';
+import { Map, Source, Layer, Popup, type MapRef, type ViewStateChangeEvent, type MapMouseEvent } from 'react-map-gl/mapbox';
 import type { CircleLayerSpecification } from 'mapbox-gl';
 import mapboxgl, { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
 import type { Feature, Point, FeatureCollection, Geometry } from 'geojson'; // Import Geometry type
@@ -13,6 +13,7 @@ import type { FilterState } from '@/app/ga/voter/list/types'; // Import FilterSt
 import { ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL } from '@/lib/map-constants'; // Import shared constants
 import { VoterQuickview } from '@/components/ga/voter/quickview/VoterQuickview';
 import { ParticipationScoreWidget } from '@/components/voter/ParticipationScoreWidget'; // Ensure widget is imported
+import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'; // Import the new library
 
 // Define types for features (Keep these local or move to context if preferred)
 interface VoterAddressProperties {
@@ -20,6 +21,7 @@ interface VoterAddressProperties {
   aggregationLevel?: 'county' | 'zip' | 'address'; // Removed 'city'
   count?: number;
   label?: string;
+  id?: string | number; // Added id property
 }
 // Use generic Geometry for features, as they can now be Points or Polygons/MultiPolygons
 type VoterAddressFeature = Feature<Geometry, VoterAddressProperties>;
@@ -61,16 +63,10 @@ interface InViewStats {
 // Component using the context
 const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   const mapRef = useRef<MapRef | null>(null);
-  const isInitialLoadRef = useRef<boolean>(true); // Ref to track initial load (first time ever)
-  const prevFiltersRef = useRef<FilterState | null>(null); // Ref for previous filters
-  const controllerRef = useRef<AbortController | null>(null); // Store current fetch controller
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Local state for tracking fetch queue
-  const [fetchTrigger, setFetchTrigger] = useState<{
-    type: 'initial' | 'filter' | 'bounds' | null;
-    timestamp: number;
-  }>({ type: null, timestamp: 0 });
+  const prevFiltersRef = useRef<FilterState | null>(null); // Keep for filter change detection if needed, or remove if useEffect handles all.
+  const controllerRef = useRef<AbortController | null>(null);
+  const isInitialLoadPendingRef = useRef<boolean>(true); // Flag for initial fitBounds
+  const isUnboundedQueryRunningRef = useRef<boolean>(false); // Track unbounded query state
   
   // Local state for tracking if a map is ready for fetching
   const [mapReady, setMapReady] = useState(false);
@@ -88,22 +84,22 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     setViewState,
     voterFeatures,
     setVoterFeatures,
-    isLoading, // Get loading state from context
+    isLoading,
     setIsLoading,
     apiParams,
     setApiParams,
     isFittingBounds,
-    setIsFittingBounds
+    setIsFittingBounds,
   } = useMapState();
 
-  // Get state from contexts
-  const { filters, residenceAddressFilters, filtersHydrated } = useVoterFilterContext(); // Get current filters and address filters
+  // Get state from contexts - IMPORTANT: filters and residenceAddressFilters are now direct dependencies for fetchData
+  const { filters, residenceAddressFilters, filtersHydrated } = useVoterFilterContext();
   
   // --- State for In-View Stats ---
   const [inViewScoreData, setInViewScoreData] = useState<InViewStats | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
 
-  // --- Update API Params Function ---
-  // This ONLY updates the apiParams in context, it DOES NOT trigger fetches directly
+  // updateApiParams remains the same, used by handleIdle
   const updateApiParams = useCallback((newZoom: number, newBounds: mapboxgl.LngLatBounds | null) => {
     if (newBounds) {
       const currentZoomInt = Math.floor(apiParams.zoom);
@@ -119,26 +115,15 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       const zoomLevelChanged = currentZoomInt !== newZoomInt;
 
       if (boundsChanged || zoomLevelChanged) {
-        // console.log('Significant view change detected, updating API params.');
         setApiParams({ zoom: newZoom, bounds: newBounds });
-        
-        // Only trigger bounds fetch if not in initial load and not fitting bounds
-        if (!isInitialLoadRef.current && !isFittingBounds) {
-          // console.log('Adding bounds change to fetch queue');
-          setFetchTrigger({ type: 'bounds', timestamp: Date.now() });
-        }
       }
     }
-  }, [apiParams, setApiParams, isInitialLoadRef, isFittingBounds]);
+  }, [apiParams, setApiParams]);
 
-  // --- Debounced version of the API param update ---
   const debouncedUpdateApiParams = useDebounceCallback(updateApiParams, 500);
 
-  // --- Handler for map idle to update API params ---
   const handleIdle = useCallback(() => {
-    // Prevent updating params if we are programmatically fitting bounds
     if (isFittingBounds) {
-      // console.log('handleIdle skipped: currently fitting bounds');
       return;
     }
     if (mapRef.current) {
@@ -149,279 +134,384 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     }
   }, [isFittingBounds, debouncedUpdateApiParams]);
 
-  // --- Map Load Event Handler ---
   const handleLoad = useCallback(() => {
     if (mapRef.current) {
-      // console.log("Map loaded");
       const map = mapRef.current.getMap();
-      
-      // Update API params on load (don't trigger a fetch directly)
       setApiParams({
         zoom: map.getZoom(), 
         bounds: map.getBounds()
       });
-      
-      // Mark the map as ready for fetching data and queue initial fetch
       setMapReady(true);
-      
-      if (isInitialLoadRef.current) {
-        // console.log('Queueing initial fetch on map load');
-        setFetchTrigger({ type: 'initial', timestamp: Date.now() });
-      }
+      // Initial fetch will be triggered by the main useEffect watching mapReady and apiParams
     }
-  }, [setApiParams, isInitialLoadRef]);
+  }, [setApiParams]);
 
-  // --- Watch filters and queue fetch when they change --- 
-  useEffect(() => {
-    // Only add to fetch queue if map is ready and not first load
-    if (mapReady && !isInitialLoadRef.current) {
-      const filtersString = JSON.stringify(filters);
-      const prevFiltersString = JSON.stringify(prevFiltersRef.current);
-      const filtersChanged = filtersString !== prevFiltersString;
-      
-      if (filtersChanged) {
-        // Close any open popup when filters change
-        setPopupInfo(null);
-        setInViewScoreData(null); // Clear score overlay on filter change
-        
-        // console.log('Filters changed, adding to fetch queue');
-        setFetchTrigger({ type: 'filter', timestamp: Date.now() });
-      }
-    }
-    // Update ref *after* comparison
-    prevFiltersRef.current = JSON.parse(JSON.stringify(filters)); // Deep copy
-  }, [filters, mapReady]);
+  // --- Refactored Data Fetching using fetchEventSource ---
+  const fetchData = useCallback(async (skipBounds = false) => {
+    console.log(`fetchData triggered${skipBounds ? ' (UNBOUNDED QUERY)' : ''} for SSE`);
+    setIsLoading(true);
+    setPopupInfo(null); // Close any open popups when new data is fetched
 
-  // --- Watch address filters and queue fetch when they change ---
-  useEffect(() => {
-    if (mapReady && !isInitialLoadRef.current) {
-      // Close any open popup when address filters change
-      setPopupInfo(null);
-      setInViewScoreData(null); // Clear score overlay
-      setFetchTrigger({ type: 'filter', timestamp: Date.now() });
-    }
-  }, [residenceAddressFilters, mapReady]);
-
-  // --- Main fetch function ---
-  const fetchData = useCallback(async (fetchType: 'initial' | 'filter' | 'bounds') => {
-    // console.log(`FETCH STARTED [Type: ${fetchType}]`);
-    
-    // Abort any in-progress fetch
     if (controllerRef.current) {
+      console.log('Aborting previous fetchEventSource request');
       controllerRef.current.abort();
-      controllerRef.current = null;
     }
-    
-    if (!apiParams.bounds) {
-      console.warn("Cannot fetch: No bounds available");
-      setIsLoading(false); // Ensure loading state is reset
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
+    const currentMap = mapRef.current?.getMap();
+    if (!currentMap) {
+      console.warn('Map not ready, skipping SSE fetch');
+      setIsLoading(false);
       return;
     }
     
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    const signal = controller.signal;
+    // For zoom we always use current map zoom
+    const zoom = currentMap.getZoom();
     
-    // Close popup and clear overlay when fetching new data (for bounds/filter changes)
-    setPopupInfo(null);
-    setInViewScoreData(null);
+    // For bbox, we either use the current bounds or skip bounds entirely
+    let bbox: string;
     
-    setIsLoading(true);
-    setVoterFeatures([]);
+    if (skipBounds) {
+      // Use all of Georgia (rough bounds) for unbounded query
+      // These are the approximate bounds of Georgia
+      bbox = "-85.605165,30.355644,-80.742567,35.000659";
+      console.log('Using Georgia-wide bounding box for unbounded query:', bbox);
+    } else {
+      // Use current map bounds
+      const bounds = currentMap.getBounds();
+      if (!bounds) {
+        console.warn('Map bounds not available, skipping SSE fetch');
+        setIsLoading(false);
+        return;
+      }
+      bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    }
+
+    // --- Build URL with filters ---
+    const sseUrlParams = buildQueryParams(filters, residenceAddressFilters);
+    sseUrlParams.set('zoom', zoom.toFixed(2));
+    sseUrlParams.set('bbox', bbox);
+    const sseUrl = `/api/ga/voter/map-data-sse?${sseUrlParams.toString()}`;
+    console.log('SSE Request URL:', sseUrl);
+
+    let receivedFeatureIdsThisStream = new Set<string | number>(); // Tracks IDs for the current stream for final pruning
+    let anyFeaturesReceived = false; // Track if we've received any features
     
     try {
-      // Construct URL with apiParams and filters
-      const url = new URL('/api/ga/voter/map-data', window.location.origin);
-      url.searchParams.append('zoom', apiParams.zoom.toFixed(2));
-      url.searchParams.append('minLng', apiParams.bounds!.getWest().toString());
-      url.searchParams.append('minLat', apiParams.bounds!.getSouth().toString());
-      url.searchParams.append('maxLng', apiParams.bounds!.getEast().toString());
-      url.searchParams.append('maxLat', apiParams.bounds!.getNorth().toString());
-
-      Object.entries(filters).forEach(([key, value]) => {
-        if (Array.isArray(value) && value.length > 0) {
-          value.forEach(v => url.searchParams.append(key, v));
-        } else if (typeof value === 'string' && value) {
-          url.searchParams.set(key, value);
-        } else if (typeof value === 'boolean' && value) {
-          url.searchParams.set(key, 'true');
-        }
-      });
-
-      // Use buildQueryParams from VoterFilterProvider to handle address filters
-      const params = buildQueryParams(filters, residenceAddressFilters);
-      params.forEach((value, key) => {
-        if (Array.isArray(value)) {
-          value.forEach(v => url.searchParams.append(key, v));
-        } else {
-          url.searchParams.append(key, value);
-        }
-      });
-
-      const response = await fetch(url.toString(), { signal });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
-      // Expect the new response structure
-      const responseData = await response.json(); 
-      const geojsonData: FeatureCollection<Geometry, VoterAddressProperties> = responseData.geoJson;
-      const inViewStats: InViewStats = responseData.inViewStats;
-      
-      // console.log(`Fetch successful, received ${geojsonData.features.length} features.`);
-      // console.log(`In-view stats:`, inViewStats);
-
-      // Check if the fetch was aborted before updating state
-      if (signal.aborted) {
-        console.log('Fetch aborted before state update.');
-        return; 
-      }
-      
-      setVoterFeatures(geojsonData.features); // Update map features
-      setInViewScoreData(inViewStats); // Update overlay stats
-      
-      // Fit bounds only on initial load or explicit filter change
-      if ((fetchType === 'initial' || fetchType === 'filter') && geojsonData.features.length > 0) {
-        try {
-          const bounds = geojsonData.features.reduce((currentBounds, feature) => {
-            if (!feature || !feature.geometry) return currentBounds;
-            
-            const geom = feature.geometry;
-            
-            // Function to extend bounds for a single coordinate pair
-            const extendBounds = (coord: number[]) => {
-              if (Array.isArray(coord) && coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1])) {
-                currentBounds.extend(coord as [number, number]);
-              }
-            };
-
-            // Function to iterate through nested coordinate arrays
-            const processCoords = (coords: any[]) => {
-              if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
-                // Reached an array of points [lng, lat]
-                coords.forEach(extendBounds);
-              } else if (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
-                 // Need to go deeper
-                 coords.forEach(processCoords);
-              }
-            };
-
-            if (geom.type === 'Point') {
-              extendBounds(geom.coordinates);
-            } else if (geom.type === 'Polygon' || geom.type === 'MultiPoint') {
-              processCoords(geom.coordinates);
-            } else if (geom.type === 'MultiPolygon') {
-              geom.coordinates.forEach(processCoords); // Process each polygon within the MultiPolygon
-            }
-            // Add other geometry types (LineString, MultiLineString) if needed
-
-            return currentBounds;
-          }, new LngLatBounds());
-
-          if (!bounds.isEmpty()) {
-            // Add null check for mapRef.current
-            if (mapRef.current) {
-              const cameraOptions = mapRef.current.cameraForBounds(bounds, { padding: 60 });
-              if (cameraOptions) {
-                let targetZoom = cameraOptions.zoom ?? viewState.zoom;
-                const targetCenter = cameraOptions.center ?? {lng: viewState.longitude, lat: viewState.latitude };
+      await fetchEventSource(sseUrl, {
+        signal: controller.signal,
+        onopen: async (response) => {
+          console.log('SSE Connection Opened for new query');
+          if (!response.ok) {
+             throw new Error(`SSE Connection Failed: ${response.status} ${response.statusText}`);
+          }
+          if (!response.headers.get('content-type')?.startsWith('text/event-stream')) {
+            throw new Error(`SSE Invalid Content-Type: ${response.headers.get('content-type')}`);
+          }
+          receivedFeatureIdsThisStream.clear(); // Reset for the new stream
+          anyFeaturesReceived = false; // Reset tracker
+        },
+        onmessage: (msg: EventSourceMessage) => {
+          if (msg.event === 'end') {
+            // The 'end' event is now primarily handled by onclose for pruning
+            console.log('SSE End event received.'); 
+          } else if (msg.event === 'error') {
+            console.error('SSE Error event received during stream:', msg.data);
+            // Error handling will be in onerror, which might also trigger onclose
+          } else { // Assumed to be feature data
+            try {
+              const batchData = JSON.parse(msg.data) as FeatureCollection;
+              if (batchData && batchData.features && batchData.features.length > 0) {
+                anyFeaturesReceived = true; // Flag that we received at least one feature
                 
-                // Threshold Capping Logic (Removed City Level)
-                const ZOOM_THRESHOLDS = [ZOOM_COUNTY_LEVEL, ZOOM_ZIP_LEVEL]; // Removed City Level
-                let crossedThreshold = false;
-                for (const threshold of ZOOM_THRESHOLDS) {
-                  if (viewState.zoom < threshold && targetZoom >= threshold) {
-                    // console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} crosses threshold ${threshold}. Capping zoom.`);
-                    targetZoom = threshold - 0.1; // Set zoom just below the threshold
-                    crossedThreshold = true;
-                    break; // Stop checking thresholds
+                const newFeaturesFromBatch = batchData.features as VoterAddressFeature[];
+                
+                newFeaturesFromBatch.forEach(feature => {
+                  if (feature.properties?.id) { // Ensure feature has an ID in properties
+                    receivedFeatureIdsThisStream.add(feature.properties.id);
                   }
-                }
-                if (!crossedThreshold && targetZoom > 16) { // Also cap max zoom if needed
-                  // console.log(`FitBounds calculated zoom ${targetZoom.toFixed(2)} exceeds maxZoom 16. Capping zoom.`);
-                  targetZoom = 16;
-                }
-
-                setIsFittingBounds(true);
-                // console.log(`Flying to center: ${JSON.stringify(targetCenter)}, capped zoom: ${targetZoom.toFixed(2)}`);
-                // Add null check for mapRef.current
-                mapRef.current?.flyTo({
-                  center: targetCenter,
-                  zoom: targetZoom,
-                  duration: 1000 // Smooth animation
                 });
-                setTimeout(() => {
-                  setIsFittingBounds(false);
-                  
-                  // Update API params after fitBounds completes to avoid a ping-pong effect
-                  if (mapRef.current) {
-                    const map = mapRef.current.getMap();
-                    // Update params but don't queue a fetch (internal update)
-                    setApiParams({
-                      zoom: map.getZoom(),
-                      bounds: map.getBounds()
-                    });
-                  }
-                }, 1100); // Slightly longer than duration
+                console.log(`SSE onmessage: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} after adding from batch.`);
+
+                setVoterFeatures(prevVoterFeatures => {
+                  const featuresMap = new global.Map<string | number, VoterAddressFeature>(); // Explicitly use global.Map
+                  // Populate map with previous features for efficient lookup/update
+                  prevVoterFeatures.forEach(f => {
+                    if (f.properties?.id) featuresMap.set(f.properties.id, f);
+                  });
+                  // Upsert new features from the batch
+                  newFeaturesFromBatch.forEach(f => {
+                    if (f.properties?.id) featuresMap.set(f.properties.id, f);
+                  });
+                  const newCombinedFeatures: VoterAddressFeature[] = Array.from(featuresMap.values()); // Explicitly type array
+                  console.log(`SSE Data: Upserted batch. Map now has ${newCombinedFeatures.length} features.`);
+                  return newCombinedFeatures;
+                });
               }
+            } catch (e) {
+              console.error('Error parsing SSE data event:', e, msg.data);
             }
           }
-        } catch (error) {
-          console.error("Error during fitBounds/flyTo calculation or execution:", error);
-          setIsFittingBounds(false);
-        }
-      } else {
-         setIsFittingBounds(false); // Ensure this is reset if not fitting
-      }
-      
-      // No longer initial load
-      if (isInitialLoadRef.current) {
-        isInitialLoadRef.current = false;
-      }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        // console.log("Fetch aborted.");
-      } else {
-        console.error("Error fetching map data:", error);
-        setIsLoading(false);
-        setVoterFeatures([]);
-        setInViewScoreData(null); // Clear overlay on error
-        controllerRef.current = null;
-      }
-    } finally {
-      // Ensure loading state is always reset unless fitting bounds is still active
-      if (!isFittingBounds) {
+        },
+        onclose: () => {
+          console.log(`SSE Connection Closed by server${skipBounds ? ' (unbounded query)' : ''}. Pruning features...`);
           setIsLoading(false);
-      }
-      // Clear the controller ref once fetch completes or is aborted
-      if (controllerRef.current === controller) {
-          controllerRef.current = null;
-      }
-    }
-  }, [apiParams, filters, residenceAddressFilters, setVoterFeatures, setIsLoading, setIsFittingBounds, viewState, setApiParams]);
+          
+          console.log(`SSE onclose: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} before pruning.`);
 
-  // --- SINGLE EFFECT: Process fetch queue --- 
-  useEffect(() => {
-    // Only process fetch queue when map is ready and we have a trigger
-    if (mapReady && fetchTrigger.type) {
-      // console.log(`Processing fetch queue: ${fetchTrigger.type}`);
-      
-      // Execute the fetch
-      fetchData(fetchTrigger.type);
-      
-      // Clear the queue after processing
-      setFetchTrigger({ type: null, timestamp: 0 });
-    }
-  }, [mapReady, fetchTrigger, fetchData]);
+          setVoterFeatures(prevVoterFeatures => {
+            if (controllerRef.current !== controller && controllerRef.current !== null) { 
+              console.log('SSE onclose: Belongs to an aborted stream, not pruning. Returning previous features.');
+              // No need to fit bounds for aborted streams
+              return prevVoterFeatures;
+            }
 
-  // --- Cleanup on component unmount ---
+            const filteredFeatures = prevVoterFeatures.filter(f => f.properties?.id && receivedFeatureIdsThisStream.has(f.properties.id));
+            console.log(`Pruning complete. Prev features: ${prevVoterFeatures.length}. Kept ${filteredFeatures.length} features that were part of this stream's ID set.`);
+            
+            // --- Handle the unbounded query results ---
+            if (skipBounds) {
+              isUnboundedQueryRunningRef.current = false; // Reset our tracking flag
+              
+              if (filteredFeatures.length > 0) {
+                console.log(`Unbounded query found ${filteredFeatures.length} features. Fitting bounds to them.`);
+                
+                // Fit bounds to these features
+                const map = mapRef.current?.getMap();
+                if (map) {
+                  const bounds = new LngLatBounds();
+                  filteredFeatures.forEach(feature => {
+                    if (feature.geometry) {
+                      if (feature.geometry.type === 'Point') {
+                        bounds.extend(feature.geometry.coordinates as [number, number]);
+                      } else if (feature.geometry.type === 'Polygon') {
+                        feature.geometry.coordinates.forEach(ring => 
+                          ring.forEach(coord => bounds.extend(coord as [number, number]))
+                        );
+                      } else if (feature.geometry.type === 'MultiPolygon') {
+                        feature.geometry.coordinates.forEach(polygon => 
+                          polygon.forEach(ring => 
+                            ring.forEach(coord => bounds.extend(coord as [number, number]))
+                          )
+                        );
+                      }
+                    }
+                  });
+
+                  if (!bounds.isEmpty()) {
+                    setIsFittingBounds(true);
+                    map.once('moveend', () => {
+                      console.log('fitBounds moveend after unbounded query, setting isFittingBounds to false');
+                      setIsFittingBounds(false);
+                    });
+                    map.fitBounds(bounds, {
+                      padding: 40,
+                      maxZoom: ZOOM_ZIP_LEVEL
+                    });
+                    console.log('fitBounds called after unbounded query.');
+                  }
+                }
+              } else {
+                console.log('Unbounded query returned no features. There are truly no matching results.');
+              }
+            } 
+            // --- Handle the case where we need to try an unbounded query ---
+            else if (!skipBounds && filteredFeatures.length === 0 && 
+                     !isUnboundedQueryRunningRef.current && // Not already running unbounded query
+                     !isInitialLoadPendingRef.current) { // Not initial load
+              // No features in current view, immediately try an unbounded query
+              console.log('No features in current view. Automatically running unbounded query...');
+              isUnboundedQueryRunningRef.current = true;
+              
+              // Small delay to ensure state updates are complete
+              setTimeout(() => {
+                fetchData(true); // Run fetchData with skipBounds=true
+              }, 100);
+            }
+            
+            // --- Fit bounds on initial load logic (MOVED INSIDE THE CALLBACK) ---
+            if (isInitialLoadPendingRef.current && filteredFeatures.length > 0) {
+              isInitialLoadPendingRef.current = false; 
+              console.log("Initial load complete with features, attempting to fit bounds based on pruned set.");
+
+              const map = mapRef.current?.getMap();
+              if (map) {
+                const bounds = new LngLatBounds();
+                filteredFeatures.forEach(feature => {
+                  if (feature.geometry) {
+                    if (feature.geometry.type === 'Point') {
+                      bounds.extend(feature.geometry.coordinates as [number, number]);
+                    } else if (feature.geometry.type === 'Polygon') {
+                      feature.geometry.coordinates.forEach(ring => 
+                        ring.forEach(coord => bounds.extend(coord as [number, number]))
+                      );
+                    } else if (feature.geometry.type === 'MultiPolygon') {
+                      feature.geometry.coordinates.forEach(polygon => 
+                        polygon.forEach(ring => 
+                          ring.forEach(coord => bounds.extend(coord as [number, number]))
+                        )
+                      );
+                    }
+                  }
+                });
+
+                if (!bounds.isEmpty()) {
+                  setIsFittingBounds(true); 
+                  map.once('moveend', () => {
+                    console.log('fitBounds moveend, setting isFittingBounds to false');
+                    setIsFittingBounds(false);
+                  });
+                  map.fitBounds(bounds, {
+                    padding: 40, 
+                    maxZoom: ZOOM_ZIP_LEVEL 
+                  });
+                  console.log('fitBounds called.');
+                } else {
+                  console.log('Calculated bounds (from pruned set) are empty, not fitting.');
+                }
+              } else {
+                console.log('Map instance not available for fitBounds.');
+              }
+            } else if (isInitialLoadPendingRef.current) {
+              isInitialLoadPendingRef.current = false; 
+              console.log("Initial load complete with no features (after pruning), not fitting bounds.");
+            }
+            // --- End Fit bounds on initial load logic ---
+
+            return filteredFeatures;
+          });
+          
+          if (controllerRef.current === controller) {
+             controllerRef.current = null;
+          }
+        },
+        onerror: (err: any) => {
+          console.error('SSE fetchEventSource Error:', err);
+          if (err.name === 'AbortError') {
+            console.log('SSE Fetch aborted successfully.');
+          } else {
+            setIsLoading(false); 
+            // Reset tracking flag if this was an unbounded query
+            if (skipBounds) {
+              isUnboundedQueryRunningRef.current = false;
+            }
+          }
+          if (controllerRef.current === controller) { // Check if it's the current controller
+             controllerRef.current = null;
+          }
+          if (err.name !== 'AbortError') {
+              throw err; // Rethrow non-abort errors to be caught by outer try/catch
+          }
+        }
+      });
+    } catch (error: any) { 
+         if (error.name !== 'AbortError') {
+             console.error("Caught final error from fetchEventSource:", error);
+             setIsLoading(false);
+             
+             // Reset tracking flag if this was an unbounded query
+             if (skipBounds) {
+               isUnboundedQueryRunningRef.current = false;
+             }
+         }
+         // Ensure controllerRef is cleared if it's the one that errored/was aborted
+         if (controllerRef.current === controller) {
+             controllerRef.current = null;
+         }
+    }
+  }, [
+    filters, 
+    residenceAddressFilters, 
+    setIsLoading, 
+    setVoterFeatures,
+    // mapRef is stable, so not needed in deps. currentMap is derived from it.
+    // zoom and bounds are derived inside, so apiParams not needed here if mapRef is source of truth at fetch time.
+  ]);
+
+  // --- New function to fetch map statistics ---
+  const fetchMapStats = useCallback(async () => {
+    console.log('fetchMapStats triggered');
+    setIsStatsLoading(true);
+
+    const currentMap = mapRef.current?.getMap();
+    if (!currentMap) {
+      console.warn('Map not ready, skipping stats fetch');
+      setIsStatsLoading(false);
+      return;
+    }
+    const bounds = currentMap.getBounds();
+    if (!bounds) {
+      console.warn('Map bounds not available, skipping stats fetch');
+      setIsStatsLoading(false);
+      return;
+    }
+    const zoom = currentMap.getZoom(); // zoom is available from the map instance
+    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+
+    const statsUrlParams = buildQueryParams(filters, residenceAddressFilters);
+    // zoom is not strictly needed by the map-stats endpoint's SQL but can be passed for consistency or future use
+    statsUrlParams.set('zoom', zoom.toFixed(2)); 
+    statsUrlParams.set('bbox', bbox);
+    const statsUrl = `/api/ga/voter/map-stats?${statsUrlParams.toString()}`;
+    console.log('Map Stats Request URL:', statsUrl);
+
+    try {
+      const response = await fetch(statsUrl);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})); // Try to parse error, default to empty obj
+        throw new Error(`Failed to fetch map stats: ${response.status} ${response.statusText}. ${errorData.details || ''}`);
+      }
+      const stats: InViewStats = await response.json();
+      console.log('Map Stats Received:', stats);
+      setInViewScoreData(stats);
+    } catch (error) {
+      console.error('Error fetching map stats:', error);
+      setInViewScoreData(null); // Clear stats on error or set to an error state
+    } finally {
+      setIsStatsLoading(false);
+    }
+  }, [filters, residenceAddressFilters /* mapRef is stable */]);
+
+  const debouncedFetchMapStats = useDebounceCallback(fetchMapStats, 550); // Slightly different debounce
+
+  const debouncedFetchData = useDebounceCallback(fetchData, 500);
+
+  // --- Main useEffect to trigger data fetching ---
   useEffect(() => {
+    // Ensure filters are hydrated before initial fetch if they come from URL params initially
+    if (!filtersHydrated) {
+        // console.log('Fetch trigger skipped: filters not hydrated yet.');
+        return;
+    }
+    if (!mapReady || isFittingBounds) {
+      // console.log('Fetch trigger skipped: map not ready or fitting bounds.');
+      return;
+    }
+
+    console.log('Data fetch trigger: mapReady, filters, map view (apiParams), or hydration changed.');
+    debouncedFetchData();
+    debouncedFetchMapStats(); // Call new stats fetcher
+
+    // Cleanup function to abort fetch on unmount or when dependencies change
     return () => {
       if (controllerRef.current) {
-        // console.log("Cleaning up fetch controller on unmount");
+        // console.log('Cleanup: Aborting fetch due to unmount or dependency change in main effect');
         controllerRef.current.abort();
         controllerRef.current = null;
       }
     };
-  }, []);
+  }, [
+    mapReady, 
+    isFittingBounds, 
+    debouncedFetchData, // Identity changes if fetchData's dependencies change
+    filters, 
+    residenceAddressFilters, 
+    apiParams.zoom, // From map context, updated by onIdle
+    apiParams.bounds, // From map context, updated by onIdle
+    filtersHydrated,
+    debouncedFetchMapStats
+  ]);
 
   // --- Layer Styling (Keep address point styling) --- //
   const voterAddressPointStyle: ReactMapGlCircleLayerStyle = {
@@ -589,6 +679,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             id="voter-addresses"
             type="geojson"
             data={voterFeatureCollection} // Feed data from context
+            promoteId="id" // Use feature.properties.id for efficient updates
           >
             {/* Address Points Layer (visible only at high zoom) */}
             <Layer 
@@ -622,7 +713,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             <Layer
               id="zip-labels"
               type="symbol"
-              minzoom={ZOOM_COUNTY_LEVEL} // Adjusted minzoom to start after county
+              minzoom={ZOOM_COUNTY_LEVEL} 
               maxzoom={ZOOM_ZIP_LEVEL}
               filter={['==', ['get', 'aggregationLevel'], 'zip']}
               {...zipLabelStyle}            
@@ -769,7 +860,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
            <span className="font-medium">In View:</span>
            <ParticipationScoreWidget 
              score={inViewScoreData?.score} 
-             isLoading={isLoading} // Use main loading state for simplicity here
+             isLoading={isStatsLoading || isLoading} // Combine loading states for the widget
              size="small" 
            />
            <span className="text-muted-foreground">
