@@ -1,67 +1,82 @@
 'use client';
 
-import React, { createContext, useContext, useState, type Dispatch, type SetStateAction, type ReactNode } from 'react';
-import type { ViewState } from 'react-map-gl/mapbox';
-import type { Feature, Point, FeatureCollection, Geometry } from 'geojson';
+import React, { createContext, useContext, useState, useMemo, type Dispatch, type SetStateAction, type ReactNode } from 'react';
+import type { ViewState as MapboxViewState } from 'react-map-gl/mapbox';
+import type { Feature, Point, FeatureCollection, Geometry, Polygon, MultiPolygon } from 'geojson';
 import type mapboxgl from 'mapbox-gl'; // Import mapboxgl for LngLatBounds type
+import type { LngLatBounds } from 'mapbox-gl';
 
-// Define types from MapboxMapView for features and status
-interface VoterAddressProperties {
-  address?: string; // Make optional as aggregated features won't have it
-  aggregationLevel?: 'county' | 'city' | 'zip' | 'address';
+// Corrected/Expected VoterAddressProperties definition
+export interface VoterAddressProperties {
+  address?: string;
+  aggregationLevel?: 'county' | 'zip' | 'address'; // Ensure 'city' is not here if not used
   count?: number;
   label?: string;
-  // Add other potential properties from backend aggregation
+  id?: string | number; // Ensure 'id' is present
 }
-// Use generic Geometry type
-type VoterAddressFeature = Feature<Geometry, VoterAddressProperties>;
 
-// Define the shape of the state managed by the context
-interface MapState {
-  viewState: ViewState;
-  setViewState: Dispatch<SetStateAction<ViewState>>;
-  voterFeatures: VoterAddressFeature[]; // Use the updated type here
-  setVoterFeatures: Dispatch<SetStateAction<VoterAddressFeature[]>>; // And here
+// Use a more specific Geometry type if possible, or keep as generic Geometry
+export type VoterAddressFeature = Feature<Geometry, VoterAddressProperties>;
+
+// Interface for the map's view state
+// export interface ViewState {
+//   longitude: number;
+//   latitude: number;
+//   zoom: number;
+//   pitch?: number;
+//   bearing?: number;
+//   padding?: mapboxgl.PaddingOptions;
+// }
+
+// Interface for API parameters used for fetching map data
+export interface ApiParams {
+  zoom: number;
+  bounds: LngLatBounds | null;
+}
+
+// Define the shape of the context state
+export interface MapStateContextType {
+  viewState: MapboxViewState;
+  setViewState: React.Dispatch<React.SetStateAction<MapboxViewState>>;
+  voterFeatures: VoterAddressFeature[];
+  setVoterFeatures: React.Dispatch<React.SetStateAction<VoterAddressFeature[]>>;
   isLoading: boolean;
-  setIsLoading: Dispatch<SetStateAction<boolean>>;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  apiParams: ApiParams;
+  setApiParams: React.Dispatch<React.SetStateAction<ApiParams>>;
   isFittingBounds: boolean;
-  setIsFittingBounds: Dispatch<SetStateAction<boolean>>;
-  // Keep apiParams if still needed by other parts or for future use
-  apiParams: { zoom: number; bounds: mapboxgl.LngLatBounds | null };
-  setApiParams: Dispatch<SetStateAction<{ zoom: number; bounds: mapboxgl.LngLatBounds | null }>>;
+  setIsFittingBounds: React.Dispatch<React.SetStateAction<boolean>>;
+  // Add other state and setters as needed
 }
 
-// Create the context with a default undefined value
-const MapStateContext = createContext<MapState | undefined>(undefined);
+// Create the context with a default undefined value, forcing providers to supply it
+const MapStateContext = createContext<MapStateContextType | undefined>(undefined);
 
 // Define props for the provider
 interface MapStateProviderProps {
   children: ReactNode;
-  initialViewState?: Partial<ViewState>; // Allow overriding initial view
+  initialViewState?: Partial<MapboxViewState>; // Allow overriding initial view
 }
 
 // Initial default view state (can be overridden by prop)
-const defaultInitialViewState: ViewState = {
-  longitude: -82.9,
-  latitude: 32.7,
-  zoom: 6.5,
+const defaultInitialViewState: MapboxViewState = {
+  longitude: -84.3880, // Default to Atlanta, GA
+  latitude: 33.7490,
+  zoom: 7,
   pitch: 0,
   bearing: 0,
-  padding: { top: 0, bottom: 0, left: 0, right: 0 },
+  padding: { top: 0, bottom: 0, left: 0, right: 0 }
 };
 
 // Create the Provider component
 export const MapStateProvider: React.FC<MapStateProviderProps> = ({ children, initialViewState }) => {
-  const [viewState, setViewState] = useState<ViewState>({ ...defaultInitialViewState, ...initialViewState });
+  const [viewState, setViewState] = useState<MapboxViewState>({ ...defaultInitialViewState, ...initialViewState });
   const [voterFeatures, setVoterFeatures] = useState<VoterAddressFeature[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [apiParams, setApiParams] = useState<{ zoom: number; bounds: mapboxgl.LngLatBounds | null }>({
-    zoom: viewState.zoom,
-    bounds: null,
-  });
+  const [apiParams, setApiParams] = useState<ApiParams>({ zoom: defaultInitialViewState.zoom, bounds: null });
   const [isFittingBounds, setIsFittingBounds] = useState<boolean>(false);
 
-  const value = {
+  const contextValue = useMemo(() => ({
     viewState,
     setViewState,
     voterFeatures,
@@ -72,13 +87,13 @@ export const MapStateProvider: React.FC<MapStateProviderProps> = ({ children, in
     setApiParams,
     isFittingBounds,
     setIsFittingBounds,
-  };
+  }), [viewState, voterFeatures, isLoading, apiParams, isFittingBounds]);
 
-  return <MapStateContext.Provider value={value}>{children}</MapStateContext.Provider>;
+  return <MapStateContext.Provider value={contextValue}>{children}</MapStateContext.Provider>;
 };
 
 // Create a custom hook for easy context consumption
-export const useMapState = (): MapState => {
+export const useMapState = (): MapStateContextType => {
   const context = useContext(MapStateContext);
   if (context === undefined) {
     throw new Error('useMapState must be used within a MapStateProvider');

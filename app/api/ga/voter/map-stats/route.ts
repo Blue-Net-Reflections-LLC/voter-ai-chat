@@ -20,21 +20,27 @@ export async function GET(request: NextRequest) {
     });
 
     try {
-        const result = buildVoterListWhereClause(searchParams, '0') as unknown as { whereClause: string | undefined, params: any[] | undefined };
-        const baseFilterWhereClause = result?.whereClause || '';
-        const baseFilterParams = result?.params || [];
+        const rawFilterClause = buildVoterListWhereClause(searchParams, 'vrl');
+        const baseFilterParams: any[] = [];
 
         let statsParamIndex = baseFilterParams.length + 1;
+        
+        const statsFilterConditions = rawFilterClause.replace(/^\s*WHERE\s*/i, '').trim();
+        const whereForStats = statsFilterConditions ? `${statsFilterConditions} AND` : '' ;
+
         const statsQuery = `
             SELECT 
                 AVG(vrl.participation_score) AS avg_score,
                 COUNT(DISTINCT vrl.voter_registration_number) AS total_voters
             FROM ga_voter_registration_list vrl
-            WHERE ${baseFilterWhereClause.replace(/WHERE/i, '').trim() ? baseFilterWhereClause.replace(/^\s*WHERE\s*/i, '') : '1=1'} 
-              AND ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${statsParamIndex++}))
+            WHERE ${whereForStats} ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${statsParamIndex++}))
         `;
         
-        const statsResult = await sql.unsafe(statsQuery, [...baseFilterParams, bboxGeoJsonStr]);
+        const queryParams = [...baseFilterParams, bboxGeoJsonStr];
+        console.log("DEBUG MAP-STATS Query:", statsQuery);
+        console.log("DEBUG MAP-STATS Params:", JSON.stringify(queryParams));
+        
+        const statsResult = await sql.unsafe(statsQuery, queryParams);
         
         const inViewStats = {
             score: statsResult && statsResult.length > 0 && statsResult[0].avg_score ? parseFloat(parseFloat(statsResult[0].avg_score).toFixed(1)) : null,

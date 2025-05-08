@@ -57,10 +57,9 @@ export async function GET(request: NextRequest) {
             
             try {
                 // --- 3. Build Base Filter Query Conditions (Sidebar Filters) ---
-                const result = buildVoterListWhereClause(searchParams, '0') as unknown as { whereClause: string | undefined, params: any[] | undefined }; // Adjust type assertion slightly
-                // Provide defaults if properties are missing from the result
-                const baseFilterWhereClause = result?.whereClause || ''; // Default to empty string or '1=1' if preferred
-                const baseFilterParams = result?.params || []; // Default to empty array
+                const rawFilterClause = buildVoterListWhereClause(searchParams, 'vrl'); // Returns a string
+                // baseFilterParams will be empty if buildVoterListWhereClause doesn't produce $n placeholders for these filters
+                const baseFilterParams: any[] = []; 
 
                 // --- 4. Fetch inViewStats (Average Score and Total Voter Count) ---
                 // Removed statsQuery and related logic
@@ -69,8 +68,10 @@ export async function GET(request: NextRequest) {
 
                 let featureQueryText: string;
                 let featureQueryParams: any[] = [...baseFilterParams]; 
-                let currentParamIndex = baseFilterParams.length + 1;
-                const whereForFeatures = baseFilterWhereClause.replace(/WHERE/i, '').trim() ? baseFilterWhereClause : 'WHERE 1=1';
+                let currentParamIndex = baseFilterParams.length + 1; // Starts at 1 if baseFilterParams is empty
+                // Correctly integrate baseFilterWhereClause, ensuring it acts as AND conditions if it's not empty
+                const featureFilterConditions = rawFilterClause.replace(/^\s*WHERE\s*/i, '').trim();
+                const whereForFeatures = featureFilterConditions ? `WHERE ${featureFilterConditions} AND` : 'WHERE'; // Note the AND if conditions exist
 
                 if (zoom < 6) { // County Aggregation
                     console.log("SSE: Aggregation Level - County");
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
                         WITH FilteredVoters AS (
                             SELECT vrl.county_fips, vrl.county_name
                             FROM ga_voter_registration_list vrl
-                            ${whereForFeatures} AND ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${currentParamIndex++}))
+                            ${whereForFeatures} ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${currentParamIndex++}))
                         ),
                         AggregatedCounties AS (
                             SELECT fv.county_fips, fv.county_name, COUNT(*) as voter_count
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
                     featureQueryText = `
                         WITH FilteredVoters AS (
                             SELECT vrl.zcta FROM ga_voter_registration_list vrl
-                            ${whereForFeatures} AND ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${currentParamIndex++}))
+                            ${whereForFeatures} ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${currentParamIndex++}))
                         ),
                         AggregatedZCTAs AS (
                             SELECT fv.zcta, COUNT(*) as voter_count FROM FilteredVoters fv GROUP BY fv.zcta
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
                                 vrl.residence_city, 
                                 vrl.residence_zipcode 
                             FROM ga_voter_registration_list vrl
-                            ${whereForFeatures} AND ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${currentParamIndex++}))
+                            ${whereForFeatures} ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${currentParamIndex++}))
                             GROUP BY 
                                 vrl.geom, 
                                 vrl.residence_street_number, 
