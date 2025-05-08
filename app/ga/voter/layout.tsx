@@ -148,7 +148,7 @@ export default function VoterLayout({
                         !filterPanelVisible ? "md:hidden" : "md:block",
                         "hidden" // Hide on mobile, show in slide-out
                       )}
-                      style={{ maxHeight: 'calc(100vh - 126px)' }}
+                      style={{ maxHeight: 'calc(100dvh - 90px)' }}
                     >
                       <FilterPanel />
                     </div>
@@ -161,7 +161,7 @@ export default function VoterLayout({
                     "flex-grow overflow-y-auto",
                     showFilterPanel && filterPanelVisible ? "md:w-[calc(100%-280px)]" : "w-full"
                   )}
-                  style={{ height: 'calc(100vh - 126px)' }}
+                  style={{ height: 'calc(100dvh - 90px)' }}
                 >
                   {children}
                 </main>
