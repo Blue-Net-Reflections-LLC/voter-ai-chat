@@ -419,116 +419,111 @@ export function ResultsPanel({
         </div>
       </CardHeader>
 
-      {/* Using flexbox for layout: content area will stretch and scroll, footer will stay at bottom */}
-      {/* for mobile feight: calc(100% - 112px); for desktop     height: calc(100% - 58px);
- */}
-      <div className="flex flex-col h-full">
-        {/* Content area with auto overflow - will grow to fill available space */}
-        <div ref={resultsRef} className="flex-grow overflow-auto h-0">
-          {/* Always render table on server, then client can switch as needed */}
-          {(!isMounted || effectiveLayout === 'table') ? (
-            <VoterTable 
-              voters={voters} 
-              isLoading={isLoading}
-              sort={sort}
-              onSort={onSort}
-              hasFetchedOnce={hasFetchedOnce}
-            />
-          ) : (
-            <VoterCardGrid
-              voters={voters}
-              isLoading={isLoading}
-              hasFetchedOnce={hasFetchedOnce}
-              onVoterClick={handleVoterClick}
-            />
-          )}
-          
-          {/* VoterQuickview component */}
-          {isQuickviewOpen && selectedVoter && (
-            <VoterQuickview
-              isOpen={isQuickviewOpen}
-              voterId={selectedVoter}
-              onClose={handleCloseQuickview}
-            />
-          )}
-        </div>
+      {/* Content area now a direct child, set to grow and scroll */}
+      <div ref={resultsRef} className="flex-grow overflow-auto h-0">
+        {/* Always render table on server, then client can switch as needed */}
+        {(!isMounted || effectiveLayout === 'table') ? (
+          <VoterTable 
+            voters={voters} 
+            isLoading={isLoading}
+            sort={sort}
+            onSort={onSort}
+            hasFetchedOnce={hasFetchedOnce}
+          />
+        ) : (
+          <VoterCardGrid
+            voters={voters}
+            isLoading={isLoading}
+            hasFetchedOnce={hasFetchedOnce}
+            onVoterClick={handleVoterClick}
+          />
+        )}
+        
+        {/* VoterQuickview component */}
+        {isQuickviewOpen && selectedVoter && (
+          <VoterQuickview
+            isOpen={isQuickviewOpen}
+            voterId={selectedVoter}
+            onClose={handleCloseQuickview}
+          />
+        )}
+      </div>
 
-        {/* Footer always at bottom */}
-        <div className="flex-shrink-0 border-t bg-background z-10">
-          <CardFooter className="py-2 px-4 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium">Sort</span>
-              <Select
-                value={`${sort.field}-${sort.direction}`}
-                onValueChange={handleSortChange}
-              >
-                <SelectTrigger className="h-8 w-[105px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name-asc">
-                    <div className="flex items-center">
-                      Name <ArrowUp size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="name-desc">
-                    <div className="flex items-center">
-                      Name <ArrowDown size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="county-asc">
-                    <div className="flex items-center">
-                      County <ArrowUp size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="county-desc">
-                    <div className="flex items-center">
-                      County <ArrowDown size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="address-asc">
-                    <div className="flex items-center">
-                      Address <ArrowUp size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="address-desc">
-                    <div className="flex items-center">
-                      Address <ArrowDown size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="score-asc">
-                    <div className="flex items-center">
-                      Score <ArrowUp size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="score-desc">
-                    <div className="flex items-center">
-                      Score <ArrowDown size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="status-asc">
-                    <div className="flex items-center">
-                      Status <ArrowUp size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="status-desc">
-                    <div className="flex items-center">
-                      Status <ArrowDown size={14} className="ml-2" />
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <PaginationControls
-              currentPage={currentPage}
-              pageSize={pageSize}
-              totalItems={totalItems}
-              onPageChange={onPageChange}
-              onPageSizeChange={onPageSizeChange}
-            />
-          </CardFooter>
-        </div>
+      {/* Footer container now a direct child */}
+      <div className="flex-shrink-0 border-t bg-background z-10">
+        <CardFooter className="py-2 px-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium">Sort</span>
+            <Select
+              value={`${sort.field}-${sort.direction}`}
+              onValueChange={handleSortChange}
+            >
+              <SelectTrigger className="h-8 w-[105px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">
+                  <div className="flex items-center">
+                    Name <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="name-desc">
+                  <div className="flex items-center">
+                    Name <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="county-asc">
+                  <div className="flex items-center">
+                    County <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="county-desc">
+                  <div className="flex items-center">
+                    County <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="address-asc">
+                  <div className="flex items-center">
+                    Address <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="address-desc">
+                  <div className="flex items-center">
+                    Address <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="score-asc">
+                  <div className="flex items-center">
+                    Score <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="score-desc">
+                  <div className="flex items-center">
+                    Score <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="status-asc">
+                  <div className="flex items-center">
+                    Status <ArrowUp size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+                <SelectItem value="status-desc">
+                  <div className="flex items-center">
+                    Status <ArrowDown size={14} className="ml-2" />
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <PaginationControls
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        </CardFooter>
       </div>
     </Card>
   );
