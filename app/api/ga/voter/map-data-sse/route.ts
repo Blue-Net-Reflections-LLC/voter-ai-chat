@@ -140,6 +140,7 @@ export async function GET(request: NextRequest) {
                         SELECT 
                             -- Construct the final label similar to the original route
                             CONCAT(fa.street_address_part, ', ', fa.residence_city, ', GA ', fa.residence_zipcode) AS label, 
+                            CONCAT(fa.street_address_part, ', ', fa.residence_city, ', GA ', fa.residence_zipcode) AS id, -- Use label as ID
                             fa.voter_count_at_address AS count,
                             'address' AS "aggregationLevel", 
                             ST_AsGeoJSON(fa.geom) AS geometry

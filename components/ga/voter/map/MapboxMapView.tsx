@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import Map, { Source, Layer, Popup, type MapRef, type ViewStateChangeEvent, type MapMouseEvent } from 'react-map-gl/mapbox';
+import { Map, Source, Layer, Popup, type MapRef, type ViewStateChangeEvent, type MapMouseEvent } from 'react-map-gl/mapbox';
 import type { CircleLayerSpecification } from 'mapbox-gl';
 import mapboxgl, { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
 import type { Feature, Point, FeatureCollection, Geometry } from 'geojson'; // Import Geometry type
@@ -21,6 +21,7 @@ interface VoterAddressProperties {
   aggregationLevel?: 'county' | 'zip' | 'address'; // Removed 'city'
   count?: number;
   label?: string;
+  id?: string | number; // Added id property
 }
 // Use generic Geometry for features, as they can now be Points or Polygons/MultiPolygons
 type VoterAddressFeature = Feature<Geometry, VoterAddressProperties>;
@@ -144,9 +145,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
   // --- Refactored Data Fetching using fetchEventSource ---
   const fetchData = useCallback(async () => {
-    console.log('fetchData triggered for SSE (features only)');
+    console.log('fetchData triggered for SSE (features only) - Upsert then Prune');
     setIsLoading(true);
-    setPopupInfo(null);
+    setPopupInfo(null); // Close any open popups when new data is fetched
 
     if (controllerRef.current) {
       console.log('Aborting previous fetchEventSource request');
@@ -177,45 +178,54 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     const sseUrl = `/api/ga/voter/map-data-sse?${sseUrlParams.toString()}`;
     console.log('SSE Request URL:', sseUrl);
 
-    let featuresAccumulator: VoterAddressFeature[] = [];
-    let isFirstBatchProcessed = false; // Flag to track if the first batch of features for this fetch has been processed
+    let receivedFeatureIdsThisStream = new Set<string | number>(); // Tracks IDs for the current stream for final pruning
     
     try {
       await fetchEventSource(sseUrl, {
         signal: controller.signal,
         onopen: async (response) => {
-          console.log('SSE Connection Opened');
+          console.log('SSE Connection Opened for new query');
           if (!response.ok) {
              throw new Error(`SSE Connection Failed: ${response.status} ${response.statusText}`);
           }
           if (!response.headers.get('content-type')?.startsWith('text/event-stream')) {
             throw new Error(`SSE Invalid Content-Type: ${response.headers.get('content-type')}`);
           }
-          // Reset for the new stream
-          featuresAccumulator = []; 
-          isFirstBatchProcessed = false; 
+          receivedFeatureIdsThisStream.clear(); // Reset for the new stream
         },
         onmessage: (msg: EventSourceMessage) => {
           if (msg.event === 'end') {
-            console.log('SSE End event received (handled in onclose)');
+            // The 'end' event is now primarily handled by onclose for pruning
+            console.log('SSE End event received.'); 
           } else if (msg.event === 'error') {
-            console.error('SSE Error event received:', msg.data);
-            // Potentially close the stream or indicate an error to the user
+            console.error('SSE Error event received during stream:', msg.data);
+            // Error handling will be in onerror, which might also trigger onclose
           } else { // Assumed to be feature data
             try {
               const batchData = JSON.parse(msg.data) as FeatureCollection;
               if (batchData && batchData.features && batchData.features.length > 0) {
-                const newFeatures = batchData.features as VoterAddressFeature[];
-                if (!isFirstBatchProcessed) {
-                  console.log(`SSE Data: Setting first batch of ${newFeatures.length} features.`);
-                  setVoterFeatures(newFeatures); // Replace with the first batch
-                  featuresAccumulator = newFeatures; // Initialize accumulator with first batch
-                  isFirstBatchProcessed = true;
-                } else {
-                  featuresAccumulator = [...featuresAccumulator, ...newFeatures];
-                  console.log(`SSE Data: Appending batch of ${newFeatures.length}. Total now: ${featuresAccumulator.length}`);
-                  setVoterFeatures([...featuresAccumulator]); // Update with accumulated features
-                }
+                const newFeaturesFromBatch = batchData.features as VoterAddressFeature[];
+                
+                newFeaturesFromBatch.forEach(feature => {
+                  if (feature.properties?.id) { // Ensure feature has an ID in properties
+                    receivedFeatureIdsThisStream.add(feature.properties.id);
+                  }
+                });
+
+                setVoterFeatures(prevVoterFeatures => {
+                  const featuresMap = new global.Map<string | number, VoterAddressFeature>(); // Explicitly use global.Map
+                  // Populate map with previous features for efficient lookup/update
+                  prevVoterFeatures.forEach(f => {
+                    if (f.properties?.id) featuresMap.set(f.properties.id, f);
+                  });
+                  // Upsert new features from the batch
+                  newFeaturesFromBatch.forEach(f => {
+                    if (f.properties?.id) featuresMap.set(f.properties.id, f);
+                  });
+                  const newCombinedFeatures: VoterAddressFeature[] = Array.from(featuresMap.values()); // Explicitly type array
+                  console.log(`SSE Data: Upserted batch. Map now has ${newCombinedFeatures.length} features.`);
+                  return newCombinedFeatures;
+                });
               }
             } catch (e) {
               console.error('Error parsing SSE data event:', e, msg.data);
@@ -223,17 +233,14 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           }
         },
         onclose: () => {
-          console.log('SSE Connection Closed by server.');
+          console.log('SSE Connection Closed by server. Pruning features...');
           setIsLoading(false);
-          // If no features were processed at all during this fetch (e.g., filters return empty set)
-          // ensure the map is cleared.
-          if (!isFirstBatchProcessed) {
-            console.log('SSE: No feature batches were processed, clearing features.');
-            setVoterFeatures([]);
-          }
-          // The featuresAccumulator should reflect the final state if batches were received,
-          // and setVoterFeatures would have been called with it already.
-          // If isFirstBatchProcessed is true, setVoterFeatures was already called with the latest data.
+          
+          setVoterFeatures(prevVoterFeatures => 
+            prevVoterFeatures.filter(f => f.properties?.id && receivedFeatureIdsThisStream.has(f.properties.id))
+          );
+          console.log(`Pruning complete. Kept ${receivedFeatureIdsThisStream.size} features that were part of this stream.`);
+
           if (controllerRef.current === controller) {
              controllerRef.current = null;
           }
@@ -523,6 +530,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             id="voter-addresses"
             type="geojson"
             data={voterFeatureCollection} // Feed data from context
+            promoteId="id" // Use feature.properties.id for efficient updates
           >
             {/* Address Points Layer (visible only at high zoom) */}
             <Layer 
