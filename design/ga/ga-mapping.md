@@ -145,9 +145,9 @@ Task List
 - [ ] Task: Test performance, stability, and UX.
 - [ ] Task: Implement smarter zoom/pan control (e.g., avoid refetching if zoom crosses aggregation thresholds but bounds haven't significantly changed).
 - [ ] Task: Improve loading experience: Avoid clearing layers before fetch to reduce flashing; enhance loading indicator.
-- [ ] Task: Re-evaluate and potentially re-introduce SSE for data loading if backend query performance is confirmed fast and JSON generation/transfer is the bottleneck.
+- [x] Task: Re-evaluate and potentially re-introduce SSE for data loading if backend query performance is confirmed fast and JSON generation/transfer is the bottleneck. *(Implemented with CR-002)*
 - [ ] Task: Code review, cross-browser/device testing.
-- [ ] Task: Update documentation.
+- [x] Task: Update documentation. *(This document reflects the SSE implementation)*
 
 ## Change Requests
 
@@ -185,23 +185,23 @@ Task List
         -   The loading indicator will remain active until the `end` event is received or an error occurs.
   - **Tasks:**
     -   **Backend API (for SSE):**
-        -   [ ] Task: Design and implement the SSE endpoint (new or modify existing `/api/ga/voter/map-data`).
-        -   [ ] Task: Configure the route for `Content-Type: text/event-stream` and SSE message formatting.
-        -   [ ] Task: Adapt database query and processing logic to support streaming/batching of GeoJSON feature results.
-        -   [ ] Task: Implement sending `inViewStats` as an initial named SSE event.
-        -   [ ] Task: Implement sending GeoJSON feature batches as SSE `data` messages.
-        -   [ ] Task: Implement sending an `event: end` message upon completion.
-        -   [ ] Task: Ensure robust error handling and graceful connection termination on the server.
+        -   [x] Task: Design and implement the SSE endpoint (new or modify existing `/api/ga/voter/map-data`). *(Implemented as new endpoint `/api/ga/voter/map-data-sse`)*
+        -   [x] Task: Configure the route for `Content-Type: text/event-stream` and SSE message formatting.
+        -   [x] Task: Adapt database query and processing logic to support streaming/batching of GeoJSON feature results. *(Implemented using database cursor for streaming and a fallback for in-memory batching)*
+        -   [x] Task: Implement sending `inViewStats` as an initial named SSE event. *(Stats were moved to a separate API endpoint `/api/ga/voter/map-stats` and are fetched independently, not via the feature SSE stream)*
+        -   [x] Task: Implement sending GeoJSON feature batches as SSE `data` messages.
+        -   [x] Task: Implement sending an `event: end` message upon completion.
+        -   [x] Task: Ensure robust error handling and graceful connection termination on the server.
     -   **Frontend (`MapboxMapView.tsx` - SSE Integration):**
-        -   [ ] Task: Refactor data fetching logic to use `EventSource` for map data.
-        -   [ ] Task: Implement `EventSource` instantiation, including URL construction with filters, zoom, and bounds.
-        -   [ ] Task: Add `EventSource` event listeners for `stats`, `message` (for data batches), `end`, and `error`.
-        -   [ ] Task: Manage `EventSource` lifecycle: close existing connections before starting new ones.
-        -   [ ] Task: Update `voterFeatures` state by appending features from incoming batches.
-        -   [ ] Task: Update `inViewScoreData` state from the `stats` event.
-        -   [ ] Task: Ensure `isLoading` state is correctly managed throughout the SSE lifecycle.
-        -   [ ] Task: Verify progressive rendering of features and correct display of `inViewStats`.
+        -   [x] Task: Refactor data fetching logic to use `EventSource` for map data. *(Implemented using `@microsoft/fetch-event-source` library)*
+        -   [x] Task: Implement `EventSource` instantiation, including URL construction with filters, zoom, and bounds.
+        -   [x] Task: Add `EventSource` event listeners for `stats`, `message` (for data batches), `end`, and `error`. *(Stats are handled by a separate fetch; `end` event is processed in `onclose`, errors in `onerror`)*
+        -   [x] Task: Manage `EventSource` lifecycle: close existing connections before starting new ones. *(Managed with `AbortController`)*
+        -   [x] Task: Update `voterFeatures` state by appending features from incoming batches. *(Implemented an "Upsert then Prune" strategy for feature updates)*
+        -   [x] Task: Update `inViewScoreData` state from the `stats` event. *(Handled by the separate `fetchMapStats` function)*
+        -   [x] Task: Ensure `isLoading` state is correctly managed throughout the SSE lifecycle.
+        -   [x] Task: Verify progressive rendering of features and correct display of `inViewStats`.
     -   **Documentation & Review:**
-        -   [ ] Task: Update this document (`ga-mapping.md`) with any further refinements or decisions made during SSE implementation.
-        -   [ ] Task: Review and test the SSE implementation thoroughly for performance, stability, and error handling.
+        -   [x] Task: Update this document (`ga-mapping.md`) with any further refinements or decisions made during SSE implementation. *(This update reflects the implementation)*
+        -   [ ] Task: Review and test the SSE implementation thoroughly for performance, stability, and error handling. *(Ongoing, recent fixes and improvements have been applied)*
 
