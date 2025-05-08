@@ -65,6 +65,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   const mapRef = useRef<MapRef | null>(null);
   const prevFiltersRef = useRef<FilterState | null>(null); // Keep for filter change detection if needed, or remove if useEffect handles all.
   const controllerRef = useRef<AbortController | null>(null);
+  const isInitialLoadPendingRef = useRef<boolean>(true); // Flag for initial fitBounds
   
   // Local state for tracking if a map is ready for fetching
   const [mapReady, setMapReady] = useState(false);
@@ -87,6 +88,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     apiParams,
     setApiParams,
     isFittingBounds,
+    setIsFittingBounds,
   } = useMapState();
 
   // Get state from contexts - IMPORTANT: filters and residenceAddressFilters are now direct dependencies for fetchData
@@ -211,6 +213,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                     receivedFeatureIdsThisStream.add(feature.properties.id);
                   }
                 });
+                console.log(`SSE onmessage: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} after adding from batch.`);
 
                 setVoterFeatures(prevVoterFeatures => {
                   const featuresMap = new global.Map<string | number, VoterAddressFeature>(); // Explicitly use global.Map
@@ -236,11 +239,70 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           console.log('SSE Connection Closed by server. Pruning features...');
           setIsLoading(false);
           
-          setVoterFeatures(prevVoterFeatures => 
-            prevVoterFeatures.filter(f => f.properties?.id && receivedFeatureIdsThisStream.has(f.properties.id))
-          );
-          console.log(`Pruning complete. Kept ${receivedFeatureIdsThisStream.size} features that were part of this stream.`);
+          console.log(`SSE onclose: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} before pruning.`);
 
+          setVoterFeatures(prevVoterFeatures => {
+            if (controllerRef.current !== controller && controllerRef.current !== null) { 
+              console.log('SSE onclose: Belongs to an aborted stream, not pruning. Returning previous features.');
+              // No need to fit bounds for aborted streams
+              return prevVoterFeatures;
+            }
+
+            const filteredFeatures = prevVoterFeatures.filter(f => f.properties?.id && receivedFeatureIdsThisStream.has(f.properties.id));
+            console.log(`Pruning complete. Prev features: ${prevVoterFeatures.length}. Kept ${filteredFeatures.length} features that were part of this stream's ID set.`);
+            
+            // --- Fit bounds on initial load logic (MOVED INSIDE THE CALLBACK) ---
+            if (isInitialLoadPendingRef.current && filteredFeatures.length > 0) {
+              isInitialLoadPendingRef.current = false; 
+              console.log("Initial load complete with features, attempting to fit bounds based on pruned set.");
+
+              const map = mapRef.current?.getMap();
+              if (map) {
+                const bounds = new LngLatBounds();
+                filteredFeatures.forEach(feature => {
+                  if (feature.geometry) {
+                    if (feature.geometry.type === 'Point') {
+                      bounds.extend(feature.geometry.coordinates as [number, number]);
+                    } else if (feature.geometry.type === 'Polygon') {
+                      feature.geometry.coordinates.forEach(ring => 
+                        ring.forEach(coord => bounds.extend(coord as [number, number]))
+                      );
+                    } else if (feature.geometry.type === 'MultiPolygon') {
+                      feature.geometry.coordinates.forEach(polygon => 
+                        polygon.forEach(ring => 
+                          ring.forEach(coord => bounds.extend(coord as [number, number]))
+                        )
+                      );
+                    }
+                  }
+                });
+
+                if (!bounds.isEmpty()) {
+                  setIsFittingBounds(true); 
+                  map.once('moveend', () => {
+                    console.log('fitBounds moveend, setting isFittingBounds to false');
+                    setIsFittingBounds(false);
+                  });
+                  map.fitBounds(bounds, {
+                    padding: 40, 
+                    maxZoom: ZOOM_ZIP_LEVEL 
+                  });
+                  console.log('fitBounds called.');
+                } else {
+                  console.log('Calculated bounds (from pruned set) are empty, not fitting.');
+                }
+              } else {
+                console.log('Map instance not available for fitBounds.');
+              }
+            } else if (isInitialLoadPendingRef.current) {
+              isInitialLoadPendingRef.current = false; 
+              console.log("Initial load complete with no features (after pruning), not fitting bounds.");
+            }
+            // --- End Fit bounds on initial load logic ---
+
+            return filteredFeatures;
+          });
+          
           if (controllerRef.current === controller) {
              controllerRef.current = null;
           }
