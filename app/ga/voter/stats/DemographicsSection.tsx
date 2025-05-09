@@ -18,7 +18,8 @@ function DemographicsSection({
   totalVoters,
   onFilterChange
 }: DemographicsSectionProps) {
-
+  // Remove early loading return to allow individual charts to show loading states
+  /*
   if (loading && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
@@ -26,10 +27,13 @@ function DemographicsSection({
       </div>
     );
   }
+  */
+  
   if (!loading && error && !data) {
     return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Demographics: {error}</div>;
   }
-  if (!data || (!data.race && !data.gender && !data.age_range)) {
+  
+  if (!loading && (!data || (!data.race && !data.gender && !data.age_range))) {
     return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for Demographic fields.</div>;
   }
 
@@ -41,33 +45,32 @@ function DemographicsSection({
 
   return (
     <div className="flex flex-col gap-6"> {/* Stack vertically */}
-      {data?.race && (
-        <AggregateFieldDisplay
-          fieldName="Race" // Maps to 'race' filter key
-          data={formatDataForDisplay(data.race)}
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-race-chartType"
-        />
-      )}
-      {data?.gender && (
-        <AggregateFieldDisplay
-          fieldName="Gender" // Maps to 'gender' filter key
-          data={formatDataForDisplay(data.gender)}
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-gender-chartType"
-        />
-      )}
-      {data?.age_range && (
-        <AggregateFieldDisplay
-          fieldName="Age Range" // Maps to 'age' filter key
-          data={formatDataForDisplay(data.age_range)}
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-age-range-chartType"
-        />
-      )}
+      <AggregateFieldDisplay
+        fieldName="Race" // Maps to 'race' filter key
+        data={formatDataForDisplay(data?.race || [])}
+        totalVoters={totalVoters}
+        onFilterChange={onFilterChange}
+        localStorageKey="stats-race-chartType"
+        loading={loading}
+      />
+      
+      <AggregateFieldDisplay
+        fieldName="Gender" // Maps to 'gender' filter key
+        data={formatDataForDisplay(data?.gender || [])}
+        totalVoters={totalVoters}
+        onFilterChange={onFilterChange}
+        localStorageKey="stats-gender-chartType"
+        loading={loading}
+      />
+      
+      <AggregateFieldDisplay
+        fieldName="Age Range" // Maps to 'age' filter key
+        data={formatDataForDisplay(data?.age_range || [])}
+        totalVoters={totalVoters}
+        onFilterChange={onFilterChange}
+        localStorageKey="stats-age-range-chartType"
+        loading={loading}
+      />
     </div>
   );
 }

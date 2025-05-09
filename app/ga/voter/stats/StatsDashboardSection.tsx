@@ -1,5 +1,13 @@
 "use client";
 
+/*
+ * NOTE: The districts section has been temporarily removed from the UI.
+ * The section is commented out in the ALL_SECTIONS array and the content rendering.
+ * API calls for districts data are skipped.
+ * To restore, uncomment the 'districts' entry in ALL_SECTIONS, the rendering section,
+ * and remove the condition that skips the districts fetch.
+ */
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,13 +42,25 @@ const toTitleCase = (text: string): string => {
   return text.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
-const ALL_SECTIONS: (keyof SummaryData)[] = ['voting_info', 'districts', 'demographics', 'voting_history', 'precincts', 'census'];
+const ALL_SECTIONS: (keyof SummaryData)[] = [
+  'voting_info', 
+  // 'districts', // Temporarily removed districts section
+  'demographics', 
+  'voting_history', 
+  'precincts', 
+  'census'
+];
 
 function StatsDashboardSection() {
+  // Add rendering log
+  console.log('Horace: StatsDashboardSection rendering');
+  
   const { filters, residenceAddressFilters, filtersHydrated, setFilters, setResidenceAddressFilters, updateFilter } = useVoterFilterContext();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // Add ref to track first mount
+  const isFirstMountRef = useRef<boolean>(true);
   
   // Add a lifecycle logger
   useEffect(() => {
@@ -70,6 +90,7 @@ function StatsDashboardSection() {
   const [error, setError] = useState<string | null>(null);
   const lastFetchKey = useRef<string | null>(null);
   const isFetchingRef = useRef<boolean>(false);
+  const currentControllersRef = useRef<Map<string, AbortController>>(new Map());
 
   // Create stable filter references for dependency tracking
   const filterString = useMemo(() => JSON.stringify(filters), [filters]);
@@ -84,70 +105,178 @@ function StatsDashboardSection() {
       return;
     }
     
+    // Abort in-flight requests when filters change
+    currentControllersRef.current.forEach((controller, section) => {
+      try {
+        controller.abort();
+        console.log(`[stats] Aborted request for ${section} due to filter change`);
+      } catch (e) {
+        console.warn(`Error aborting request for ${section}:`, e);
+      }
+    });
+    currentControllersRef.current.clear();
+    
     isFetchingRef.current = true;
     lastFetchKey.current = currentFetchKey;
     setLoading(true);
     setError(null);
     
-    // Creating a new set of fetch requests without abort controllers
-    const fetchPromises = ALL_SECTIONS.map(sectionKey => {
-      const params = buildQueryParams(filters, residenceAddressFilters, { section: sectionKey });
-      const url = `/api/ga/voter/summary?${params.toString()}`;
+    // Function to execute the fetch operations
+    const executeFetch = () => {
+      console.log('[stats] Executing fetch operations');
       
-      return fetch(url)
-        .then(async (res) => {
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw { section: sectionKey, status: res.status, message: errorText || `Failed to fetch ${sectionKey}` };
-            }
-            
-            const data = await res.json();
-            
-            if (lastFetchKey.current !== currentFetchKey) {
-              return { section: sectionKey, status: 'cancelled' };
-            }
-            
-            const sectionData = data[sectionKey] || data;
-            setSummaryData(prev => ({ ...prev, [sectionKey]: sectionData }));
-            return { section: sectionKey, status: 'fulfilled' };
-        })
-        .catch(err => {
-            console.error(`Error fetching ${sectionKey}:`, err);
-            return Promise.reject({ 
-              section: sectionKey, 
-              status: 'rejected', 
-              reason: { 
-                section: sectionKey, 
-                message: err.message || `Error fetching ${sectionKey}`, 
-                isNetworkError: !err.status 
-              }
-            });
-        });
-    });
+      // Creating a new set of fetch requests with abort controllers
+      const fetchPromises = ALL_SECTIONS.map(sectionKey => {
+        // Skip districts section - it's temporarily disabled
+        if (sectionKey === 'districts') {
+          console.log('[stats] Skipping districts section fetch - temporarily disabled');
+          return Promise.resolve({ section: 'districts', status: 'skipped' });
+        }
 
-    Promise.allSettled(fetchPromises)
-        .then(results => {
-            if (lastFetchKey.current !== currentFetchKey) return;
-            
-            let errorsFound = false;
-            
-            results.forEach(result => {
-                if (result.status === 'rejected') {
-                    errorsFound = true;
-                    setError(prevError => prevError || `Error loading data.`);
-                }
-            });
-            
-            isFetchingRef.current = false;
-            setLoading(false);
-        });
+        // Add controller creation for each request
+        const controller = new AbortController();
+        currentControllersRef.current.set(sectionKey, controller);
         
-    // Simplified cleanup - no abort controllers to clean up
-    return () => {
-      console.log(`[stats] Cleanup running`);
-      isFetchingRef.current = false;
-      lastFetchKey.current = null;
+        const params = buildQueryParams(filters, residenceAddressFilters, { section: sectionKey });
+        const url = `/api/ga/voter/summary?${params.toString()}`;
+        
+        return fetch(url, { signal: controller.signal })
+          .then(async (res) => {
+              // Add check for aborted request
+              if (controller.signal.aborted) {
+                console.log(`[stats] Request for ${sectionKey} was aborted before response handling`);
+                return { section: sectionKey, status: 'aborted' };
+              }
+              
+              if (!res.ok) {
+                  const errorText = await res.text();
+                  throw { section: sectionKey, status: res.status, message: errorText || `Failed to fetch ${sectionKey}` };
+              }
+              
+              const data = await res.json();
+              
+              // Check for abort after parsing
+              if (controller.signal.aborted || lastFetchKey.current !== currentFetchKey) {
+                console.log(`[stats] Request for ${sectionKey} was aborted after response handling or is no longer current`);
+                return { section: sectionKey, status: 'aborted' };
+              }
+              
+              const sectionData = data[sectionKey] || data;
+              setSummaryData(prev => ({ ...prev, [sectionKey]: sectionData }));
+              return { section: sectionKey, status: 'fulfilled' };
+          })
+          .catch(err => {
+              // Add back abort error handling
+              if (err.name === 'AbortError' || controller.signal.aborted) {
+                console.log(`[stats] Caught AbortError for ${sectionKey}`);
+                return { section: sectionKey, status: 'aborted' };
+              }
+              
+              console.error(`Error fetching ${sectionKey}:`, err);
+              return Promise.reject({ 
+                section: sectionKey, 
+                status: 'rejected', 
+                reason: { 
+                  section: sectionKey, 
+                  message: err.message || `Error fetching ${sectionKey}`, 
+                  isNetworkError: !err.status 
+                }
+              });
+          })
+          .finally(() => {
+            // Add cleanup of controller reference when request completes or errors
+            if (currentControllersRef.current.has(sectionKey)) {
+              currentControllersRef.current.delete(sectionKey);
+              console.log(`[stats] Removed controller for ${sectionKey} after completion`);
+            }
+          });
+      });
+
+      Promise.allSettled(fetchPromises)
+          .then(results => {
+              if (lastFetchKey.current !== currentFetchKey) return;
+              
+              let errorsFound = false;
+              
+              results.forEach(result => {
+                  if (result.status === 'rejected') {
+                      errorsFound = true;
+                      setError(prevError => prevError || `Error loading data.`);
+                  }
+              });
+              
+              isFetchingRef.current = false;
+              setLoading(false);
+          });
     };
+    
+    // **************************************************************************
+    // IMPORTANT: DO NOT REMOVE THIS DELAY WITHOUT TESTING THOROUGHLY
+    // **************************************************************************
+    // The 200ms delay below is a critical workaround for a known Next.js App Router issue:
+    // When navigating between pages (e.g. List→Stats), Next.js App Router can briefly mount, 
+    // unmount, and remount components during navigation, particularly when filter parameters 
+    // change or get synchronized with URL.
+    //
+    // This causes fetch requests to start, get aborted immediately on unmount, then restart 
+    // on remount. The symptom is that API calls fail with "AbortError", leaving 
+    // the Stats page with the "No data available" message.
+    //
+    // The 200ms delay gives the App Router time to stabilize before starting expensive API 
+    // requests, ensuring that they're only initiated when the component is fully mounted and 
+    // won't immediately unmount. We only need to delay the first mount's requests because 
+    // subsequent renders won't have this mounting/remounting issue.
+    //
+    // Related discussions:
+    // **************************************************************************
+    // Delay the first request by 200ms to handle AppRouter remounting bug
+    if (isFirstMountRef.current) {
+      console.log('[stats] First mount detected, delaying initial request by 200ms');
+      const timerId = setTimeout(() => {
+        console.log('[stats] Executing delayed initial request');
+        executeFetch();
+        isFirstMountRef.current = false;
+      }, 200);
+      
+      // Clean up timeout if component unmounts before it fires
+      return () => {
+        console.log('[stats] Cleaning up during first mount timeout');
+        clearTimeout(timerId);
+        
+        console.log(`[stats] Cleanup running, controllers count: ${currentControllersRef.current.size}`);
+        currentControllersRef.current.forEach((controller, section) => {
+          try {
+            console.log(`[stats] Aborting request for ${section} during cleanup`);
+            controller.abort();
+          } catch (e) {
+            console.warn('Error aborting controller during cleanup:', e);
+          }
+        });
+        currentControllersRef.current.clear();
+        isFetchingRef.current = false;
+        lastFetchKey.current = null;
+      };
+    } else {
+      // After first mount, execute fetch immediately
+      console.log('[stats] Not first mount, executing request immediately');
+      executeFetch();
+      
+      // Add back the controller cleanup
+      return () => {
+        console.log(`[stats] Cleanup running, controllers count: ${currentControllersRef.current.size}`);
+        currentControllersRef.current.forEach((controller, section) => {
+          try {
+            console.log(`[stats] Aborting request for ${section} during cleanup`);
+            controller.abort();
+          } catch (e) {
+            console.warn('Error aborting controller during cleanup:', e);
+          }
+        });
+        currentControllersRef.current.clear();
+        isFetchingRef.current = false;
+        lastFetchKey.current = null;
+      };
+    }
   }, [filtersHydrated, filterString, residenceFilterString]);
 
   const totalVoters = useMemo(() => {
@@ -158,6 +287,9 @@ function StatsDashboardSection() {
   }, [summaryData.voting_info]);
 
   const handleFilterChange = useCallback((fieldName: string, value: string | number) => {
+    // Set loading state to true immediately when filters change
+    setLoading(true);
+    
     const filterValue = String(value);
     const arrayFilterMap: { [key: string]: keyof FilterState } = { 
       'Status': 'status', 
@@ -260,8 +392,13 @@ function StatsDashboardSection() {
           {!loading && summaryData.voting_info && (
              <span>Voters <span className="font-semibold text-foreground">{totalVoters.toLocaleString()}</span></span>
           )}
-           {loading && !summaryData.voting_info && (
-             <span className="animate-pulse">Loading Total...</span>
+          {loading && (
+             <span className="animate-pulse flex items-center gap-1.5">
+               <span>Loading data</span>
+               <span className="h-2 w-2 rounded-full bg-muted-foreground animate-pulse"></span>
+               <span className="h-2 w-2 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+               <span className="h-2 w-2 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: '0.4s' }}></span>
+             </span>
           )}
         </div>
       </div>
@@ -287,17 +424,24 @@ function StatsDashboardSection() {
       <div>
         {ALL_SECTIONS.map(section => {
           if (section !== currentSection) return null;
+          
+          // Modified loading state for section - show loading whenever general loading is true
+          // Don't require !data condition which was preventing loading state from showing during filter changes
+          const sectionIsLoading = loading;
+          
           return (
             <div key={`${section}-content`} className="mt-4">
-              {section === 'voting_info' && <VotingInfoSection data={summaryData.voting_info} loading={loading && !summaryData.voting_info} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-              {section === 'districts' && <DistrictsSection data={summaryData.districts} loading={loading && !summaryData.districts} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-              {section === 'demographics' && <DemographicsSection data={summaryData.demographics} loading={loading && !summaryData.demographics} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-              {section === 'voting_history' && <VotingHistorySection data={summaryData.voting_history} loading={loading && !summaryData.voting_history} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
-              {section === 'census' && <CensusSection data={summaryData.census} loading={loading && !summaryData.census} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'voting_info' && <VotingInfoSection data={summaryData.voting_info} loading={sectionIsLoading} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {/* Districts section temporarily removed 
+              {section === 'districts' && <DistrictsSection data={summaryData.districts} loading={sectionIsLoading} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              */}
+              {section === 'demographics' && <DemographicsSection data={summaryData.demographics} loading={sectionIsLoading} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'voting_history' && <VotingHistorySection data={summaryData.voting_history} loading={sectionIsLoading} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
+              {section === 'census' && <CensusSection data={summaryData.census} loading={sectionIsLoading} error={error} totalVoters={totalVoters} onFilterChange={handleFilterChange}/>}
               {section === 'precincts' && (
                 <PrecinctSectionContent 
                   data={summaryData.precincts}
-                  loading={loading && !summaryData.precincts}
+                  loading={sectionIsLoading}
                   error={error}
                   totalVoters={totalVoters}
                   onFilterChange={handleFilterChange}
@@ -331,6 +475,8 @@ function PrecinctSectionContent({
   onFilterChange
 }: PrecinctSectionContentProps) {
 
+  // Remove early loading return to allow individual charts to show loading state
+  /*
   if (loading && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
@@ -338,12 +484,13 @@ function PrecinctSectionContent({
       </div>
     );
   }
+  */
   
   if (!loading && error && !data) {
     return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Precincts: {error}</div>;
   }
   
-  if (!data || (!data.county_precinct && !data.municipal_precinct)) {
+  if (!loading && (!data || (!data.county_precinct && !data.municipal_precinct))) {
     return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for Precinct fields.</div>;
   }
 
@@ -372,44 +519,42 @@ function PrecinctSectionContent({
   return (
     <div className="flex flex-col gap-16">
       {/* County Precincts */}
-      {data?.county_precinct && (
-        <div className="mb-6">
-          <AggregateFieldDisplay
-            fieldName="County Precinct"
-            data={formatDataForDisplay(data.county_precinct, "County Precinct")}
-            totalVoters={totalVoters}
-            onFilterChange={(_, value) => onFilterChange("County Precinct", extractPrecinctCode(String(value)))}
-            localStorageKey="stats-county-precinct-chartType"
-            displayExtraInfo={(item) => (
-              <div className="text-xs text-muted-foreground mt-1">
-                {item.meta?.facility_name && <div>{item.meta.facility_name}</div>}
-                {item.meta?.facility_address && <div>{item.meta.facility_address}</div>}
-              </div>
-            )}
-            variant="stacked"
-          />
-        </div>
-      )}
+      <div className="mb-6">
+        <AggregateFieldDisplay
+          fieldName="County Precinct"
+          data={formatDataForDisplay(data?.county_precinct || [], "County Precinct")}
+          totalVoters={totalVoters}
+          onFilterChange={(_, value) => onFilterChange("County Precinct", extractPrecinctCode(String(value)))}
+          localStorageKey="stats-county-precinct-chartType"
+          displayExtraInfo={(item) => (
+            <div className="text-xs text-muted-foreground mt-1">
+              {item.meta?.facility_name && <div>{item.meta.facility_name}</div>}
+              {item.meta?.facility_address && <div>{item.meta.facility_address}</div>}
+            </div>
+          )}
+          variant="stacked"
+          loading={loading}
+        />
+      </div>
       
       {/* Municipal Precincts */}
-      {data?.municipal_precinct && (
-        <div className="mt-6">
-          <AggregateFieldDisplay
-            fieldName="Municipal Precinct"
-            data={formatDataForDisplay(data.municipal_precinct, "Municipal Precinct")}
-            totalVoters={totalVoters}
-            onFilterChange={(_, value) => onFilterChange("Municipal Precinct", extractPrecinctCode(String(value)))}
-            localStorageKey="stats-municipal-precinct-chartType"
-            displayExtraInfo={(item) => (
-              <div className="text-xs text-muted-foreground mt-1">
-                {item.meta?.facility_name && <div>{item.meta.facility_name}</div>}
-                {item.meta?.facility_address && <div>{item.meta.facility_address}</div>}
-              </div>
-            )}
-            variant="stacked"
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <AggregateFieldDisplay
+          fieldName="Municipal Precinct"
+          data={formatDataForDisplay(data?.municipal_precinct || [], "Municipal Precinct")}
+          totalVoters={totalVoters}
+          onFilterChange={(_, value) => onFilterChange("Municipal Precinct", extractPrecinctCode(String(value)))}
+          localStorageKey="stats-municipal-precinct-chartType"
+          displayExtraInfo={(item) => (
+            <div className="text-xs text-muted-foreground mt-1">
+              {item.meta?.facility_name && <div>{item.meta.facility_name}</div>}
+              {item.meta?.facility_address && <div>{item.meta.facility_address}</div>}
+            </div>
+          )}
+          variant="stacked"
+          loading={loading}
+        />
+      </div>
     </div>
   );
 } 
