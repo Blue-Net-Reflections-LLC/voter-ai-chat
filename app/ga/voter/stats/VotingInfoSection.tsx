@@ -17,13 +17,11 @@ function VotingInfoSection({
   totalVoters,
   onFilterChange
 }: VotingInfoSectionProps) {
-  if (loading) {
-    return <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm"><span className="animate-pulse">Loading Voting Info...</span></div>;
-  }
   if (error) {
     return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Voting Info: {error}</div>;
   }
-  if (!data || (!data.status && !data.status_reason && !data.residence_city && !data.residence_zipcode)) {
+  
+  if (!loading && (!data || (!data.status && !data.status_reason && !data.residence_city && !data.residence_zipcode))) {
     return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for Voting Info fields.</div>;
   }
 
@@ -34,42 +32,41 @@ function VotingInfoSection({
 
   return (
     <div className="flex flex-col gap-6">
-      {data?.status && (
-        <AggregateFieldDisplay
-          fieldName="Status"
-          data={formatDataForDisplay(data.status)}
-          totalVoters={totalVoters} 
-          onFilterChange={onFilterChange} 
-          localStorageKey="stats-status-chartType"
-        />
-      )}
-      {data?.status_reason && (
-        <AggregateFieldDisplay
-          fieldName="Inactive Status Reason Distribution"
-          data={formatDataForDisplay(data.status_reason)}
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-status-reason-chartType"
-        />
-      )}
-      {data?.residence_city && (
-        <AggregateFieldDisplay
-          fieldName="Residence City"
-          data={formatDataForDisplay(data.residence_city)}
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-residence-city-chartType"
-        />
-      )}
-      {data?.residence_zipcode && (
-        <AggregateFieldDisplay
-          fieldName="Residence Zipcode"
-          data={formatDataForDisplay(data.residence_zipcode)}
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-residence-zipcode-chartType"
-        />
-      )}
+      <AggregateFieldDisplay
+        fieldName="Status"
+        data={formatDataForDisplay(data?.status || [])}
+        totalVoters={totalVoters} 
+        onFilterChange={onFilterChange} 
+        localStorageKey="stats-status-chartType"
+        loading={loading}
+      />
+      
+      <AggregateFieldDisplay
+        fieldName="Inactive Status Reason Distribution"
+        data={formatDataForDisplay(data?.status_reason || [])}
+        totalVoters={totalVoters}
+        onFilterChange={onFilterChange}
+        localStorageKey="stats-status-reason-chartType"
+        loading={loading}
+      />
+      
+      <AggregateFieldDisplay
+        fieldName="Residence City"
+        data={formatDataForDisplay(data?.residence_city || [])}
+        totalVoters={totalVoters}
+        onFilterChange={onFilterChange}
+        localStorageKey="stats-residence-city-chartType"
+        loading={loading}
+      />
+      
+      <AggregateFieldDisplay
+        fieldName="Residence Zipcode"
+        data={formatDataForDisplay(data?.residence_zipcode || [])}
+        totalVoters={totalVoters}
+        onFilterChange={onFilterChange}
+        localStorageKey="stats-residence-zipcode-chartType"
+        loading={loading}
+      />
     </div>
   );
 }
