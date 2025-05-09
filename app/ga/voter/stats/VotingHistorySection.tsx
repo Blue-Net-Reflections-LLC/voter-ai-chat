@@ -23,7 +23,8 @@ function VotingHistorySection({
   totalVoters,
   onFilterChange
 }: VotingHistorySectionProps) {
-
+  // Remove early loading return to allow individual charts to show loading states
+  /*
   if (loading && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[150px] text-muted-foreground text-sm">
@@ -31,10 +32,13 @@ function VotingHistorySection({
       </div>
     );
   }
+  */
+  
   if (error && !loading && !data) {
     return <div className="text-destructive text-sm p-4 border border-destructive rounded-md">Error loading Voting History: {error}</div>;
   }
-  if (!data || (!data.election_date_counts && !data.participated_election_years)) {
+  
+  if (!loading && (!data || (!data.election_date_counts && !data.participated_election_years))) {
     return <div className="text-muted-foreground text-sm p-4 border rounded-md">No data available for Voting History fields.</div>;
   }
 
@@ -77,24 +81,23 @@ function VotingHistorySection({
 
   return (
     <div className="flex flex-col gap-6"> {/* Stack vertically */}
-      {data?.participated_election_years && data.participated_election_years.length > 0 && (
-        <AggregateFieldDisplay
-          fieldName="Election Year" // Maps to 'electionYear' filter key
-          data={formatDataForDisplay(data.participated_election_years)}
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-election-year-chartType"
-        />
-      )}
-      {data?.election_date_counts && data.election_date_counts.length > 0 && (
-        <AggregateFieldDisplay
-          fieldName="Election Date Counts" // Updated display name
-          data={formatDataForDisplay(data.election_date_counts, true)} // Use date formatting
-          totalVoters={totalVoters}
-          onFilterChange={onFilterChange}
-          localStorageKey="stats-election-date-chartType"
-        />
-      )}
+      <AggregateFieldDisplay
+        fieldName="Election Year" // Maps to 'electionYear' filter key
+        data={formatDataForDisplay(data?.participated_election_years || [])}
+        totalVoters={totalVoters}
+        onFilterChange={onFilterChange}
+        localStorageKey="stats-election-year-chartType"
+        loading={loading}
+      />
+      
+      <AggregateFieldDisplay
+        fieldName="Election Date Counts" // Updated display name
+        data={formatDataForDisplay(data?.election_date_counts || [], true)} // Use date formatting
+        totalVoters={totalVoters}
+        onFilterChange={onFilterChange}
+        localStorageKey="stats-election-date-chartType"
+        loading={loading}
+      />
     </div>
   );
 }

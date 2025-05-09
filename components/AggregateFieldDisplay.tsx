@@ -25,6 +25,7 @@ interface AggregateFieldDisplayProps {
     localStorageKey: string; // Add prop for localStorage key
     displayExtraInfo?: (item: any) => React.ReactNode; // Optional prop to display extra information
     variant?: 'default' | 'stacked'; // Add variant prop for different layouts
+    loading?: boolean; // Add loading prop to indicate when data is being fetched
 }
 
 const COLORS = [
@@ -81,7 +82,8 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
     onFilterChange,
     localStorageKey,
     displayExtraInfo,
-    variant = 'default' // Default to the standard layout
+    variant = 'default', // Default to the standard layout
+    loading = false // Default to not loading
 }) => {
     // Initialize state using the helper function - runs once on mount
     const [chartType, setChartType] = useState<'bar' | 'pie'>(() => getInitialChartType(localStorageKey)); 
@@ -151,6 +153,18 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
     };
 
     // Handle case where there is no data for this specific field
+    if (loading) {
+        return (
+            <div className="flex flex-col space-y-2 p-4 border rounded-md bg-card h-[372px]">
+                <h3 className="text-lg font-semibold">{fieldName} Distribution</h3>
+                <div className="grow flex items-center justify-center flex-col gap-3">
+                    <div className="h-10 w-10 rounded-full border-4 border-t-transparent border-primary animate-spin"></div>
+                    <p className="text-sm text-muted-foreground animate-pulse">Loading {fieldName} data...</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!data || data.length === 0) {
         return (
             <div className="flex flex-col space-y-2 p-4 border rounded-md bg-card h-[372px]"> {/* Match approx height */} 
