@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -166,6 +166,45 @@ export function FilterPanel() {
   const demographicsFilterCount = getDemographicsFilterCount();
   const votingHistoryFilterCount = getVotingHistoryFilterCount();
 
+  // Track which accordion items are open
+  const [openItems, setOpenItems] = useState<string[]>(["participation-score", "geographic-filters", "voter-info"]);
+  const previousOpenItems = useRef<string[]>(["participation-score", "geographic-filters", "voter-info"]);
+  
+  // Handle accordion value change
+  const handleAccordionChange = (values: string[]) => {
+    setOpenItems(values);
+  };
+
+  // Effect to scroll to newly opened accordion sections
+  useEffect(() => {
+    // Find newly opened accordion item (if any)
+    const newlyOpenedItem = openItems.find(item => !previousOpenItems.current.includes(item));
+    
+    if (newlyOpenedItem) {
+      // Two-phase approach: first short delay for initial scroll, then longer delay for final positioning
+      
+      // Phase 1: Quick initial scroll to bring the element into rough view
+      setTimeout(() => {
+        const trigger = document.querySelector(`[data-accordion-id="${newlyOpenedItem}"] button[data-state="open"]`);
+        if (trigger && trigger instanceof HTMLElement) {
+          trigger.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      }, 50);
+      
+      // Phase 2: More precise scrolling after animation has progressed further
+      setTimeout(() => {
+        const accordionItem = document.querySelector(`[data-accordion-id="${newlyOpenedItem}"]`);
+        if (accordionItem) {
+          // Smooth scroll to get ideal positioning
+          accordionItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 350);
+    }
+    
+    // Update ref with current open items for next comparison
+    previousOpenItems.current = [...openItems];
+  }, [openItems]);
+
   return (
     <div className="w-full h-full overflow-y-auto">
       {hasActiveFilters() && (
@@ -186,9 +225,13 @@ export function FilterPanel() {
         type="multiple" 
         className="w-full space-y-1 px-3 pt-2"
         defaultValue={["participation-score", "geographic-filters", "voter-info"]}
+        onValueChange={handleAccordionChange}
       >
         {/* Participation Score Filter */}
-        <AccordionItem value="participation-score">
+        <AccordionItem 
+          value="participation-score" 
+          data-accordion-id="participation-score"
+        >
           <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
             <span>Participation Score</span>
             {participationScoreFilterCount > 0 && (
@@ -209,10 +252,13 @@ export function FilterPanel() {
         </AccordionItem>
 
         {/* Geographic Filters */}
-        <AccordionItem value="geographic-filters">
+        <AccordionItem 
+          value="geographic-filters" 
+          data-accordion-id="geographic-filters"
+        >
           <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
             <span>Geographic Filters</span>
-             {geographicFilterCount > 0 && (
+            {geographicFilterCount > 0 && (
               <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
                 {geographicFilterCount}
               </span>
@@ -279,7 +325,10 @@ export function FilterPanel() {
         </AccordionItem>
         
         {/* Voter Info Filters */}
-        <AccordionItem value="voter-info">
+        <AccordionItem 
+          value="voter-info" 
+          data-accordion-id="voter-info"
+        >
           <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
             <span>Voter Info</span>
             {voterInfoFilterCount > 0 && (
@@ -364,7 +413,10 @@ export function FilterPanel() {
         </AccordionItem>
 
         {/* Demographic Filters */}
-        <AccordionItem value="demographics">
+        <AccordionItem 
+          value="demographics" 
+          data-accordion-id="demographics"
+        >
           <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
             <span>Demographics</span>
             {demographicsFilterCount > 0 && (
@@ -405,7 +457,10 @@ export function FilterPanel() {
         </AccordionItem>
 
         {/* Voting History Filters */}
-        <AccordionItem value="voting-history">
+        <AccordionItem 
+          value="voting-history" 
+          data-accordion-id="voting-history"
+        >
           <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
             <span>Voting History</span>
             {votingHistoryFilterCount > 0 && (
