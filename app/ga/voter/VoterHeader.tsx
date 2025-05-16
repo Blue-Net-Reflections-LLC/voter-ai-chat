@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { List, BarChart2, Map, PieChart, Landmark, Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const tabs = [
   {
@@ -106,8 +107,9 @@ const VoterHeader: React.FC = () => {
         
         {/* Right section - profile only */}
         <div className="flex-shrink-0 flex items-center">
+          <ThemeToggle />
           {/* Placeholder for UserProfile */}
-          <div className="h-7 w-7 rounded-full bg-gray-300 flex items-center justify-center">
+          <div className="h-7 w-7 rounded-full bg-gray-300 flex items-center justify-center ml-2">
              <span className="text-xs">👤</span> {/* Simple placeholder icon */}
           </div>
         </div>
