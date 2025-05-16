@@ -5,9 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { ResidenceAddressFilter } from '../ResidenceAddressFilter';
-import CountyMultiSelect from './CountyMultiSelect';
-import DistrictMultiSelect from './DistrictMultiSelect';
-import MultiSelect from './MultiSelect';
+import { CountyMultiSelect } from './CountyMultiSelect';
+import { DistrictMultiSelect } from './DistrictMultiSelect';
+import { MultiSelect } from './MultiSelect';
 import { useLookupData } from '../hooks/useLookupData';
 import {
   AGE_RANGE_OPTIONS,
@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 import { SCORE_RANGES } from '@/lib/participation-score/constants';
-import PrecinctFilters from './PrecinctFilters';
+import { PrecinctFilters } from './PrecinctFilters';
 import {
   Accordion,
   AccordionContent,
@@ -442,9 +442,9 @@ export function FilterPanel() {
   const activeFilterBadges = getActiveFilterBadges();
 
   return (
-    <div className="w-full h-full overflow-y-auto flex flex-col" ref={scrollableContainerRef}>
+    <div className="size-full overflow-y-auto flex flex-col" ref={scrollableContainerRef}>
       <div
-        className="px-3 py-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
+        className="p-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
         ref={activeFiltersHeaderRef}
       >
         {hasActiveFilters() ? (
@@ -541,7 +541,7 @@ export function FilterPanel() {
                 />
               </div>
               <div>
-                <Separator className=" mt-4 my-3 mt-5" />
+                <Separator className="my-3 mt-5" />
               </div>
               {/* Never Voted Switch */}
               <div className="flex items-center justify-between space-x-2 pt-1">
