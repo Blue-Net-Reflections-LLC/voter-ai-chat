@@ -442,9 +442,9 @@ export function FilterPanel() {
   const activeFilterBadges = getActiveFilterBadges();
 
   return (
-    <div className="size-full overflow-y-auto flex flex-col" ref={scrollableContainerRef}>
+    <div className="w-full h-full overflow-y-auto flex flex-col" ref={scrollableContainerRef}>
       <div
-        className="p-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
+        className="px-3 py-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
         ref={activeFiltersHeaderRef}
       >
         {hasActiveFilters() ? (
