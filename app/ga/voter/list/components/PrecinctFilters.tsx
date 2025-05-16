@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import DistrictMultiSelect, { MultiSelectOption } from './DistrictMultiSelect';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
+import { Separator } from '@/components/ui/separator';
 
 // Interface for the lookup response data from API
 interface PrecinctLookupData {
@@ -303,6 +304,7 @@ export function PrecinctFilters() {
       <div className="space-y-2">
         {renderCountyPrecinctSection()}
       </div>
+      <Separator className="my-3" />
 
       {/* Municipal Precinct Filter */}
       <div className="space-y-2">

@@ -513,6 +513,7 @@ export function FilterPanel() {
                 setValue={(value) => updateFilter('scoreRanges', value)}
                 compact={true}
               />
+              <Separator className="my-3" />
               <div>
                 <label className="text-xs font-medium">Has Not Voted Since Year</label>
                 <Input
@@ -556,9 +557,11 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
+              <Separator className="my-3" />
 
               {/* Add Precinct Filters component */}
               <PrecinctFilters />
+              <Separator className="my-3" />
 
               {/* Congressional District Filter */}
               <div className="space-y-2">
@@ -571,6 +574,7 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
+              <Separator className="my-3" />
 
               {/* State Senate District Filter */}
               <div className="space-y-2">
@@ -583,6 +587,7 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
+              <Separator className="my-3" />
 
               {/* State House District Filter */}
               <div className="space-y-2">
@@ -595,6 +600,7 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
+              <Separator className="my-3" />
 
               <MultiSelect
                 label="Redistricting Type"
@@ -629,7 +635,8 @@ export function FilterPanel() {
                   isLoading={isLoading}
                   compact={true}
                 />
-                
+                                <Separator className="my-3" />
+
                 <MultiSelect
                   label="Inactive Status Reasons"
                   options={statusReasons.length > 0 ? statusReasons : []}
@@ -638,7 +645,8 @@ export function FilterPanel() {
                   isLoading={isLoading}
                   compact={true}
                 />
-                
+                                <Separator className="my-3" />
+
                 <div>
                   <label className="text-xs font-medium">First Name</label>
                   <Input
@@ -670,8 +678,7 @@ export function FilterPanel() {
                     Apply Name Filter
                   </Button>
                 </div>
-
-                {/* Residence Address Filter */}
+                <Separator className="my-3" />
                 <ResidenceAddressFilter
                   addressFilters={residenceAddressFilters}
                   addAddressFilter={addAddressFilter}
@@ -681,7 +688,8 @@ export function FilterPanel() {
                     updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
                   }}
                 />
-                
+                        <Separator className="my-3" />
+        
                 <MultiSelect
                   label="Registered Voter Party"
                   options={parties.length > 0 ? parties : []}
@@ -716,7 +724,8 @@ export function FilterPanel() {
                   setValue={(value) => updateFilter('age', value)}
                   compact={true}
                 />
-                
+                                <Separator className="my-3" />
+
                 <MultiSelect
                   label="Gender"
                   options={genders.length > 0 ? genders : []}
@@ -725,6 +734,7 @@ export function FilterPanel() {
                   isLoading={isLoading}
                   compact={true}
                 />
+                <Separator className="my-3" />
 
                 <MultiSelect
                   label="Race"
@@ -761,7 +771,8 @@ export function FilterPanel() {
                   compact={true} 
                   formatLabel={formatDateLabel}
                 />
-                
+                                <Separator className="my-3" />
+
                 <MultiSelect 
                   label="Election Type"
                   options={ELECTION_TYPE_OPTIONS} 
@@ -769,7 +780,8 @@ export function FilterPanel() {
                   setValue={(value) => updateFilter('electionType', value)} 
                   compact={true}
                 />
-                
+                                <Separator className="my-3" />
+
                 <MultiSelect 
                   label="Election Year" 
                   options={ELECTION_YEAR_OPTIONS} 
@@ -777,7 +789,8 @@ export function FilterPanel() {
                   setValue={(value) => updateFilter('electionYear', value)} 
                   compact={true}
                 />
-                
+                                <Separator className="my-3" />
+
                 <MultiSelect 
                   label="Selected Party"
                   options={eventParties.length > 0 ? eventParties : []} 
@@ -786,7 +799,8 @@ export function FilterPanel() {
                   isLoading={isLoading} 
                   compact={true}
                 />
-                
+                                <Separator className="my-3" />
+
                 <MultiSelect 
                   label="Ballot Style" 
                   options={ballotStyles.length > 0 ? ballotStyles : []} 
@@ -795,7 +809,8 @@ export function FilterPanel() {
                   isLoading={isLoading} 
                   compact={true}
                 />
-                
+                              <Separator className="my-3" />
+  
                 <div>
                   <div className="text-xs font-medium mb-1">Ballot Cast</div>
                   <div className="flex flex-wrap gap-2">
