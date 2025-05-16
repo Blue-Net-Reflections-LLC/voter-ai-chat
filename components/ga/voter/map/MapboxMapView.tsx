@@ -6,6 +6,7 @@ import type { CircleLayerSpecification } from 'mapbox-gl';
 import mapboxgl, { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
 import type { Feature, Point, FeatureCollection, Geometry } from 'geojson'; // Import Geometry type
 import Link from 'next/link'; // Added Link for voter detail navigation
+import { useTheme } from 'next-themes'; // Added useTheme import
 import { useMapState } from '@/context/MapStateContext'; // Import the context hook
 import { useDebounceCallback } from 'usehooks-ts'; // Corrected import hook name
 import { useVoterFilterContext, buildQueryParams } from '@/app/ga/voter/VoterFilterProvider'; // Import filter context and helper
@@ -68,6 +69,8 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   const isInitialLoadPendingRef = useRef<boolean>(true); // Flag for initial fitBounds
   const isUnboundedQueryRunningRef = useRef<boolean>(false); // Track unbounded query state
   
+  const { theme } = useTheme(); // Get the current theme
+
   // Local state for tracking if a map is ready for fetching
   const [mapReady, setMapReady] = useState(false);
 
@@ -673,7 +676,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         onClick={handleVoterClick} // Onclick handler for map features
         interactiveLayerIds={['voter-points']} // Specify interactive layers
         style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/dark-v11"
+        mapStyle={theme === 'light' ? 'mapbox://styles/mapbox/light-v11' : 'mapbox://styles/mapbox/dark-v11'} // Dynamically set map style
       >
           <Source
             id="voter-addresses"
