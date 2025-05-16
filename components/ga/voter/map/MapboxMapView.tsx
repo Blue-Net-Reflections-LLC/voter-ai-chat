@@ -23,6 +23,9 @@ interface VoterAddressProperties {
   count?: number;
   label?: string;
   id?: string | number; // Added id property
+  // New properties for party affiliation based coloring
+  hasDemocrat?: boolean;
+  hasRepublican?: boolean;
 }
 // Use generic Geometry for features, as they can now be Points or Polygons/MultiPolygons
 type VoterAddressFeature = Feature<Geometry, VoterAddressProperties>;
@@ -64,6 +67,28 @@ interface InViewStats {
 // --- SVG and Image Name for Teardrop Icon ---
 const teardropSvg = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="#000000"><path d="M50,0 C27.90861,0 10,17.90861 10,40 C10,70 50,100 50,100 C50,100 90,70 90,40 C90,17.90861 72.09139,0 50,0 Z"/></svg>';
 const teardropImageName = 'teardrop-pin';
+
+// --- Color Definitions for Party Affiliation ---
+const colorDemocratOnly = '#007bff';     // Blue
+const colorRepublicanOnly = '#e55e5e';   // Red (consistent with previous default)
+const colorMixedDr = '#6f42c1';          // Purple
+const colorOtherOrNeither = '#fd7e14';   // Orange
+
+// --- Mapbox Expression for Party-Based Coloring ---
+const partyColorExpression = [
+  'case',
+  ['all', ['to-boolean', ['get', 'hasDemocrat']], ['to-boolean', ['get', 'hasRepublican']]], colorMixedDr,
+  ['==', ['to-boolean', ['get', 'hasDemocrat']], true], colorDemocratOnly,
+  ['==', ['to-boolean', ['get', 'hasRepublican']], true], colorRepublicanOnly,
+  colorOtherOrNeither // Default
+];
+
+const legendItems = [
+  { color: colorDemocratOnly, label: 'Democrat Household' },
+  { color: colorRepublicanOnly, label: 'Republican Household' },
+  { color: colorMixedDr, label: 'Mixed Household (Dem, Rep)' },
+  { color: colorOtherOrNeither, label: 'Other / Not Specified' },
+];
 
 // Component using the context
 const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
@@ -158,7 +183,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           const currentMapInstance = mapRef.current?.getMap(); 
           if (currentMapInstance && !currentMapInstance.hasImage(teardropImageName)) {
             currentMapInstance.addImage(teardropImageName, image, { sdf: true });
-            console.log('Teardrop image added to map');
+            // console.log('Teardrop image added to map');
           }
         };
         image.onerror = () => {
@@ -171,12 +196,12 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
   // --- Refactored Data Fetching using fetchEventSource ---
   const fetchData = useCallback(async (skipBounds = false) => {
-    console.log(`fetchData triggered${skipBounds ? ' (UNBOUNDED QUERY)' : ''} for SSE`);
+    // console.log(`fetchData triggered${skipBounds ? ' (UNBOUNDED QUERY)' : ''} for SSE`);
     setIsLoading(true);
     setPopupInfo(null); // Close any open popups when new data is fetched
 
     if (controllerRef.current) {
-      console.log('Aborting previous fetchEventSource request');
+      // console.log('Aborting previous fetchEventSource request');
       controllerRef.current.abort();
     }
     const controller = new AbortController();
@@ -199,7 +224,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       // Use all of Georgia (rough bounds) for unbounded query
       // These are the approximate bounds of Georgia
       bbox = "-85.605165,30.355644,-80.742567,35.000659";
-      console.log('Using Georgia-wide bounding box for unbounded query:', bbox);
+      // console.log('Using Georgia-wide bounding box for unbounded query:', bbox);
     } else {
       // Use current map bounds
       const bounds = currentMap.getBounds();
@@ -216,7 +241,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     sseUrlParams.set('zoom', zoom.toFixed(2));
     sseUrlParams.set('bbox', bbox);
     const sseUrl = `/api/ga/voter/map-data-sse?${sseUrlParams.toString()}`;
-    console.log('SSE Request URL:', sseUrl);
+    // console.log('SSE Request URL:', sseUrl);
 
     let receivedFeatureIdsThisStream = new Set<string | number>(); // Tracks IDs for the current stream for final pruning
     let anyFeaturesReceived = false; // Track if we've received any features
@@ -225,7 +250,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       await fetchEventSource(sseUrl, {
         signal: controller.signal,
         onopen: async (response) => {
-          console.log('SSE Connection Opened for new query');
+          // console.log('SSE Connection Opened for new query');
           if (!response.ok) {
              throw new Error(`SSE Connection Failed: ${response.status} ${response.statusText}`);
           }
@@ -238,7 +263,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         onmessage: (msg: EventSourceMessage) => {
           if (msg.event === 'end') {
             // The 'end' event is now primarily handled by onclose for pruning
-            console.log('SSE End event received.'); 
+            // console.log('SSE End event received.'); 
           } else if (msg.event === 'error') {
             console.error('SSE Error event received during stream:', msg.data);
             // Error handling will be in onerror, which might also trigger onclose
@@ -255,7 +280,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                     receivedFeatureIdsThisStream.add(feature.properties.id);
                   }
                 });
-                console.log(`SSE onmessage: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} after adding from batch.`);
+                // console.log(`SSE onmessage: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} after adding from batch.`);
 
                 setVoterFeatures(prevVoterFeatures => {
                   const featuresMap = new global.Map<string | number, VoterAddressFeature>(); // Explicitly use global.Map
@@ -268,7 +293,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                     if (f.properties?.id) featuresMap.set(f.properties.id, f);
                   });
                   const newCombinedFeatures: VoterAddressFeature[] = Array.from(featuresMap.values()); // Explicitly type array
-                  console.log(`SSE Data: Upserted batch. Map now has ${newCombinedFeatures.length} features.`);
+                  // console.log(`SSE Data: Upserted batch. Map now has ${newCombinedFeatures.length} features.`);
                   return newCombinedFeatures;
                 });
               }
@@ -278,27 +303,27 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
           }
         },
         onclose: () => {
-          console.log(`SSE Connection Closed by server${skipBounds ? ' (unbounded query)' : ''}. Pruning features...`);
+          // console.log(`SSE Connection Closed by server${skipBounds ? ' (unbounded query)' : ''}. Pruning features...`);
           setIsLoading(false);
           
-          console.log(`SSE onclose: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} before pruning.`);
+          // console.log(`SSE onclose: receivedFeatureIdsThisStream size: ${receivedFeatureIdsThisStream.size} before pruning.`);
 
           setVoterFeatures(prevVoterFeatures => {
             if (controllerRef.current !== controller && controllerRef.current !== null) { 
-              console.log('SSE onclose: Belongs to an aborted stream, not pruning. Returning previous features.');
+              // console.log('SSE onclose: Belongs to an aborted stream, not pruning. Returning previous features.');
               // No need to fit bounds for aborted streams
               return prevVoterFeatures;
             }
 
             const filteredFeatures = prevVoterFeatures.filter(f => f.properties?.id && receivedFeatureIdsThisStream.has(f.properties.id));
-            console.log(`Pruning complete. Prev features: ${prevVoterFeatures.length}. Kept ${filteredFeatures.length} features that were part of this stream's ID set.`);
+            // console.log(`Pruning complete. Prev features: ${prevVoterFeatures.length}. Kept ${filteredFeatures.length} features that were part of this stream's ID set.`);
             
             // --- Handle the unbounded query results ---
             if (skipBounds) {
               isUnboundedQueryRunningRef.current = false; // Reset our tracking flag
               
               if (filteredFeatures.length > 0) {
-                console.log(`Unbounded query found ${filteredFeatures.length} features. Fitting bounds to them.`);
+                // console.log(`Unbounded query found ${filteredFeatures.length} features. Fitting bounds to them.`);
                 
                 // Fit bounds to these features
                 const map = mapRef.current?.getMap();
@@ -325,18 +350,18 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                   if (!bounds.isEmpty()) {
                     setIsFittingBounds(true);
                     map.once('moveend', () => {
-                      console.log('fitBounds moveend after unbounded query, setting isFittingBounds to false');
+                      // console.log('fitBounds moveend after unbounded query, setting isFittingBounds to false');
                       setIsFittingBounds(false);
                     });
                     map.fitBounds(bounds, {
                       padding: 40,
                       maxZoom: ZOOM_ZIP_LEVEL
                     });
-                    console.log('fitBounds called after unbounded query.');
+                    // console.log('fitBounds called after unbounded query.');
                   }
                 }
               } else {
-                console.log('Unbounded query returned no features. There are truly no matching results.');
+                // console.log('Unbounded query returned no features. There are truly no matching results.');
               }
             } 
             // --- Handle the case where we need to try an unbounded query ---
@@ -344,7 +369,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                      !isUnboundedQueryRunningRef.current && // Not already running unbounded query
                      !isInitialLoadPendingRef.current) { // Not initial load
               // No features in current view, immediately try an unbounded query
-              console.log('No features in current view. Automatically running unbounded query...');
+              // console.log('No features in current view. Automatically running unbounded query...');
               isUnboundedQueryRunningRef.current = true;
               
               // Small delay to ensure state updates are complete
@@ -356,7 +381,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             // --- Fit bounds on initial load logic (MOVED INSIDE THE CALLBACK) ---
             if (isInitialLoadPendingRef.current && filteredFeatures.length > 0) {
               isInitialLoadPendingRef.current = false; 
-              console.log("Initial load complete with features, attempting to fit bounds based on pruned set.");
+              // console.log("Initial load complete with features, attempting to fit bounds based on pruned set.");
 
               const map = mapRef.current?.getMap();
               if (map) {
@@ -382,23 +407,23 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                 if (!bounds.isEmpty()) {
                   setIsFittingBounds(true); 
                   map.once('moveend', () => {
-                    console.log('fitBounds moveend, setting isFittingBounds to false');
+                    // console.log('fitBounds moveend, setting isFittingBounds to false');
                     setIsFittingBounds(false);
                   });
                   map.fitBounds(bounds, {
                     padding: 40, 
                     maxZoom: ZOOM_ZIP_LEVEL 
                   });
-                  console.log('fitBounds called.');
+                  // console.log('fitBounds called.');
                 } else {
-                  console.log('Calculated bounds (from pruned set) are empty, not fitting.');
+                  // console.log('Calculated bounds (from pruned set) are empty, not fitting.');
                 }
               } else {
-                console.log('Map instance not available for fitBounds.');
+                // console.log('Map instance not available for fitBounds.');
               }
             } else if (isInitialLoadPendingRef.current) {
               isInitialLoadPendingRef.current = false; 
-              console.log("Initial load complete with no features (after pruning), not fitting bounds.");
+              // console.log("Initial load complete with no features (after pruning), not fitting bounds.");
             }
             // --- End Fit bounds on initial load logic ---
 
@@ -412,7 +437,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         onerror: (err: any) => {
           console.error('SSE fetchEventSource Error:', err);
           if (err.name === 'AbortError') {
-            console.log('SSE Fetch aborted successfully.');
+            // console.log('SSE Fetch aborted successfully.');
           } else {
             setIsLoading(false); 
             // Reset tracking flag if this was an unbounded query
@@ -454,7 +479,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
   // --- New function to fetch map statistics ---
   const fetchMapStats = useCallback(async () => {
-    console.log('fetchMapStats triggered');
+    // console.log('fetchMapStats triggered');
     setIsStatsLoading(true);
 
     const currentMap = mapRef.current?.getMap();
@@ -477,7 +502,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     statsUrlParams.set('zoom', zoom.toFixed(2)); 
     statsUrlParams.set('bbox', bbox);
     const statsUrl = `/api/ga/voter/map-stats?${statsUrlParams.toString()}`;
-    console.log('Map Stats Request URL:', statsUrl);
+    // console.log('Map Stats Request URL:', statsUrl);
 
     try {
       const response = await fetch(statsUrl);
@@ -486,7 +511,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         throw new Error(`Failed to fetch map stats: ${response.status} ${response.statusText}. ${errorData.details || ''}`);
       }
       const stats: InViewStats = await response.json();
-      console.log('Map Stats Received:', stats);
+      // console.log('Map Stats Received:', stats);
       setInViewScoreData(stats);
     } catch (error) {
       console.error('Error fetching map stats:', error);
@@ -496,9 +521,9 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     }
   }, [filters, residenceAddressFilters /* mapRef is stable */]);
 
-  const debouncedFetchMapStats = useDebounceCallback(fetchMapStats, 550); // Slightly different debounce
+  const debouncedFetchMapStats = useDebounceCallback(fetchMapStats, 200); // Slightly different debounce
 
-  const debouncedFetchData = useDebounceCallback(fetchData, 500);
+  const debouncedFetchData = useDebounceCallback(fetchData, 150);
 
   // --- Main useEffect to trigger data fetching ---
   useEffect(() => {
@@ -543,15 +568,14 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         'interpolate',
         ['linear'],
         ['zoom'],
-        ZOOM_ZIP_LEVEL, 3, // At zoom 11 (start), radius is 3 (increased from 2)
-        13.99, 3,          // Just before zoom 14, radius is still 3
-        14, 6,             // At zoom 14, radius becomes 6 (increased from 4)
-        16, 8,             // At zoom 16, radius becomes 8
-        16.79, 10          // At zoom 16.79, radius becomes 10 (before switching to high-zoom visualization)
+        ZOOM_ZIP_LEVEL, 3,
+        13.99, 3,
+        14, 6,
+        16, 8,
+        16.79, 10
       ],
-      'circle-color': '#e55e5e', // Red color
-      'circle-opacity': 0.7, // Keep opacity
-      // Removed stroke properties
+      'circle-color': partyColorExpression as any, // Use party color expression
+      'circle-opacity': 0.7,
     }
   };
 
@@ -714,6 +738,16 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
 
   return (
     <div className="relative w-full h-full">
+      {/* UPDATED: Loading Overlay to be a Top Bar with Text */}
+      {isLoading && (
+        <div 
+          className="absolute top-0 left-0 right-0 h-10 z-50 flex items-center justify-center px-4 bg-gray-300/55 dark:bg-gray-700/55"
+          // style={{ backgroundColor: 'rgba(0, 123, 255, 0.75)' }} // A noticeable blue, semi-transparent - REMOVED
+        >
+          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium">Loading map data...</p>
+        </div>
+      )}
+
       <Map
         ref={mapRef}
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
@@ -756,7 +790,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                 'icon-anchor': 'bottom',
               }}
               paint={{
-                'icon-color': theme === 'light' ? '#e55e5e' : '#f08080', // Red for light, lighter red for dark
+                'icon-color': partyColorExpression as any, // Use party color expression
                 'icon-opacity': 0.95,
               }}
             />
@@ -940,6 +974,22 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
            {/* TODO: Maybe add an error indicator if stats fetch failed? */} 
         </div>
       </div>
+
+      {/* NEW: Map Legend for Party Affiliation - Conditionally Rendered */}
+      {viewState.zoom >= ZOOM_ZIP_LEVEL && (
+        <div className="absolute top-10 right-2 bg-background/80 p-2 rounded shadow-md text-xs z-10">
+          <div className="font-semibold mb-1 text-foreground">Voter Party Affiliation:</div>
+          {legendItems.map((item) => (
+            <div key={item.label} className="flex items-center mb-0.5">
+              <span 
+                className="w-3 h-3 inline-block mr-1.5 rounded-sm border border-black/20 dark:border-white/20"
+                style={{ backgroundColor: item.color }}
+              ></span>
+              <span className="text-foreground/80">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
