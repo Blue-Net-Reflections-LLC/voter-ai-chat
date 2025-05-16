@@ -19,7 +19,7 @@ import {
   ELECTION_DATE_OPTIONS
 } from '../constants';
 import { cn } from "@/lib/utils";
-import { FilterX, X } from "lucide-react";
+import { FilterX, X, Info } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
@@ -157,7 +157,10 @@ export function FilterPanel() {
 
   // Calculate filter counts for each section
   const getParticipationScoreFilterCount = () => {
-    return Array.isArray(filters.scoreRanges) && filters.scoreRanges.length > 0 ? 1 : 0;
+    let count = 0;
+    if (ensureStringArray(filters.scoreRanges).length > 0) count++;
+    if (filters.notVotedSinceYear) count++;
+    return count;
   };
 
   const getGeographicFilterCount = () => {
@@ -193,12 +196,11 @@ export function FilterPanel() {
 
   const getVotingHistoryFilterCount = () => {
     let count = 0;
-    if (Array.isArray(filters.electionType) && filters.electionType.length > 0) count++;
-    if (Array.isArray(filters.electionYear) && filters.electionYear.length > 0) count++;
-    if (Array.isArray(filters.electionDate) && filters.electionDate.length > 0) count++;
-    if (filters.notVotedSinceYear) count++;
-    if (Array.isArray(filters.ballotStyle) && filters.ballotStyle.length > 0) count++;
-    if (Array.isArray(filters.eventParty) && filters.eventParty.length > 0) count++;
+    if (ensureStringArray(filters.electionType).length > 0) count++;
+    if (ensureStringArray(filters.electionYear).length > 0) count++;
+    if (ensureStringArray(filters.electionDate).length > 0) count++;
+    if (ensureStringArray(filters.ballotStyle).length > 0) count++;
+    if (ensureStringArray(filters.eventParty).length > 0) count++;
     if (filters.voterEventMethod) count++;
     return count;
   };
@@ -341,15 +343,9 @@ export function FilterPanel() {
       });
     });
     
-    // Participation Score
-    ensureStringArray(filters.scoreRanges).forEach((value) => {
-      activeBadges.push({
-        id: `scoreRanges-${value}`,
-        label: `Score: ${value}`,
-        onRemove: () => updateFilter('scoreRanges', ensureStringArray(filters.scoreRanges).filter(v => v !== value)),
-        sectionKey: 'participationScore'
-      });
-    });
+    // Participation Filters
+    ensureStringArray(filters.scoreRanges).forEach((value) => activeBadges.push({ id: `scoreRanges-${value}`, label: `Score: ${value}`, onRemove: () => updateFilter('scoreRanges', ensureStringArray(filters.scoreRanges).filter(v => v !== value)), sectionKey: 'participationScore' }));
+    if (filters.notVotedSinceYear) activeBadges.push({ id: 'notVotedSinceYear', label: `Not Voted Since: ${filters.notVotedSinceYear}`, onRemove: () => updateFilter('notVotedSinceYear', ''), sectionKey: 'participationScore' });
 
     // Geographic Filters
     ensureStringArray(filters.county).forEach((value) => {
@@ -413,63 +409,23 @@ export function FilterPanel() {
     });
 
 
-    // Voting History Filters
-    ensureStringArray(filters.electionType).forEach((value) => {
-      activeBadges.push({
+    // Voting History / Elections Filters
+    ensureStringArray(filters.electionType).forEach((value) => activeBadges.push({ 
         id: `electionType-${value}`,
         label: `Election Type: ${value}`,
-        onRemove: () => updateFilter('electionType', ensureStringArray(filters.electionType).filter(v => v !== value)),
-        sectionKey: 'votingHistory'
-      });
-    });
-    ensureStringArray(filters.electionYear).forEach((value) => {
-      activeBadges.push({
-        id: `electionYear-${value}`,
-        label: `Election Year: ${value}`,
-        onRemove: () => updateFilter('electionYear', ensureStringArray(filters.electionYear).filter(v => v !== value)),
-        sectionKey: 'votingHistory'
-      });
-    });
-    ensureStringArray(filters.electionDate).forEach((value) => {
-      activeBadges.push({
-        id: `electionDate-${value}`,
-        label: `Election Date: ${formatDateLabel(value)}`,
-        onRemove: () => updateFilter('electionDate', ensureStringArray(filters.electionDate).filter(v => v !== value)),
-        sectionKey: 'votingHistory'
-      });
-    });
-    if (filters.notVotedSinceYear) {
-      activeBadges.push({
-        id: 'notVotedSinceYear',
-        label: `Not Voted Since: ${filters.notVotedSinceYear}`,
-        onRemove: () => updateFilter('notVotedSinceYear', ''),
-        sectionKey: 'votingHistory'
-      });
-    }
-    ensureStringArray(filters.ballotStyle).forEach((value) => {
-      activeBadges.push({
-        id: `ballotStyle-${value}`,
-        label: `Ballot Style: ${value}`,
-        onRemove: () => updateFilter('ballotStyle', ensureStringArray(filters.ballotStyle).filter(v => v !== value)),
-        sectionKey: 'votingHistory'
-      });
-    });
-    ensureStringArray(filters.eventParty).forEach((value) => {
-      activeBadges.push({
+        onRemove: () => updateFilter('electionType', ensureStringArray(filters.electionType).filter(v => v !== value)), 
+        sectionKey: 'votingHistory' 
+    }));
+    ensureStringArray(filters.electionYear).forEach((value) => activeBadges.push({ id: `electionYear-${value}`, label: `Election Year: ${value}`, onRemove: () => updateFilter('electionYear', ensureStringArray(filters.electionYear).filter(v => v !== value)), sectionKey: 'votingHistory' }));
+    ensureStringArray(filters.electionDate).forEach((value) => activeBadges.push({ id: `electionDate-${value}`, label: `Election Date: ${formatDateLabel(value)}`, onRemove: () => updateFilter('electionDate', ensureStringArray(filters.electionDate).filter(v => v !== value)), sectionKey: 'votingHistory' }));
+    ensureStringArray(filters.ballotStyle).forEach((value) => activeBadges.push({ id: `ballotStyle-${value}`, label: `Ballot Style: ${value}`, onRemove: () => updateFilter('ballotStyle', ensureStringArray(filters.ballotStyle).filter(v => v !== value)), sectionKey: 'votingHistory' }));
+    ensureStringArray(filters.eventParty).forEach((value) => activeBadges.push({ 
         id: `eventParty-${value}`,
-        label: `Event Party: ${value}`,
-        onRemove: () => updateFilter('eventParty', ensureStringArray(filters.eventParty).filter(v => v !== value)),
-        sectionKey: 'votingHistory'
-      });
-    });
-    if (filters.voterEventMethod) {
-      activeBadges.push({
-        id: 'voterEventMethod',
-        label: `Ballot Cast: ${filters.voterEventMethod}`,
-        onRemove: () => updateFilter('voterEventMethod', ''),
-        sectionKey: 'votingHistory'
-      });
-    }
+        label: `Selected Party: ${value}`,
+        onRemove: () => updateFilter('eventParty', ensureStringArray(filters.eventParty).filter(v => v !== value)), 
+        sectionKey: 'votingHistory' 
+    }));
+    if (filters.voterEventMethod) activeBadges.push({ id: 'voterEventMethod', label: `Ballot Cast: ${filters.voterEventMethod}`, onRemove: () => updateFilter('voterEventMethod', ''), sectionKey: 'votingHistory' });
     
     return activeBadges;
   };
@@ -478,36 +434,31 @@ export function FilterPanel() {
 
   return (
     <div className="w-full h-full overflow-y-auto flex flex-col" ref={scrollableContainerRef}>
-      {hasActiveFilters() && (
-        <div 
-          className="px-3 py-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
-          ref={activeFiltersHeaderRef}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-semibold text-foreground">Active Filters</h3>
-            <Button 
-              variant="ghost"
-              size="sm" 
-              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-              onClick={clearAllFilters}
-            >
-              <FilterX size={14} className="mr-1.5" />
-              Clear All Filters
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {activeFilterBadges.map((badge) => {
-              const badgeColorClasses = sectionColorConfig[badge.sectionKey]?.badge || ""; // Fallback
-              console.log(`Badge ID: ${badge.id}, Section: ${badge.sectionKey}, Classes: ${badgeColorClasses}`); // DEBUG LINE
-              return (
+      <div 
+        className="px-3 py-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
+        ref={activeFiltersHeaderRef}
+      >
+        {hasActiveFilters() ? (
+          <>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-semibold text-foreground">Active Filters</h3>
+              <Button 
+                variant="ghost"
+                size="sm" 
+                className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                onClick={clearAllFilters}
+              >
+                <FilterX size={14} className="mr-1.5" />
+                Clear All Filters
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {activeFilterBadges.map((badge) => (
                 <Badge
                   key={badge.id}
-                  // Attempting to let our classes fully override by not setting a conflicting variant if possible
-                  // However, your Badge component defaults variant to outline internally if not provided.
-                  // The className merge should still work if Tailwind specificity is correct.
                   className={cn(
-                    "flex items-center gap-1 pr-1 py-0.5 text-xs", // Base structural styles
-                    badgeColorClasses // Our dynamic color styles
+                    "flex items-center gap-1 pr-1 py-0.5 text-xs",
+                    sectionColorConfig[badge.sectionKey].badge
                   )}
                 >
                   <span>{badge.label}</span>
@@ -523,26 +474,31 @@ export function FilterPanel() {
                     <X size={12} className="block" />
                   </button>
                 </Badge>
-              );
-            })}
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
+            <Info size={24} className="mb-2 text-sky-500 dark:text-sky-400" />
+            <p className="text-sm">Please select a filter below.</p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       
-      <div className={cn("flex-grow", {"pt-2": !hasActiveFilters()})}>
+      <div className={cn("flex-grow px-3")} >
         <Accordion 
           type="multiple" 
-          className="w-full space-y-1 px-3"
+          className="w-full space-y-1"
           defaultValue={["participation-score", "geographic-filters", "voter-info"]}
           onValueChange={handleAccordionChange}
         >
-          {/* Participation Score Filter */}
+          {/* Participation Section - Renamed Header and Input Label, Moved Filter In */}
           <AccordionItem value="participation-score" data-accordion-id="participation-score">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
               sectionColorConfig.participationScore.accordionTriggerClasses
             )}>
-              <span>Participation Score</span>
+              <span>Participation</span>
               {participationScoreFilterCount > 0 && (
                 <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.participationScore.countBubble)}>
                   {participationScoreFilterCount}
@@ -551,22 +507,39 @@ export function FilterPanel() {
             </AccordionTrigger>
             <AccordionContent className="pt-1 pl-2 space-y-3">
               <MultiSelect
-                label="Participation Score Range"
+                label="Voter Ratings"
                 options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
                 value={ensureStringArray(filters.scoreRanges)}
                 setValue={(value) => updateFilter('scoreRanges', value)}
                 compact={true}
               />
+              <div>
+                <label className="text-xs font-medium">Has Not Voted Since Year</label>
+                <Input
+                  placeholder="Enter year (e.g. 2020)..."
+                  className="h-8 text-xs"
+                  value={notVotedYearInput}
+                  onChange={(e) => setNotVotedYearInput(e.target.value)}
+                  onBlur={() => {
+                    const year = notVotedYearInput.trim();
+                    if (year && !isNaN(Number(year))) {
+                      updateFilter('notVotedSinceYear', year);
+                    } else {
+                      setNotVotedYearInput(filters.notVotedSinceYear || '');
+                    }
+                  }}
+                />
+              </div>
             </AccordionContent>
           </AccordionItem>
 
-          {/* Geographic Filters */}
+          {/* Geographic Filters Section - Renamed Header */}
           <AccordionItem value="geographic-filters" data-accordion-id="geographic-filters">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
               sectionColorConfig.geographic.accordionTriggerClasses
             )}>
-              <span>Geographic Filters</span>
+              <span>Geography</span>
               {geographicFilterCount > 0 && (
                 <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.geographic.countBubble)}>
                   {geographicFilterCount}
@@ -765,13 +738,13 @@ export function FilterPanel() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* Voting History Filters */}
+          {/* Elections Section (Formerly Voting History) - Renamed Header, Reordered Filters, Renamed Label */}
           <AccordionItem value="voting-history" data-accordion-id="voting-history">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
-              sectionColorConfig.votingHistory.accordionTriggerClasses
-            )}>
-              <span>Voting History</span>
+                "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+                sectionColorConfig.votingHistory.accordionTriggerClasses
+              )}>
+              <span>Elections</span>
               {votingHistoryFilterCount > 0 && (
                 <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.votingHistory.countBubble)}>
                   {votingHistoryFilterCount}
@@ -780,85 +753,54 @@ export function FilterPanel() {
             </AccordionTrigger>
             <AccordionContent className="pt-1 pl-2 space-y-3">
               <div className="space-y-3">
-                <MultiSelect
-                  label="Voted by Election Type"
-                  options={ELECTION_TYPE_OPTIONS}
-                  value={ensureStringArray(filters.electionType)}
-                  setValue={(value) => updateFilter('electionType', value)}
-                  compact={true}
-                />
-
-                <MultiSelect
-                  label="Election Year"
-                  options={ELECTION_YEAR_OPTIONS}
-                  value={ensureStringArray(filters.electionYear)}
-                  setValue={(value) => updateFilter('electionYear', value)}
-                  compact={true}
-                />
-
-                <DistrictMultiSelect
-                  label="Election Date"
-                  options={ELECTION_DATE_OPTIONS}
-                  value={ensureStringArray(filters.electionDate)}
-                  setValue={(value) => updateFilter('electionDate', value)}
-                  compact={true}
+                <DistrictMultiSelect 
+                  label="Election Date" 
+                  options={ELECTION_DATE_OPTIONS} 
+                  value={ensureStringArray(filters.electionDate)} 
+                  setValue={(value) => updateFilter('electionDate', value)} 
+                  compact={true} 
                   formatLabel={formatDateLabel}
                 />
-
-                <div>
-                  <label className="text-xs font-medium">Has Not Voted Since Year</label>
-                  <Input
-                    placeholder="Enter year (e.g. 2020)..."
-                    className="h-8 text-xs"
-                    value={notVotedYearInput}
-                    onChange={(e) => setNotVotedYearInput(e.target.value)}
-                    onBlur={() => {
-                      const year = notVotedYearInput.trim();
-                      if (year && !isNaN(Number(year))) {
-                        updateFilter('notVotedSinceYear', year);
-                      } else {
-                        setNotVotedYearInput(filters.notVotedSinceYear || '');
-                      }
-                    }}
-                  />
-                </div>
-
-                <MultiSelect
-                  label="Ballot Style"
-                  options={ballotStyles.length > 0 ? ballotStyles : []}
-                  value={ensureStringArray(filters.ballotStyle)}
-                  setValue={(value) => updateFilter('ballotStyle', value)}
-                  isLoading={isLoading}
+                
+                <MultiSelect 
+                  label="Election Type"
+                  options={ELECTION_TYPE_OPTIONS} 
+                  value={ensureStringArray(filters.electionType)} 
+                  setValue={(value) => updateFilter('electionType', value)} 
                   compact={true}
                 />
-
-                <MultiSelect
-                  label="Event Party"
-                  options={eventParties.length > 0 ? eventParties : []}
-                  value={ensureStringArray(filters.eventParty)}
-                  setValue={(value) => updateFilter('eventParty', value)}
-                  isLoading={isLoading}
+                
+                <MultiSelect 
+                  label="Election Year" 
+                  options={ELECTION_YEAR_OPTIONS} 
+                  value={ensureStringArray(filters.electionYear)} 
+                  setValue={(value) => updateFilter('electionYear', value)} 
                   compact={true}
                 />
-
+                
+                <MultiSelect 
+                  label="Selected Party"
+                  options={eventParties.length > 0 ? eventParties : []} 
+                  value={ensureStringArray(filters.eventParty)} 
+                  setValue={(value) => updateFilter('eventParty', value)} 
+                  isLoading={isLoading} 
+                  compact={true}
+                />
+                
+                <MultiSelect 
+                  label="Ballot Style" 
+                  options={ballotStyles.length > 0 ? ballotStyles : []} 
+                  value={ensureStringArray(filters.ballotStyle)} 
+                  setValue={(value) => updateFilter('ballotStyle', value)} 
+                  isLoading={isLoading} 
+                  compact={true}
+                />
+                
                 <div>
                   <div className="text-xs font-medium mb-1">Ballot Cast</div>
                   <div className="flex flex-wrap gap-2">
-                    {[
-                      { value: '', label: 'Any' },
-                      { value: 'absentee', label: 'Absentee' },
-                      { value: 'provisional', label: 'Provisional' },
-                      { value: 'supplemental', label: 'Supplemental' }
-                    ].map(opt => (
-                      <Button
-                        key={opt.value}
-                        variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => updateFilter('voterEventMethod', opt.value)}
-                        className="text-xs py-1 px-2 h-auto"
-                      >
-                        {opt.label}
-                      </Button>
+                    {[{ value: '', label: 'Any' }, { value: 'absentee', label: 'Absentee' }, { value: 'provisional', label: 'Provisional' }, { value: 'supplemental', label: 'Supplemental' }].map(opt => (
+                      <Button key={opt.value} variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'} size="sm" onClick={() => updateFilter('voterEventMethod', opt.value)} className="text-xs py-1 px-2 h-auto">{opt.label}</Button>
                     ))}
                   </div>
                 </div>
