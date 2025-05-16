@@ -210,42 +210,52 @@ export function FilterPanel() {
   const demographicsFilterCount = getDemographicsFilterCount();
   const votingHistoryFilterCount = getVotingHistoryFilterCount();
 
+  const activeFiltersHeaderRef = useRef<HTMLDivElement>(null);
+  const scrollableContainerRef = useRef<HTMLDivElement>(null);
+
   // Track which accordion items are open
   const [openItems, setOpenItems] = useState<string[]>(["participation-score", "geographic-filters", "voter-info"]);
   const previousOpenItems = useRef<string[]>(["participation-score", "geographic-filters", "voter-info"]);
   
-  // Handle accordion value change
-  const handleAccordionChange = (values: string[]) => {
-    setOpenItems(values);
-  };
+  const handleAccordionChange = (values: string[]) => { setOpenItems(values); };
 
-  // Effect to scroll to newly opened accordion sections
   useEffect(() => {
-    // Find newly opened accordion item (if any)
     const newlyOpenedItem = openItems.find(item => !previousOpenItems.current.includes(item));
-    
     if (newlyOpenedItem) {
-      // Two-phase approach: first short delay for initial scroll, then longer delay for final positioning
+      const activeHeader = activeFiltersHeaderRef.current;
+      const scrollContainer = scrollableContainerRef.current;
       
-      // Phase 1: Quick initial scroll to bring the element into rough view
+      if (!scrollContainer) return;
+
+      const headerHeight = activeHeader ? activeHeader.offsetHeight : 0;
+      const scrollPadding = 8; // Small padding
+
+      // Phase 1: Attempt to quickly position near the target
       setTimeout(() => {
-        const trigger = document.querySelector(`[data-accordion-id="${newlyOpenedItem}"] button[data-state="open"]`);
-        if (trigger && trigger instanceof HTMLElement) {
-          trigger.scrollIntoView({ behavior: 'auto', block: 'start' });
+        const triggerElement = document.querySelector(`[data-accordion-id="${newlyOpenedItem}"] button[data-state="open"]`);
+        if (triggerElement && triggerElement instanceof HTMLElement) {
+          const triggerRect = triggerElement.getBoundingClientRect();
+          const containerRect = scrollContainer.getBoundingClientRect();
+          // Estimate scroll position to bring trigger top to just below sticky header
+          const estimatedScrollTop = scrollContainer.scrollTop + triggerRect.top - containerRect.top - headerHeight - scrollPadding;
+          scrollContainer.scrollTop = estimatedScrollTop;
         }
-      }, 50);
+      }, 50); // Short delay for this phase
       
-      // Phase 2: More precise scrolling after animation has progressed further
+      // Phase 2: More precise smooth scrolling to the accordion item itself
       setTimeout(() => {
-        const accordionItem = document.querySelector(`[data-accordion-id="${newlyOpenedItem}"]`);
-        if (accordionItem) {
-          // Smooth scroll to get ideal positioning
-          accordionItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const accordionItemElement = document.querySelector(`[data-accordion-id="${newlyOpenedItem}"]`);
+        if (accordionItemElement && accordionItemElement instanceof HTMLElement) {
+          const itemTopRelativeToScrollContainer = accordionItemElement.offsetTop;
+          const targetScrollTop = itemTopRelativeToScrollContainer - headerHeight - scrollPadding;
+
+          scrollContainer.scrollTo({
+            top: Math.max(0, targetScrollTop), // Ensure not scrolling to negative values
+            behavior: 'smooth'
+          });
         }
-      }, 350);
+      }, 150); // Reduced delay slightly, ensure it's after accordion animation starts but before phase 1 might be too jarring
     }
-    
-    // Update ref with current open items for next comparison
     previousOpenItems.current = [...openItems];
   }, [openItems]);
 
@@ -467,9 +477,12 @@ export function FilterPanel() {
   const activeFilterBadges = getActiveFilterBadges();
 
   return (
-    <div className="w-full h-full overflow-y-auto flex flex-col">
+    <div className="w-full h-full overflow-y-auto flex flex-col" ref={scrollableContainerRef}>
       {hasActiveFilters() && (
-        <div className="px-3 py-3 border-b border-border dark:border-border sticky top-0 bg-background z-10">
+        <div 
+          className="px-3 py-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
+          ref={activeFiltersHeaderRef}
+        >
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-semibold text-foreground">Active Filters</h3>
             <Button 
