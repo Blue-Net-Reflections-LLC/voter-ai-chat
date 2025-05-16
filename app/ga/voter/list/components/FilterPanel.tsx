@@ -39,32 +39,32 @@ type FilterSectionKey = 'participationScore' | 'geographic' | 'voterInfo' | 'dem
 // Color Configuration for Filter Sections
 const sectionColorConfig: Record<FilterSectionKey, {
   badge: string;
-  accordionTriggerText: string;
+  accordionTriggerClasses: string;
   countBubble: string;
 }> = {
   participationScore: {
     badge: "bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 border border-teal-300 dark:border-teal-600",
-    accordionTriggerText: "text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-100",
+    accordionTriggerClasses: "bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-700 dark:hover:text-teal-100",
     countBubble: "bg-teal-500 dark:bg-teal-600 text-white dark:text-teal-100",
   },
   geographic: {
     badge: "bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-200 border border-sky-300 dark:border-sky-600",
-    accordionTriggerText: "text-sky-700 dark:text-sky-300 hover:text-sky-900 dark:hover:text-sky-100",
+    accordionTriggerClasses: "bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-200 hover:bg-sky-200 dark:hover:bg-sky-700 dark:hover:text-sky-100",
     countBubble: "bg-sky-500 dark:bg-sky-600 text-white dark:text-sky-100",
   },
   voterInfo: {
     badge: "bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-600",
-    accordionTriggerText: "text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100",
+    accordionTriggerClasses: "bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-700 dark:hover:text-emerald-100",
     countBubble: "bg-emerald-500 dark:bg-emerald-600 text-white dark:text-emerald-100",
   },
   demographics: {
     badge: "bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-200 border border-purple-300 dark:border-purple-600",
-    accordionTriggerText: "text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100",
+    accordionTriggerClasses: "bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-700 dark:hover:text-purple-100",
     countBubble: "bg-purple-500 dark:bg-purple-600 text-white dark:text-purple-100",
   },
   votingHistory: {
     badge: "bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200 border border-amber-300 dark:border-amber-600",
-    accordionTriggerText: "text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100",
+    accordionTriggerClasses: "bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-700 dark:hover:text-amber-100",
     countBubble: "bg-amber-500 dark:bg-amber-600 text-white dark:text-amber-100",
   },
 };
@@ -524,14 +524,14 @@ export function FilterPanel() {
           onValueChange={handleAccordionChange}
         >
           {/* Participation Score Filter */}
-          <AccordionItem 
-            value="participation-score" 
-            data-accordion-id="participation-score"
-          >
-            <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+          <AccordionItem value="participation-score" data-accordion-id="participation-score">
+            <AccordionTrigger className={cn(
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              sectionColorConfig.participationScore.accordionTriggerClasses
+            )}>
               <span>Participation Score</span>
               {participationScoreFilterCount > 0 && (
-                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.participationScore.countBubble)}>
                   {participationScoreFilterCount}
                 </span>
               )}
@@ -548,14 +548,14 @@ export function FilterPanel() {
           </AccordionItem>
 
           {/* Geographic Filters */}
-          <AccordionItem 
-            value="geographic-filters" 
-            data-accordion-id="geographic-filters"
-          >
-            <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+          <AccordionItem value="geographic-filters" data-accordion-id="geographic-filters">
+            <AccordionTrigger className={cn(
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              sectionColorConfig.geographic.accordionTriggerClasses
+            )}>
               <span>Geographic Filters</span>
               {geographicFilterCount > 0 && (
-                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.geographic.countBubble)}>
                   {geographicFilterCount}
                 </span>
               )}
@@ -621,14 +621,14 @@ export function FilterPanel() {
           </AccordionItem>
           
           {/* Voter Info Filters */}
-          <AccordionItem 
-            value="voter-info" 
-            data-accordion-id="voter-info"
-          >
-            <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+          <AccordionItem value="voter-info" data-accordion-id="voter-info">
+            <AccordionTrigger className={cn(
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              sectionColorConfig.voterInfo.accordionTriggerClasses
+            )}>
               <span>Voter Info</span>
               {voterInfoFilterCount > 0 && (
-                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.voterInfo.countBubble)}>
                   {voterInfoFilterCount}
                 </span>
               )}
@@ -709,14 +709,14 @@ export function FilterPanel() {
           </AccordionItem>
 
           {/* Demographic Filters */}
-          <AccordionItem 
-            value="demographics" 
-            data-accordion-id="demographics"
-          >
-            <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+          <AccordionItem value="demographics" data-accordion-id="demographics">
+            <AccordionTrigger className={cn(
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              sectionColorConfig.demographics.accordionTriggerClasses
+            )}>
               <span>Demographics</span>
               {demographicsFilterCount > 0 && (
-                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.demographics.countBubble)}>
                   {demographicsFilterCount}
                 </span>
               )}
@@ -753,14 +753,14 @@ export function FilterPanel() {
           </AccordionItem>
 
           {/* Voting History Filters */}
-          <AccordionItem 
-            value="voting-history" 
-            data-accordion-id="voting-history"
-          >
-            <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+          <AccordionItem value="voting-history" data-accordion-id="voting-history">
+            <AccordionTrigger className={cn(
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              sectionColorConfig.votingHistory.accordionTriggerClasses
+            )}>
               <span>Voting History</span>
               {votingHistoryFilterCount > 0 && (
-                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.votingHistory.countBubble)}>
                   {votingHistoryFilterCount}
                 </span>
               )}
