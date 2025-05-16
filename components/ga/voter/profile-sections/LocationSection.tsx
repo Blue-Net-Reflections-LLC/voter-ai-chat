@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useTheme } from 'next-themes';
 import {
   Card,
   CardContent,
@@ -57,6 +58,8 @@ export function LocationSection({
   householdScoreError
 }: LocationSectionProps) {
 
+  const { theme } = useTheme();
+
   // Debug log
   console.log('LocationSection otherVotersData:', otherVotersData);
   
@@ -66,6 +69,8 @@ export function LocationSection({
   
   const mapToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   console.log('Mapbox token available:', !!mapToken);
+
+  const mapStyle = theme === 'light' ? 'mapbox/light-v11' : 'mapbox/dark-v11';
 
   return (
     <Card className="mb-6">
@@ -175,7 +180,7 @@ export function LocationSection({
                locationData.coordinates.latitude && 
                mapToken ? (
                 <img
-                  src={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/pin-s+e55e5e(${locationData.coordinates.longitude},${locationData.coordinates.latitude})/${locationData.coordinates.longitude},${locationData.coordinates.latitude},15,0/400x300?access_token=${mapToken}`}
+                  src={`https://api.mapbox.com/styles/v1/${mapStyle}/static/pin-s+e55e5e(${locationData.coordinates.longitude},${locationData.coordinates.latitude})/${locationData.coordinates.longitude},${locationData.coordinates.latitude},15,0/400x300?access_token=${mapToken}`}
                   alt="Voter location map"
                   className="w-full h-full object-cover"
                   width={400}
