@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
         `;
         
         const queryParams = [...baseFilterParams, bboxGeoJsonStr];
-        console.log("DEBUG MAP-STATS Query:", statsQuery);
-        console.log("DEBUG MAP-STATS Params:", JSON.stringify(queryParams));
+        // console.log("DEBUG MAP-STATS Query:", statsQuery);
+        // console.log("DEBUG MAP-STATS Params:", JSON.stringify(queryParams));
         
         const statsResult = await sql.unsafe(statsQuery, queryParams);
         

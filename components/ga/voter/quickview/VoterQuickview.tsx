@@ -124,19 +124,28 @@ export function VoterQuickview({ isOpen, voterId, onClose }: VoterQuickviewProps
     error: districtsError
   } = useVoterProfileSection(voterId, 'districts');
 
+  const {
+    data: participationData,
+    loading: participationLoading,
+    error: participationError
+  } = useVoterProfileSection(voterId, 'participation');
+
   // Derive voter name for dialog title once info data is loaded
   const voterName = infoData
     ? `${infoData.firstName || ''} ${infoData.middleName ? infoData.middleName + ' ' : ''}${infoData.lastName || ''}`.trim() || 'Voter Profile'
     : 'Voter Profile';
 
   // Check if we're still loading or have errors
-  const isLoading = infoLoading || locationLoading || districtsLoading;
-  const hasError = infoError || locationError || districtsError;
+  const isLoading = infoLoading || locationLoading || districtsLoading || participationLoading;
+  const hasError = infoError || locationError || districtsError || participationError;
+
+  // Extract history from participationData
+  const historyData = participationData?.history;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md p-4">
-        <DialogHeader className="pb-2">
+      <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl p-0 flex flex-col max-h-[90vh]">
+        <DialogHeader className="pb-2 pt-4 px-4 border-b">
           <DialogTitle className="pr-8 text-xl">
             {isLoading ? (
               <Skeleton className="h-6 w-3/4" />
@@ -155,62 +164,122 @@ export function VoterQuickview({ isOpen, voterId, onClose }: VoterQuickviewProps
             <Skeleton className="h-4 w-2/3" />
           </div>
         ) : hasError ? (
-          <div className="text-red-500 py-2">
-            {infoError || locationError || districtsError || "Failed to load voter information"}
+          <div className="text-red-500 py-2 px-4">
+            {infoError || locationError || districtsError || participationError || "Failed to load voter information"}
           </div>
         ) : (
-          <div className="text-sm">
-            {/* All fields in horizontal layout with labels on left */}
-            <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-baseline">
-              <Label className="text-muted-foreground text-xs pt-0.5">Participation Score</Label>
-              <ParticipationScoreWidget score={infoData?.participationScore} size="small" />
-
-              <p className="text-muted-foreground text-xs">Status:</p>
-              <p className="font-medium">{infoData?.status || "Unknown"}</p>
-              
-              <p className="text-muted-foreground text-xs">Age:</p>
-              <p className="font-medium">{infoData?.birthYear ? calculateAge(infoData.birthYear) : "N/A"}</p>
-              
-              <p className="text-muted-foreground text-xs">Gender:</p>
-              <p className="font-medium">{infoData?.gender || "Unknown"}</p>
-              
-              <p className="text-muted-foreground text-xs">Race:</p>
-              <p className="font-medium">{infoData?.race || "Unknown"}</p>
-              
-              <p className="text-muted-foreground text-xs">Residence:</p>
-              <p className="font-medium">{locationData?.residenceAddress ? formatAddress(locationData.residenceAddress) : "Address not available"}</p>
-              
-              <p className="text-muted-foreground text-xs">County:</p>
-              <p className="font-medium">{locationData?.countyName || "N/A"}</p>
-              
-              <p className="text-muted-foreground text-xs">Precinct:</p>
-              <div className="font-medium">
+          <div className="text-sm flex-grow overflow-y-auto px-4 py-3">
+            {/* Main two-column layout for content below Participation Score */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+              {/* === Column 1: Voter Information === */}
+              <div className="space-y-2.5">
                 <div>
-                  {districtsData?.countyPrecinctDescription ? (
-                    `${districtsData.countyPrecinctDescription} (${districtsData.countyPrecinct})`
-                  ) : districtsData?.countyPrecinct || "N/A"}
+                  <Label className="text-xs text-muted-foreground">Participation Score</Label>
+                  <div className="mt-0.5">
+                     <ParticipationScoreWidget score={infoData?.participationScore} size="small" />
+                  </div>
                 </div>
-                {districtsData?.facility?.facilityName && (
-                  <div className="text-sm font-normal text-muted-foreground">
-                    {districtsData.facility.facilityName}
+
+                {/* Status and Reason Row */}
+                <div className={`grid ${infoData?.statusReason ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-x-3`}>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <p className="text-sm font-medium text-foreground mt-0.5">{infoData?.status || "Unknown"}</p>
                   </div>
-                )}
-                {districtsData?.facility?.facilityAddress && (
-                  <div className="text-xs font-normal text-muted-foreground">
-                    {districtsData.facility.facilityAddress}
+                  {infoData?.statusReason && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Reason</Label>
+                      <p className="text-sm font-medium text-foreground mt-0.5">{infoData.statusReason}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Race (own row) */}
+                <div>
+                  <Label className="text-xs text-muted-foreground">Race</Label>
+                  <p className="text-sm font-medium text-foreground mt-0.5">{infoData?.race || "Unknown"}</p>
+                </div>
+
+                {/* Age and Gender Row */}
+                <div className="grid grid-cols-2 gap-x-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Age</Label>
+                    <p className="text-sm font-medium text-foreground mt-0.5">{infoData?.birthYear ? calculateAge(infoData.birthYear) : "N/A"}</p>
                   </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Gender</Label>
+                    <p className="text-sm font-medium text-foreground mt-0.5">{infoData?.gender || "Unknown"}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-muted-foreground">Residence</Label>
+                  <p className="text-sm font-medium text-foreground mt-0.5">{locationData?.residenceAddress ? formatAddress(locationData.residenceAddress) : "Address not available"}</p>
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-muted-foreground">County</Label>
+                  <p className="text-sm font-medium text-foreground mt-0.5">{locationData?.countyName || "N/A"}</p>
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-muted-foreground">Precinct</Label>
+                  <div className="text-sm font-medium text-foreground mt-0.5">
+                    <div>
+                      {districtsData?.countyPrecinctDescription ? (
+                        `${districtsData.countyPrecinctDescription} (${districtsData.countyPrecinct})`
+                      ) : districtsData?.countyPrecinct || "N/A"}
+                    </div>
+                    {districtsData?.facility?.facilityName && (
+                      <div className="text-xs font-normal text-muted-foreground mt-0.5">
+                        {districtsData.facility.facilityName}
+                      </div>
+                    )}
+                    {districtsData?.facility?.facilityAddress && (
+                      <div className="text-xs font-normal text-muted-foreground">
+                        {districtsData.facility.facilityAddress}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground bg-muted p-1.5 rounded mt-3">
+                  Registration No: {voterId}
+                </div>
+              </div>
+
+              {/* === Column 2: Voting History === */}
+              <div className="mt-4 md:mt-0">
+                {participationLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-1/3 mb-1" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-4/5" />
+                    <Skeleton className="h-3 w-full mt-1" />
+                    <Skeleton className="h-3 w-4/5" />
+                  </div>
+                ) : participationError ? (
+                  <p className="text-red-500 text-xs">Could not load voting history. <br/> <span className="text-xs text-muted-foreground">({participationError})</span></p>
+                ) : historyData && historyData.length > 0 ? (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-1.5 text-foreground">Recent Voting History</h4>
+                    <div className="space-y-1.5 text-xs">
+                      {historyData.slice(0, 10).map((event: any, index: number) => (
+                        <div key={index} className="grid grid-cols-[auto_1fr] gap-x-2 items-baseline">
+                          <span className="text-muted-foreground whitespace-nowrap font-mono">{event.election_date || 'N/A'}:</span>
+                          <span className="text-foreground">{event.election_type || 'N/A'} <span className="text-muted-foreground">({event.ballot_style || 'N/A'})</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No recent voting history found.</p>
                 )}
               </div>
-            </div>
-
-            {/* Registration Number */}
-            <div className="text-xs text-muted-foreground bg-muted p-1.5 rounded mt-2">
-              Registration Number: {voterId}
             </div>
           </div>
         )}
 
-        <DialogFooter className="sm:justify-between flex-row gap-2 pt-3 mt-2 border-t">
+        <DialogFooter className="sm:justify-between flex-row gap-2 pt-3 pb-3 px-4 border-t">
           <Button 
             variant="outline" 
             size="sm" 
