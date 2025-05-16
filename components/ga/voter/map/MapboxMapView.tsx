@@ -61,6 +61,10 @@ interface InViewStats {
   voterCount: number | null;
 }
 
+// --- SVG and Image Name for Teardrop Icon ---
+const teardropSvg = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="#000000"><path d="M50,0 C27.90861,0 10,17.90861 10,40 C10,70 50,100 50,100 C50,100 90,70 90,40 C90,17.90861 72.09139,0 50,0 Z"/></svg>';
+const teardropImageName = 'teardrop-pin';
+
 // Component using the context
 const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
   const mapRef = useRef<MapRef | null>(null);
@@ -145,7 +149,23 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         bounds: map.getBounds()
       });
       setMapReady(true);
-      // Initial fetch will be triggered by the main useEffect watching mapReady and apiParams
+
+      // Add teardrop image if it doesn't exist
+      if (!map.hasImage(teardropImageName)) {
+        const image = new Image(64, 64); // Nominal size, actual rendering controlled by icon-size
+        image.onload = () => {
+          // Check again in case of async operations or if map instance changed
+          const currentMapInstance = mapRef.current?.getMap(); 
+          if (currentMapInstance && !currentMapInstance.hasImage(teardropImageName)) {
+            currentMapInstance.addImage(teardropImageName, image, { sdf: true });
+            console.log('Teardrop image added to map');
+          }
+        };
+        image.onerror = () => {
+          console.error('Error loading teardrop SVG for map.');
+        };
+        image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(teardropSvg);
+      }
     }
   }, [setApiParams]);
 
@@ -523,16 +543,41 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         'interpolate',
         ['linear'],
         ['zoom'],
-        ZOOM_ZIP_LEVEL, 2, // At zoom 11 (start), radius is 2
-        13.99, 2,          // Just before zoom 14, radius is still 2
-        14, 4,             // At zoom 14, radius becomes 4
-        // Radius stays 4 for higher zooms
+        ZOOM_ZIP_LEVEL, 3, // At zoom 11 (start), radius is 3 (increased from 2)
+        13.99, 3,          // Just before zoom 14, radius is still 3
+        14, 6,             // At zoom 14, radius becomes 6 (increased from 4)
+        16, 8,             // At zoom 16, radius becomes 8
+        16.79, 10          // At zoom 16.79, radius becomes 10 (before switching to high-zoom visualization)
       ],
       'circle-color': '#e55e5e', // Red color
       'circle-opacity': 0.7, // Keep opacity
       // Removed stroke properties
     }
   };
+
+  // High-zoom marker style - main circle (bigger, lighter)
+  const voterAddressHighZoomStyle: ReactMapGlCircleLayerStyle = {
+    paint: {
+      'circle-radius': 12,
+      'circle-color': '#e55e5e',
+      'circle-opacity': 0.6,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-opacity': 0.8
+    }
+  };
+
+  // High-zoom marker style - center dot (smaller, darker)
+  // This will be removed, replaced by teardrop
+  /*
+  const voterAddressCenterDotStyle: ReactMapGlCircleLayerStyle = {
+    paint: {
+      'circle-radius': 4,
+      'circle-color': '#d42020',
+      'circle-opacity': 1
+    }
+  };
+  */
 
   // --- Polygon Fill Styles --- //
   // Define a color palette for zip codes
@@ -637,8 +682,11 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
       return; // No feature clicked
     }
 
-    // Only proceed if the clicked feature is from the voter-points layer
-    const voterPointFeature = event.features.find(f => f.layer?.id === 'voter-points');
+    // Only proceed if the clicked feature is from one of our voter point layers
+    const voterPointFeature = event.features.find(f =>
+      f.layer?.id === 'voter-points' ||
+      f.layer?.id === 'voter-points-teardrop' // Use new teardrop layer ID
+    );
     if (!voterPointFeature) {
       return;
     }
@@ -674,7 +722,7 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
         onLoad={handleLoad} // Set initial API params on load
         onIdle={handleIdle} // Update API params when movement stops
         onClick={handleVoterClick} // Onclick handler for map features
-        interactiveLayerIds={['voter-points']} // Specify interactive layers
+        interactiveLayerIds={['voter-points', 'voter-points-teardrop']} // Updated to include teardrop layer
         style={{ width: '100%', height: '100%' }}
         mapStyle={theme === 'light' ? 'mapbox://styles/mapbox/light-v11' : 'mapbox://styles/mapbox/dark-v11'} // Dynamically set map style
       >
@@ -684,13 +732,33 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
             data={voterFeatureCollection} // Feed data from context
             promoteId="id" // Use feature.properties.id for efficient updates
           >
-            {/* Address Points Layer (visible only at high zoom) */}
+            {/* Address Points Layer (visible at medium zoom) */}
             <Layer 
               id="voter-points" 
               type="circle" 
               minzoom={ZOOM_ZIP_LEVEL} // Only show when zoomed past zip level
+              maxzoom={16.8}          // Hide when we switch to high-zoom visualization
               filter={['==', ['get', 'aggregationLevel'], 'address']}
               {...voterAddressPointStyle} 
+            />
+            
+            {/* High-zoom marker - Teardrop Icon (replaces previous two circle layers) */}
+            <Layer 
+              id="voter-points-teardrop" 
+              type="symbol"
+              minzoom={16.8}          // Only show at zoom > 16.8
+              filter={['==', ['get', 'aggregationLevel'], 'address']}
+              layout={{
+                'icon-image': teardropImageName,
+                'icon-size': 0.6, // Adjust size as needed (0.5 might be small, try 0.6 or 0.7)
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'icon-anchor': 'bottom',
+              }}
+              paint={{
+                'icon-color': theme === 'light' ? '#e55e5e' : '#f08080', // Red for light, lighter red for dark
+                'icon-opacity': 0.95,
+              }}
             />
             
             {/* County Polygons Layer */}
