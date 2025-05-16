@@ -57,7 +57,7 @@ const SortButton = ({ field, label, currentSort, onSort }: SortButtonProps) => {
 const getStatusProps = (status: string | undefined) => {
   if (!status) {
     return {
-      className: 'bg-gray-700 text-gray-200',
+      className: 'bg-gray-100 text-gray-700 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
       text: 'Unknown'
     };
   }
@@ -66,22 +66,22 @@ const getStatusProps = (status: string | undefined) => {
   
   if (statusUpper === 'ACTIVE') {
     return {
-      className: 'bg-green-950 text-green-400 border border-green-700',
+      className: 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900 dark:text-green-300 dark:border-green-700',
       text: 'Active'
     };
   } else if (statusUpper === 'INACTIVE') {
     return {
-      className: 'bg-amber-950 text-amber-300 border border-amber-700',
+      className: 'bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-900 dark:text-amber-400 dark:border-amber-700',
       text: 'Inactive'
     };
   } else if (statusUpper.includes('CANCEL')) {
     return {
-      className: 'bg-red-950 text-red-400 border border-red-700',
+      className: 'bg-red-100 text-red-700 border border-red-300 dark:bg-red-900 dark:text-red-400 dark:border-red-700',
       text: statusUpper.includes('PENDING') ? 'Pending Cancel' : 'Canceled'
     };
   } else {
     return {
-      className: 'bg-gray-800 text-gray-300 border border-gray-700',
+      className: 'bg-gray-100 text-gray-700 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
       text: status
     };
   }
@@ -140,18 +140,16 @@ export function VoterTable({
     <div className="w-full h-full relative">
       {hasFetchedOnce && (
         <Table className="relative border-separate border-spacing-0 w-full h-full" style={{ tableLayout: 'fixed' }}>
-          <TableHeader className="border-b border-gray-700">
+          <TableHeader className="border-b border-gray-300 dark:border-gray-700">
             <TableRow className="h-7">
               <TableHead 
                 style={{ 
                   width: '30%', 
                   position: 'sticky', 
                   top: 0, 
-                  zIndex: 2, 
-                  background: '#18181b',
-                  borderBottom: '1px solid #4b5563' // gray-600
+                  zIndex: 2 
                 }} 
-                className="py-1.5 px-3 text-white font-normal"
+                className="py-1.5 px-3 bg-gray-50 text-gray-600 dark:bg-zinc-800 dark:text-gray-300 font-normal border-b border-gray-300 dark:border-gray-700"
               >
                 <SortButton field="name" label="Full Name" currentSort={sort} onSort={onSort} />
               </TableHead>
@@ -160,11 +158,9 @@ export function VoterTable({
                   width: '15%', 
                   position: 'sticky', 
                   top: 0, 
-                  zIndex: 2, 
-                  background: '#18181b',
-                  borderBottom: '1px solid #4b5563' // gray-600
+                  zIndex: 2
                 }} 
-                className="py-1.5 px-3 text-white font-normal"
+                className="py-1.5 px-3 bg-gray-50 text-gray-600 dark:bg-zinc-800 dark:text-gray-300 font-normal border-b border-gray-300 dark:border-gray-700"
               >
                 <SortButton field="county" label="County" currentSort={sort} onSort={onSort} />
               </TableHead>
@@ -173,11 +169,9 @@ export function VoterTable({
                   width: '30%', 
                   position: 'sticky', 
                   top: 0, 
-                  zIndex: 2, 
-                  background: '#18181b',
-                  borderBottom: '1px solid #4b5563' // gray-600
+                  zIndex: 2
                 }} 
-                className="py-1.5 px-3 text-white font-normal text-left"
+                className="py-1.5 px-3 bg-gray-50 text-gray-600 dark:bg-zinc-800 dark:text-gray-300 font-normal text-left border-b border-gray-300 dark:border-gray-700"
               >
                 <SortButton field="address" label="Resident Address" currentSort={sort} onSort={onSort} />
               </TableHead>
@@ -186,11 +180,9 @@ export function VoterTable({
                   width: '10%', 
                   position: 'sticky', 
                   top: 0, 
-                  zIndex: 2, 
-                  background: '#18181b',
-                  borderBottom: '1px solid #4b5563' // gray-600
+                  zIndex: 2 
                 }} 
-                className="py-1.5 px-3 text-white font-normal"
+                className="py-1.5 px-3 bg-gray-50 text-gray-600 dark:bg-zinc-800 dark:text-gray-300 font-normal border-b border-gray-300 dark:border-gray-700"
               >
                 <SortButton field="score" label="Score" currentSort={sort} onSort={onSort} />
               </TableHead>
@@ -199,11 +191,9 @@ export function VoterTable({
                   width: '15%', 
                   position: 'sticky', 
                   top: 0, 
-                  zIndex: 2, 
-                  background: '#18181b',
-                  borderBottom: '1px solid #4b5563' // gray-600
+                  zIndex: 2
                 }} 
-                className="py-1.5 px-3 text-white font-normal"
+                className="py-1.5 px-3 bg-gray-50 text-gray-600 dark:bg-zinc-800 dark:text-gray-300 font-normal border-b border-gray-300 dark:border-gray-700"
               >
                 <SortButton field="status" label="Status" currentSort={sort} onSort={onSort} />
               </TableHead>
@@ -223,8 +213,8 @@ export function VoterTable({
                   <TableRow 
                     key={voter.id} 
                     className={cn(
-                      "border-b border-gray-800 hover:bg-gray-900/20 cursor-pointer",
-                      index % 2 === 1 ? "bg-zinc-900/60" : "bg-transparent"
+                      "border-b border-gray-200 dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800/50 cursor-pointer",
+                      index % 2 === 1 ? "bg-gray-50 dark:bg-zinc-900/70" : "bg-white dark:bg-zinc-950"
                     )}
                     onClick={() => handleRowClick(voter.id)}
                   >

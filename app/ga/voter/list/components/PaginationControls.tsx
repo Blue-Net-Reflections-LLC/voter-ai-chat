@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMobileView } from "@/hooks/useWindowSize";
+import { cn } from "@/lib/utils";
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -62,77 +63,68 @@ export function PaginationControls({
       );
     }
     
-    const pageNumbers = [];
-    const maxPageButtons = 3; // Reduced from 5 to 3 for more compact layout
+    const pageElements = []; // Changed from pageNumbers to pageElements for clarity
+    const maxPageButtons = 3; 
     
     let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
     let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
     
-    // Adjust start page if we're near the end
     if (endPage - startPage + 1 < maxPageButtons) {
       startPage = Math.max(1, endPage - maxPageButtons + 1);
     }
     
     // First page button
     if (startPage > 1) {
-      pageNumbers.push(
-        <Button 
+      pageElements.push(
+        <span 
           key="first" 
-          variant="outline" 
-          size="sm" 
-          className="h-6 w-6 text-xs"
+          className="text-xs px-1 cursor-pointer hover:text-primary hover:underline"
           onClick={() => goToPage(1)}
         >
           1
-        </Button>
+        </span>
       );
       
-      // Ellipsis if needed
       if (startPage > 2) {
-        pageNumbers.push(
-          <span key="ellipsis1" className="px-1 text-xs">...</span>
+        pageElements.push(
+          <span key="ellipsis1" className="px-1 text-xs text-muted-foreground">...</span>
         );
       }
     }
     
-    // Page number buttons
     for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(
-        <Button 
+      pageElements.push(
+        <span 
           key={i} 
-          variant={i === currentPage ? "default" : "outline"} 
-          size="sm" 
-          className="h-6 w-6 text-xs"
+          className={cn(
+            "text-xs px-1 cursor-pointer hover:text-primary hover:underline",
+            i === currentPage ? "font-bold text-primary" : "text-muted-foreground"
+          )}
           onClick={() => goToPage(i)}
         >
           {i}
-        </Button>
+        </span>
       );
     }
     
-    // Last page button
     if (endPage < totalPages) {
-      // Ellipsis if needed
       if (endPage < totalPages - 1) {
-        pageNumbers.push(
-          <span key="ellipsis2" className="px-1 text-xs">...</span>
+        pageElements.push(
+          <span key="ellipsis2" className="px-1 text-xs text-muted-foreground">...</span>
         );
       }
-      
-      pageNumbers.push(
-        <Button 
+      pageElements.push(
+        <span 
           key="last" 
-          variant="outline" 
-          size="sm" 
-          className="h-6 w-6 text-xs"
+          className="text-xs px-1 cursor-pointer hover:text-primary hover:underline"
           onClick={() => goToPage(totalPages)}
         >
           {totalPages}
-        </Button>
+        </span>
       );
     }
     
-    return pageNumbers;
+    return pageElements;
   };
 
   return (
@@ -143,7 +135,7 @@ export function PaginationControls({
           onValueChange={handlePageSizeChange}
         >
           <SelectTrigger className="w-[60px] h-6 text-xs">
-            <SelectValue placeholder="12" />
+            <SelectValue placeholder="24" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="12">12</SelectItem>
@@ -155,7 +147,7 @@ export function PaginationControls({
         </Select>
         
         {/* Page numbers - now visible on all screen sizes */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 mr-2">
           {renderPageNumbers()}
         </div>
         

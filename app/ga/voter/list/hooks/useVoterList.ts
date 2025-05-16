@@ -53,7 +53,7 @@ const initialAddressFilterState: ResidenceAddressFilterState = {
 // Initial pagination state
 const initialPaginationState: PaginationState = {
   currentPage: 1,
-  pageSize: 12,
+  pageSize: 24,
   totalItems: 0
 };
 
@@ -104,7 +104,7 @@ export function useVoterList() {
   // Hydrate pagination and sort from URL on first render
   const [pagination, setPagination] = useState<PaginationState>(() => ({
     currentPage: Number(searchParams.get('page')) || 1,
-    pageSize: Number(searchParams.get('pageSize')) || 12,
+    pageSize: Number(searchParams.get('pageSize')) || 24,
     totalItems: 0,
   }));
   

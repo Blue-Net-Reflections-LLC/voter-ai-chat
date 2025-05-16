@@ -29,6 +29,9 @@ interface FeatureQueryRow {
     id?: string | null; // Optional, as addresses might not have it
     count: number | string; // Count can be string from DB, parse to number
     aggregationLevel: 'county' | 'zip' | 'address';
+    // Add party affiliation flags for address level
+    has_democrat?: boolean;
+    has_republican?: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -53,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     const stream = new ReadableStream({
         async start(controller) {
-            console.log(`SSE: Connection started. Zoom: ${zoom}, Bbox: ${bboxString}`);
+            // console.log(`SSE: Connection started. Zoom: ${zoom}, Bbox: ${bboxString}`);
             
             try {
                 // --- 3. Build Base Filter Query Conditions (Sidebar Filters) ---
@@ -74,7 +77,7 @@ export async function GET(request: NextRequest) {
                 const whereForFeatures = featureFilterConditions ? `WHERE ${featureFilterConditions} AND` : 'WHERE'; // Note the AND if conditions exist
 
                 if (zoom < 6) { // County Aggregation
-                    console.log("SSE: Aggregation Level - County");
+                    // console.log("SSE: Aggregation Level - County");
                     featureQueryText = `
                         WITH FilteredVoters AS (
                             SELECT vrl.county_fips, vrl.county_name
@@ -91,7 +94,7 @@ export async function GET(request: NextRequest) {
                         JOIN tl_2024_us_county c ON ac.county_fips = c.geoid WHERE c.geom IS NOT NULL;
                     `;
                 } else if (zoom >= 6 && zoom < 11) { // Zip/ZCTA Aggregation
-                    console.log("SSE: Aggregation Level - ZCTA");
+                    // console.log("SSE: Aggregation Level - ZCTA");
                     featureQueryText = `
                         WITH FilteredVoters AS (
                             SELECT vrl.zcta FROM ga_voter_registration_list vrl
@@ -106,7 +109,7 @@ export async function GET(request: NextRequest) {
                         JOIN tl_2024_us_zcta520 z ON az.zcta = z."ZCTA5CE20" WHERE z.geom IS NOT NULL;
                     `;
                 } else { // Individual Addresses (Points)
-                    console.log("SSE: Aggregation Level - Address");
+                    // console.log("SSE: Aggregation Level - Address");
                     featureQueryText = `
                         WITH FilteredAddresses AS (
                             SELECT 
@@ -124,7 +127,16 @@ export async function GET(request: NextRequest) {
                                         ELSE NULL END
                                 ) as street_address_part,
                                 vrl.residence_city, 
-                                vrl.residence_zipcode 
+                                vrl.residence_zipcode,
+                                -- Party affiliation aggregation
+                                COALESCE(bool_or(EXISTS (
+                                    SELECT 1 FROM jsonb_array_elements(vrl.voting_events) AS event
+                                    WHERE event->>'party' ILIKE 'DEMOCRAT%'
+                                )), false) AS has_democrat,
+                                COALESCE(bool_or(EXISTS (
+                                    SELECT 1 FROM jsonb_array_elements(vrl.voting_events) AS event
+                                    WHERE event->>'party' = 'REPUBLICAN'
+                                )), false) AS has_republican
                             FROM ga_voter_registration_list vrl
                             ${whereForFeatures} ST_Intersects(vrl.geom, ST_GeomFromGeoJSON($${currentParamIndex++}))
                             GROUP BY 
@@ -144,7 +156,9 @@ export async function GET(request: NextRequest) {
                             CONCAT(fa.street_address_part, ', ', fa.residence_city, ', GA ', fa.residence_zipcode) AS id, -- Use label as ID
                             fa.voter_count_at_address AS count,
                             'address' AS "aggregationLevel", 
-                            ST_AsGeoJSON(fa.geom) AS geometry
+                            ST_AsGeoJSON(fa.geom) AS geometry,
+                            fa.has_democrat, -- Pass through the new party flags
+                            fa.has_republican -- Pass through the new party flags
                         FROM FilteredAddresses fa 
                         WHERE fa.geom IS NOT NULL;
                     `;
@@ -152,19 +166,19 @@ export async function GET(request: NextRequest) {
                 featureQueryParams.push(bboxGeoJsonStr);
 
                 // --- Attempt to Stream Features using a cursor-like method from the 'sql' utility ---
-                console.log("SSE: Attempting to stream features with cursor-like approach...");
+                // console.log("SSE: Attempting to stream features with cursor-like approach...");
                 const queryResultForCursor = sql.unsafe(featureQueryText, featureQueryParams);
 
                 // Check if the result object has a .cursor method (common in postgres.js)
                 if (typeof queryResultForCursor.cursor === 'function') {
-                    console.log("SSE: .cursor() method found. Streaming features.");
+                    // console.log("SSE: .cursor() method found. Streaming features.");
                     let featuresSent = 0;
                     let batchIndex = 0; // Add batch index logging
                     for await (const rows of queryResultForCursor.cursor(BATCH_SIZE)) {
-                        console.log(`SSE Cursor: Fetched ${rows.length} rows for batch ${batchIndex}.`);
+                        // console.log(`SSE Cursor: Fetched ${rows.length} rows for batch ${batchIndex}.`);
                         let featuresBatch;
                         try {
-                            featuresBatch = rows.map(row => ({ // Removed explicit : FeatureQueryRow type
+                            featuresBatch = rows.map(row => ({
                                 type: 'Feature' as const,
                                 // Add safety check for geometry parsing
                                 geometry: row.geometry ? JSON.parse(row.geometry) : null,
@@ -173,10 +187,13 @@ export async function GET(request: NextRequest) {
                                     id: row.id,
                                     count: parseInt(String(row.count), 10) || 0,
                                     aggregationLevel: row.aggregationLevel,
+                                    // Add party flags to feature properties if they exist on the row
+                                    ...(row.aggregationLevel === 'address' && row.has_democrat !== undefined && { hasDemocrat: row.has_democrat }),
+                                    ...(row.aggregationLevel === 'address' && row.has_republican !== undefined && { hasRepublican: row.has_republican }),
                                 }
                             })).filter(f => f.geometry !== null); // Filter out features with parse errors
 
-                            console.log(`SSE Cursor: Processed batch ${batchIndex} into ${featuresBatch.length} valid features.`);
+                            // console.log(`SSE Cursor: Processed batch ${batchIndex} into ${featuresBatch.length} valid features.`);
                         } catch (mapError: any) {
                              console.error(`SSE Cursor: Error processing batch ${batchIndex}:`, mapError);
                              // Decide if you want to skip this batch or error out
@@ -187,26 +204,26 @@ export async function GET(request: NextRequest) {
                         }
 
                         if (featuresBatch.length > 0) {
-                            console.log(`SSE Cursor: Sending batch ${batchIndex} with ${featuresBatch.length} features...`);
+                            // console.log(`SSE Cursor: Sending batch ${batchIndex} with ${featuresBatch.length} features...`);
                             sendSseData(controller, { type: 'FeatureCollection', features: featuresBatch });
                             featuresSent += featuresBatch.length;
-                            console.log(`SSE Cursor: Sent batch ${batchIndex}. Total sent: ${featuresSent}`);
+                            // console.log(`SSE Cursor: Sent batch ${batchIndex}. Total sent: ${featuresSent}`);
                         }
                         batchIndex++;
                     }
                     if (featuresSent === 0) {
-                        console.log("SSE: No features found or streamed via cursor.");
+                        // console.log("SSE: No features found or streamed via cursor.");
                     }
                 } else {
                     // Fallback: If .cursor() is not available, load all and batch from memory (previous approach)
                     console.warn("SSE: .cursor() method not found on sql.unsafe result. Falling back to in-memory batching.");
                     const allFeaturesResult = await queryResultForCursor; // Assuming it resolves to the array of rows
                     if (allFeaturesResult && allFeaturesResult.length > 0) {
-                        console.log(`SSE Fallback: Processing ${allFeaturesResult.length} total features.`);
+                        // console.log(`SSE Fallback: Processing ${allFeaturesResult.length} total features.`);
                         for (let i = 0; i < allFeaturesResult.length; i += BATCH_SIZE) {
                             const batchIndex = i / BATCH_SIZE;
                             const batch = allFeaturesResult.slice(i, i + BATCH_SIZE);
-                            console.log(`SSE Fallback: Sliced batch ${batchIndex} with ${batch.length} features.`);
+                            // console.log(`SSE Fallback: Sliced batch ${batchIndex} with ${batch.length} features.`);
                             let featuresBatch;
                              try {
                                 featuresBatch = batch.map(row => ({
@@ -218,9 +235,12 @@ export async function GET(request: NextRequest) {
                                         id: row.id,
                                         count: parseInt(String(row.count), 10) || 0,
                                         aggregationLevel: row.aggregationLevel,
+                                        // Add party flags to feature properties if they exist on the row (fallback case)
+                                        ...(row.aggregationLevel === 'address' && row.has_democrat !== undefined && { hasDemocrat: row.has_democrat }),
+                                        ...(row.aggregationLevel === 'address' && row.has_republican !== undefined && { hasRepublican: row.has_republican }),
                                     }
                                 })).filter(f => f.geometry !== null); // Filter out features with parse errors
-                                console.log(`SSE Fallback: Processed batch ${batchIndex} into ${featuresBatch.length} valid features.`);
+                                // console.log(`SSE Fallback: Processed batch ${batchIndex} into ${featuresBatch.length} valid features.`);
                             } catch (mapError: any) {
                                 console.error(`SSE Fallback: Error processing batch ${batchIndex}:`, mapError);
                                 sendSseMessage(controller, 'error', { message: `Error processing fallback batch ${batchIndex}: ${mapError.message}` });
@@ -229,20 +249,20 @@ export async function GET(request: NextRequest) {
                             }
 
                             if (featuresBatch.length > 0) {
-                                console.log(`SSE Fallback: Sending batch ${batchIndex} with ${featuresBatch.length} features...`);
+                                // console.log(`SSE Fallback: Sending batch ${batchIndex} with ${featuresBatch.length} features...`);
                                 sendSseData(controller, { type: 'FeatureCollection', features: featuresBatch });
-                                console.log(`SSE Fallback: Sent batch ${batchIndex}.`);
+                                // console.log(`SSE Fallback: Sent batch ${batchIndex}.`);
                             }
                         }
                     } else {
-                        console.log("SSE: No features found for the current view/filters (fallback in-memory).");
+                        // console.log("SSE: No features found for the current view/filters (fallback in-memory).");
                     }
                 }
                 
                 // Send end event (no need to check signal.aborted here, 
                 // as inner errors return early)
                 sendSseEnd(controller);
-                console.log("SSE: Sent end event and closed stream.");
+                // console.log("SSE: Sent end event and closed stream.");
 
             } catch (error: any) {
                 console.error('SSE Stream Error in start():', error);
@@ -255,7 +275,7 @@ export async function GET(request: NextRequest) {
                     console.error("SSE: Error sending error message/closing controller (stream likely already closed):", e);
                  }
             } finally {
-                console.log("SSE: Stream processing finished in start()'s finally block.");
+                // console.log("SSE: Stream processing finished in start()'s finally block.");
             }
         },
         cancel(reason) {
