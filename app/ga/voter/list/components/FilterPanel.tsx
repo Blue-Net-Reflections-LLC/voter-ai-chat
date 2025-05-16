@@ -32,6 +32,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 // Define section keys for consistent usage
 type FilterSectionKey = 'participationScore' | 'geographic' | 'voterInfo' | 'demographics' | 'votingHistory';
@@ -115,7 +116,6 @@ export function FilterPanel() {
   const [lastNameInput, setLastNameInput] = useState(filters.lastName || '');
 
   // Add state for checkbox selections
-  const [neverVoted, setNeverVoted] = useState(false);
   const [contactedNoResponse, setContactedNoResponse] = useState(false);
   const [notVotedYearInput, setNotVotedYearInput] = useState(filters.notVotedSinceYear || '');
 
@@ -160,6 +160,7 @@ export function FilterPanel() {
     let count = 0;
     if (ensureStringArray(filters.scoreRanges).length > 0) count++;
     if (filters.notVotedSinceYear) count++;
+    if (filters.neverVoted) count++;
     return count;
   };
 
@@ -346,6 +347,14 @@ export function FilterPanel() {
     // Participation Filters
     ensureStringArray(filters.scoreRanges).forEach((value) => activeBadges.push({ id: `scoreRanges-${value}`, label: `Score: ${value}`, onRemove: () => updateFilter('scoreRanges', ensureStringArray(filters.scoreRanges).filter(v => v !== value)), sectionKey: 'participationScore' }));
     if (filters.notVotedSinceYear) activeBadges.push({ id: 'notVotedSinceYear', label: `Not Voted Since: ${filters.notVotedSinceYear}`, onRemove: () => updateFilter('notVotedSinceYear', ''), sectionKey: 'participationScore' });
+    if (filters.neverVoted) {
+      activeBadges.push({
+        id: 'neverVoted',
+        label: 'Never Voted: Yes',
+        onRemove: () => updateFilter('neverVoted', false),
+        sectionKey: 'participationScore'
+      });
+    }
 
     // Geographic Filters
     ensureStringArray(filters.county).forEach((value) => {
@@ -529,6 +538,18 @@ export function FilterPanel() {
                       setNotVotedYearInput(filters.notVotedSinceYear || '');
                     }
                   }}
+                />
+              </div>
+              {/* Never Voted Switch */}
+              <div className="flex items-center justify-between space-x-2 pt-1">
+                <label htmlFor="never-voted-switch" className="text-xs font-medium">
+                  Never Voted
+                </label>
+                <Switch
+                  id="never-voted-switch"
+                  checked={filters.neverVoted || false}
+                  onCheckedChange={(checked) => updateFilter('neverVoted', checked)}
+                  className="data-[state=checked]:bg-teal-500 dark:data-[state=checked]:bg-teal-600"
                 />
               </div>
             </AccordionContent>
