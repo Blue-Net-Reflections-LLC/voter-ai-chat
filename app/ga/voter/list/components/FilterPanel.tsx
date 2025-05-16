@@ -25,7 +25,12 @@ import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 import { SCORE_RANGES } from '@/lib/participation-score/constants';
 import PrecinctFilters from './PrecinctFilters';
-import CollapsibleSection from './CollapsibleSection';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 export function FilterPanel() {
   const {
@@ -177,300 +182,326 @@ export function FilterPanel() {
         </div>
       )}
       
-      <div className="space-y-2 pt-2 px-3">
+      <Accordion 
+        type="multiple" 
+        className="w-full space-y-1 px-3 pt-2"
+        defaultValue={["participation-score", "geographic-filters", "voter-info"]}
+      >
         {/* Participation Score Filter */}
-        <CollapsibleSection 
-          title="Participation Score" 
-          defaultOpen={true}
-          filterCount={participationScoreFilterCount}
-        >
-          <MultiSelect
-            label="Participation Score Range"
-            options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
-            value={ensureStringArray(filters.scoreRanges)}
-            setValue={(value) => updateFilter('scoreRanges', value)}
-            compact={true}
-          />
-        </CollapsibleSection>
+        <AccordionItem value="participation-score">
+          <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+            <span>Participation Score</span>
+            {participationScoreFilterCount > 0 && (
+              <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                {participationScoreFilterCount}
+              </span>
+            )}
+          </AccordionTrigger>
+          <AccordionContent className="pt-1 pl-2 space-y-3">
+            <MultiSelect
+              label="Participation Score Range"
+              options={SCORE_RANGES.map(range => ({ value: range.label, label: range.label }))}
+              value={ensureStringArray(filters.scoreRanges)}
+              setValue={(value) => updateFilter('scoreRanges', value)}
+              compact={true}
+            />
+          </AccordionContent>
+        </AccordionItem>
 
-        <Separator />
-        
         {/* Geographic Filters */}
-        <CollapsibleSection 
-          title="Geographic Filters" 
-          defaultOpen={true}
-          filterCount={geographicFilterCount}
-        >
-          {/* County Filter */}
-          <div className="space-y-2">
-            <CountyMultiSelect
-              value={ensureStringArray(filters.county)}
-              setValue={(value) => updateFilter('county', value)}
-              isLoading={isLoading}
+        <AccordionItem value="geographic-filters">
+          <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+            <span>Geographic Filters</span>
+             {geographicFilterCount > 0 && (
+              <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                {geographicFilterCount}
+              </span>
+            )}
+          </AccordionTrigger>
+          <AccordionContent className="pt-1 pl-2 space-y-3">
+            {/* County Filter */}
+            <div className="space-y-2">
+              <CountyMultiSelect
+                value={ensureStringArray(filters.county)}
+                setValue={(value) => updateFilter('county', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+            </div>
+
+            {/* Add Precinct Filters component */}
+            <PrecinctFilters />
+
+            {/* Congressional District Filter */}
+            <div className="space-y-2">
+              <DistrictMultiSelect
+                label="Congressional District"
+                options={congressionalDistricts.length > 0 ? congressionalDistricts : []}
+                value={ensureStringArray(filters.congressionalDistricts)}
+                setValue={(value) => updateFilter('congressionalDistricts', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+            </div>
+
+            {/* State Senate District Filter */}
+            <div className="space-y-2">
+              <DistrictMultiSelect
+                label="State Senate District"
+                options={stateSenateDistricts.length > 0 ? stateSenateDistricts : []}
+                value={ensureStringArray(filters.stateSenateDistricts)}
+                setValue={(value) => updateFilter('stateSenateDistricts', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+            </div>
+
+            {/* State House District Filter */}
+            <div className="space-y-2">
+              <DistrictMultiSelect
+                label="State House District"
+                options={stateHouseDistricts.length > 0 ? stateHouseDistricts : []}
+                value={ensureStringArray(filters.stateHouseDistricts)}
+                setValue={(value) => updateFilter('stateHouseDistricts', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+            </div>
+
+            <MultiSelect
+              label="Redistricting Type"
+              options={REDISTRICTING_TYPE_OPTIONS}
+              value={ensureStringArray(filters.redistrictingType)}
+              setValue={(value) => updateFilter('redistrictingType', value)}
               compact={true}
             />
-          </div>
-
-          {/* Add Precinct Filters component */}
-          <PrecinctFilters />
-
-          {/* Congressional District Filter */}
-          <div className="space-y-2">
-            <DistrictMultiSelect
-              label="Congressional District"
-              options={congressionalDistricts.length > 0 ? congressionalDistricts : []}
-              value={ensureStringArray(filters.congressionalDistricts)}
-              setValue={(value) => updateFilter('congressionalDistricts', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-
-          {/* State Senate District Filter */}
-          <div className="space-y-2">
-            <DistrictMultiSelect
-              label="State Senate District"
-              options={stateSenateDistricts.length > 0 ? stateSenateDistricts : []}
-              value={ensureStringArray(filters.stateSenateDistricts)}
-              setValue={(value) => updateFilter('stateSenateDistricts', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-
-          {/* State House District Filter */}
-          <div className="space-y-2">
-            <DistrictMultiSelect
-              label="State House District"
-              options={stateHouseDistricts.length > 0 ? stateHouseDistricts : []}
-              value={ensureStringArray(filters.stateHouseDistricts)}
-              setValue={(value) => updateFilter('stateHouseDistricts', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-
-          <MultiSelect
-            label="Redistricting Type"
-            options={REDISTRICTING_TYPE_OPTIONS}
-            value={ensureStringArray(filters.redistrictingType)}
-            setValue={(value) => updateFilter('redistrictingType', value)}
-            compact={true}
-          />
-        </CollapsibleSection>
-        
-        <Separator />
+          </AccordionContent>
+        </AccordionItem>
         
         {/* Voter Info Filters */}
-        <CollapsibleSection 
-          title="Voter Info" 
-          defaultOpen={true}
-          filterCount={voterInfoFilterCount}
-        >
-          <div className="space-y-3">
-            <MultiSelect
-              label="Status"
-              options={statuses.length > 0 ? statuses : []}
-              value={ensureStringArray(filters.status)}
-              setValue={(value) => updateFilter('status', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-            
-            <MultiSelect
-              label="Inactive Status Reasons"
-              options={statusReasons.length > 0 ? statusReasons : []}
-              value={ensureStringArray(filters.statusReason)}
-              setValue={(value) => updateFilter('statusReason', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-            
-            <div>
-              <label className="text-xs font-medium">First Name</label>
-              <Input
-                placeholder="Enter first name..."
-                className="h-8 text-xs"
-                value={firstNameInput}
-                onChange={(e)=>setFirstNameInput(e.target.value)}
-                onBlur={() => updateFilter('firstName', firstNameInput.trim())}
+        <AccordionItem value="voter-info">
+          <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+            <span>Voter Info</span>
+            {voterInfoFilterCount > 0 && (
+              <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                {voterInfoFilterCount}
+              </span>
+            )}
+          </AccordionTrigger>
+          <AccordionContent className="pt-1 pl-2 space-y-3">
+            <div className="space-y-3">
+              <MultiSelect
+                label="Status"
+                options={statuses.length > 0 ? statuses : []}
+                value={ensureStringArray(filters.status)}
+                setValue={(value) => updateFilter('status', value)}
+                isLoading={isLoading}
+                compact={true}
               />
-            </div>
-            <div>
-              <label className="text-xs font-medium">Last Name</label>
-              <Input
-                placeholder="Enter last name..."
-                className="h-8 text-xs"
-                value={lastNameInput}
-                onChange={(e)=>setLastNameInput(e.target.value)}
-                onBlur={() => updateFilter('lastName', lastNameInput.trim())}
+              
+              <MultiSelect
+                label="Inactive Status Reasons"
+                options={statusReasons.length > 0 ? statusReasons : []}
+                value={ensureStringArray(filters.statusReason)}
+                setValue={(value) => updateFilter('statusReason', value)}
+                isLoading={isLoading}
+                compact={true}
               />
-              {/* Apply button visible on mobile or always */}
-              <Button
-                size="sm"
-                className="mt-2"
-                onClick={() => {
-                  updateFilter('firstName', firstNameInput.trim());
-                  updateFilter('lastName', lastNameInput.trim());
+              
+              <div>
+                <label className="text-xs font-medium">First Name</label>
+                <Input
+                  placeholder="Enter first name..."
+                  className="h-8 text-xs"
+                  value={firstNameInput}
+                  onChange={(e)=>setFirstNameInput(e.target.value)}
+                  onBlur={() => updateFilter('firstName', firstNameInput.trim())}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">Last Name</label>
+                <Input
+                  placeholder="Enter last name..."
+                  className="h-8 text-xs"
+                  value={lastNameInput}
+                  onChange={(e)=>setLastNameInput(e.target.value)}
+                  onBlur={() => updateFilter('lastName', lastNameInput.trim())}
+                />
+                {/* Apply button visible on mobile or always */}
+                <Button
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    updateFilter('firstName', firstNameInput.trim());
+                    updateFilter('lastName', lastNameInput.trim());
+                  }}
+                >
+                  Apply Name Filter
+                </Button>
+              </div>
+
+              {/* Residence Address Filter */}
+              <ResidenceAddressFilter
+                addressFilters={residenceAddressFilters}
+                addAddressFilter={addAddressFilter}
+                removeAddressFilter={removeAddressFilter}
+                clearAllAddressFilters={clearAllAddressFilters}
+                updateAddressFilter={(id, field, value) => {
+                  updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
                 }}
-              >
-                Apply Name Filter
-              </Button>
+              />
+              
+              <MultiSelect
+                label="Registered Voter Party"
+                options={parties.length > 0 ? parties : []}
+                value={ensureStringArray(filters.party)}
+                setValue={(value) => updateFilter('party', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
             </div>
-
-            {/* Residence Address Filter */}
-            <ResidenceAddressFilter
-              addressFilters={residenceAddressFilters}
-              addAddressFilter={addAddressFilter}
-              removeAddressFilter={removeAddressFilter}
-              clearAllAddressFilters={clearAllAddressFilters}
-              updateAddressFilter={(id, field, value) => {
-                updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
-              }}
-            />
-            
-            <MultiSelect
-              label="Registered Voter Party"
-              options={parties.length > 0 ? parties : []}
-              value={ensureStringArray(filters.party)}
-              setValue={(value) => updateFilter('party', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-        </CollapsibleSection>
-
-        <Separator />
+          </AccordionContent>
+        </AccordionItem>
 
         {/* Demographic Filters */}
-        <CollapsibleSection 
-          title="Demographics" 
-          defaultOpen={false}
-          filterCount={demographicsFilterCount}
-        >
-          <div className="space-y-3">
-            <MultiSelect
-              label="Age Range"
-              options={AGE_RANGE_OPTIONS}
-              value={ensureStringArray(filters.age)}
-              setValue={(value) => updateFilter('age', value)}
-              compact={true}
-            />
-            
-            <MultiSelect
-              label="Gender"
-              options={genders.length > 0 ? genders : []}
-              value={ensureStringArray(filters.gender)}
-              setValue={(value) => updateFilter('gender', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
+        <AccordionItem value="demographics">
+          <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+            <span>Demographics</span>
+            {demographicsFilterCount > 0 && (
+              <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                {demographicsFilterCount}
+              </span>
+            )}
+          </AccordionTrigger>
+          <AccordionContent className="pt-1 pl-2 space-y-3">
+            <div className="space-y-3">
+              <MultiSelect
+                label="Age Range"
+                options={AGE_RANGE_OPTIONS}
+                value={ensureStringArray(filters.age)}
+                setValue={(value) => updateFilter('age', value)}
+                compact={true}
+              />
+              
+              <MultiSelect
+                label="Gender"
+                options={genders.length > 0 ? genders : []}
+                value={ensureStringArray(filters.gender)}
+                setValue={(value) => updateFilter('gender', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
 
-            <MultiSelect
-              label="Race"
-              options={races.length > 0 ? races : []}
-              value={ensureStringArray(filters.race)}
-              setValue={(value) => updateFilter('race', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
-          </div>
-        </CollapsibleSection>
-
-        <Separator />
-
-        {/* Voting History Filters */}
-        <CollapsibleSection 
-          title="Voting History" 
-          defaultOpen={false}
-          filterCount={votingHistoryFilterCount}
-        >
-          <div className="space-y-3">
-            <MultiSelect
-              label="Voted by Election Type"
-              options={ELECTION_TYPE_OPTIONS}
-              value={ensureStringArray(filters.electionType)}
-              setValue={(value) => updateFilter('electionType', value)}
-              compact={true}
-            />
-
-            <MultiSelect
-              label="Election Year"
-              options={ELECTION_YEAR_OPTIONS}
-              value={ensureStringArray(filters.electionYear)}
-              setValue={(value) => updateFilter('electionYear', value)}
-              compact={true}
-            />
-
-            <DistrictMultiSelect
-              label="Election Date"
-              options={ELECTION_DATE_OPTIONS}
-              value={ensureStringArray(filters.electionDate)}
-              setValue={(value) => updateFilter('electionDate', value)}
-              compact={true}
-              formatLabel={formatDateLabel}
-            />
-
-            <div>
-              <label className="text-xs font-medium">Has Not Voted Since Year</label>
-              <Input
-                placeholder="Enter year (e.g. 2020)..."
-                className="h-8 text-xs"
-                value={notVotedYearInput}
-                onChange={(e) => setNotVotedYearInput(e.target.value)}
-                onBlur={() => {
-                  const year = notVotedYearInput.trim();
-                  if (year && !isNaN(Number(year))) {
-                    updateFilter('notVotedSinceYear', year);
-                  } else {
-                    setNotVotedYearInput(filters.notVotedSinceYear || '');
-                  }
-                }}
+              <MultiSelect
+                label="Race"
+                options={races.length > 0 ? races : []}
+                value={ensureStringArray(filters.race)}
+                setValue={(value) => updateFilter('race', value)}
+                isLoading={isLoading}
+                compact={true}
               />
             </div>
+          </AccordionContent>
+        </AccordionItem>
 
-            <MultiSelect
-              label="Ballot Style"
-              options={ballotStyles.length > 0 ? ballotStyles : []}
-              value={ensureStringArray(filters.ballotStyle)}
-              setValue={(value) => updateFilter('ballotStyle', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
+        {/* Voting History Filters */}
+        <AccordionItem value="voting-history">
+          <AccordionTrigger className="text-sm font-semibold flex justify-between items-center w-full py-3 px-1 hover:bg-muted/50 rounded-sm hover:no-underline">
+            <span>Voting History</span>
+            {votingHistoryFilterCount > 0 && (
+              <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-auto mr-2">
+                {votingHistoryFilterCount}
+              </span>
+            )}
+          </AccordionTrigger>
+          <AccordionContent className="pt-1 pl-2 space-y-3">
+            <div className="space-y-3">
+              <MultiSelect
+                label="Voted by Election Type"
+                options={ELECTION_TYPE_OPTIONS}
+                value={ensureStringArray(filters.electionType)}
+                setValue={(value) => updateFilter('electionType', value)}
+                compact={true}
+              />
 
-            <MultiSelect
-              label="Event Party"
-              options={eventParties.length > 0 ? eventParties : []}
-              value={ensureStringArray(filters.eventParty)}
-              setValue={(value) => updateFilter('eventParty', value)}
-              isLoading={isLoading}
-              compact={true}
-            />
+              <MultiSelect
+                label="Election Year"
+                options={ELECTION_YEAR_OPTIONS}
+                value={ensureStringArray(filters.electionYear)}
+                setValue={(value) => updateFilter('electionYear', value)}
+                compact={true}
+              />
 
-            <div>
-              <div className="text-xs font-medium mb-1">Ballot Cast</div>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: '', label: 'Any' },
-                  { value: 'absentee', label: 'Absentee' },
-                  { value: 'provisional', label: 'Provisional' },
-                  { value: 'supplemental', label: 'Supplemental' }
-                ].map(opt => (
-                  <Button
-                    key={opt.value}
-                    variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => updateFilter('voterEventMethod', opt.value)}
-                    className="text-xs py-1 px-2 h-auto"
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
+              <DistrictMultiSelect
+                label="Election Date"
+                options={ELECTION_DATE_OPTIONS}
+                value={ensureStringArray(filters.electionDate)}
+                setValue={(value) => updateFilter('electionDate', value)}
+                compact={true}
+                formatLabel={formatDateLabel}
+              />
+
+              <div>
+                <label className="text-xs font-medium">Has Not Voted Since Year</label>
+                <Input
+                  placeholder="Enter year (e.g. 2020)..."
+                  className="h-8 text-xs"
+                  value={notVotedYearInput}
+                  onChange={(e) => setNotVotedYearInput(e.target.value)}
+                  onBlur={() => {
+                    const year = notVotedYearInput.trim();
+                    if (year && !isNaN(Number(year))) {
+                      updateFilter('notVotedSinceYear', year);
+                    } else {
+                      setNotVotedYearInput(filters.notVotedSinceYear || '');
+                    }
+                  }}
+                />
+              </div>
+
+              <MultiSelect
+                label="Ballot Style"
+                options={ballotStyles.length > 0 ? ballotStyles : []}
+                value={ensureStringArray(filters.ballotStyle)}
+                setValue={(value) => updateFilter('ballotStyle', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+
+              <MultiSelect
+                label="Event Party"
+                options={eventParties.length > 0 ? eventParties : []}
+                value={ensureStringArray(filters.eventParty)}
+                setValue={(value) => updateFilter('eventParty', value)}
+                isLoading={isLoading}
+                compact={true}
+              />
+
+              <div>
+                <div className="text-xs font-medium mb-1">Ballot Cast</div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: '', label: 'Any' },
+                    { value: 'absentee', label: 'Absentee' },
+                    { value: 'provisional', label: 'Provisional' },
+                    { value: 'supplemental', label: 'Supplemental' }
+                  ].map(opt => (
+                    <Button
+                      key={opt.value}
+                      variant={filters.voterEventMethod === opt.value ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => updateFilter('voterEventMethod', opt.value)}
+                      className="text-xs py-1 px-2 h-auto"
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </CollapsibleSection>
-      </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }
