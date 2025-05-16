@@ -219,7 +219,7 @@ export function FilterPanel() {
   // Track which accordion items are open
   const [openItems, setOpenItems] = useState<string[]>(["participation-score", "geographic-filters", "voter-info"]);
   const previousOpenItems = useRef<string[]>(["participation-score", "geographic-filters", "voter-info"]);
-  
+
   const handleAccordionChange = (values: string[]) => { setOpenItems(values); };
 
   useEffect(() => {
@@ -227,7 +227,7 @@ export function FilterPanel() {
     if (newlyOpenedItem) {
       const activeHeader = activeFiltersHeaderRef.current;
       const scrollContainer = scrollableContainerRef.current;
-      
+
       if (!scrollContainer) return;
 
       const headerHeight = activeHeader ? activeHeader.offsetHeight : 0;
@@ -244,7 +244,7 @@ export function FilterPanel() {
           scrollContainer.scrollTop = estimatedScrollTop;
         }
       }, 50); // Short delay for this phase
-      
+
       // Phase 2: More precise smooth scrolling to the accordion item itself
       setTimeout(() => {
         const accordionItemElement = document.querySelector(`[data-accordion-id="${newlyOpenedItem}"]`);
@@ -343,7 +343,7 @@ export function FilterPanel() {
         sectionKey: 'demographics'
       });
     });
-    
+
     // Participation Filters
     ensureStringArray(filters.scoreRanges).forEach((value) => activeBadges.push({ id: `scoreRanges-${value}`, label: `Score: ${value}`, onRemove: () => updateFilter('scoreRanges', ensureStringArray(filters.scoreRanges).filter(v => v !== value)), sectionKey: 'participationScore' }));
     if (filters.notVotedSinceYear) activeBadges.push({ id: 'notVotedSinceYear', label: `Not Voted Since: ${filters.notVotedSinceYear}`, onRemove: () => updateFilter('notVotedSinceYear', ''), sectionKey: 'participationScore' });
@@ -366,15 +366,15 @@ export function FilterPanel() {
       });
     });
     ensureStringArray(filters.congressionalDistricts).forEach((value) => {
-       activeBadges.push({
+      activeBadges.push({
         id: `cd-${value}`,
         label: `Cong. District: ${value}`,
         onRemove: () => updateFilter('congressionalDistricts', ensureStringArray(filters.congressionalDistricts).filter(v => v !== value)),
         sectionKey: 'geographic'
       });
     });
-     ensureStringArray(filters.stateSenateDistricts).forEach((value) => {
-       activeBadges.push({
+    ensureStringArray(filters.stateSenateDistricts).forEach((value) => {
+      activeBadges.push({
         id: `ssd-${value}`,
         label: `State Senate: ${value}`,
         onRemove: () => updateFilter('stateSenateDistricts', ensureStringArray(filters.stateSenateDistricts).filter(v => v !== value)),
@@ -382,14 +382,14 @@ export function FilterPanel() {
       });
     });
     ensureStringArray(filters.stateHouseDistricts).forEach((value) => {
-       activeBadges.push({
+      activeBadges.push({
         id: `shd-${value}`,
         label: `State House: ${value}`,
         onRemove: () => updateFilter('stateHouseDistricts', ensureStringArray(filters.stateHouseDistricts).filter(v => v !== value)),
         sectionKey: 'geographic'
       });
     });
-     ensureStringArray(filters.redistrictingType).forEach((value) => {
+    ensureStringArray(filters.redistrictingType).forEach((value) => {
       activeBadges.push({
         id: `redistrictingType-${value}`,
         label: `Redistricting: ${value}`,
@@ -397,9 +397,9 @@ export function FilterPanel() {
         sectionKey: 'geographic'
       });
     });
-     // countyPrecincts and municipalPrecincts might be more complex if they are { county: string, precincts: string[] }
-     // For now, assuming they are simple string arrays for precinct names/IDs if directly filterable this way.
-     // If they are structured, this part needs adjustment.
+    // countyPrecincts and municipalPrecincts might be more complex if they are { county: string, precincts: string[] }
+    // For now, assuming they are simple string arrays for precinct names/IDs if directly filterable this way.
+    // If they are structured, this part needs adjustment.
     ensureStringArray(filters.countyPrecincts).forEach((value) => {
       activeBadges.push({
         id: `countyPrecinct-${value}`,
@@ -419,23 +419,23 @@ export function FilterPanel() {
 
 
     // Voting History / Elections Filters
-    ensureStringArray(filters.electionType).forEach((value) => activeBadges.push({ 
-        id: `electionType-${value}`,
-        label: `Election Type: ${value}`,
-        onRemove: () => updateFilter('electionType', ensureStringArray(filters.electionType).filter(v => v !== value)), 
-        sectionKey: 'votingHistory' 
+    ensureStringArray(filters.electionType).forEach((value) => activeBadges.push({
+      id: `electionType-${value}`,
+      label: `Election Type: ${value}`,
+      onRemove: () => updateFilter('electionType', ensureStringArray(filters.electionType).filter(v => v !== value)),
+      sectionKey: 'votingHistory'
     }));
     ensureStringArray(filters.electionYear).forEach((value) => activeBadges.push({ id: `electionYear-${value}`, label: `Election Year: ${value}`, onRemove: () => updateFilter('electionYear', ensureStringArray(filters.electionYear).filter(v => v !== value)), sectionKey: 'votingHistory' }));
     ensureStringArray(filters.electionDate).forEach((value) => activeBadges.push({ id: `electionDate-${value}`, label: `Election Date: ${formatDateLabel(value)}`, onRemove: () => updateFilter('electionDate', ensureStringArray(filters.electionDate).filter(v => v !== value)), sectionKey: 'votingHistory' }));
     ensureStringArray(filters.ballotStyle).forEach((value) => activeBadges.push({ id: `ballotStyle-${value}`, label: `Ballot Style: ${value}`, onRemove: () => updateFilter('ballotStyle', ensureStringArray(filters.ballotStyle).filter(v => v !== value)), sectionKey: 'votingHistory' }));
-    ensureStringArray(filters.eventParty).forEach((value) => activeBadges.push({ 
-        id: `eventParty-${value}`,
-        label: `Selected Party: ${value}`,
-        onRemove: () => updateFilter('eventParty', ensureStringArray(filters.eventParty).filter(v => v !== value)), 
-        sectionKey: 'votingHistory' 
+    ensureStringArray(filters.eventParty).forEach((value) => activeBadges.push({
+      id: `eventParty-${value}`,
+      label: `Selected Party: ${value}`,
+      onRemove: () => updateFilter('eventParty', ensureStringArray(filters.eventParty).filter(v => v !== value)),
+      sectionKey: 'votingHistory'
     }));
     if (filters.voterEventMethod) activeBadges.push({ id: 'voterEventMethod', label: `Ballot Cast: ${filters.voterEventMethod}`, onRemove: () => updateFilter('voterEventMethod', ''), sectionKey: 'votingHistory' });
-    
+
     return activeBadges;
   };
 
@@ -443,7 +443,7 @@ export function FilterPanel() {
 
   return (
     <div className="w-full h-full overflow-y-auto flex flex-col" ref={scrollableContainerRef}>
-      <div 
+      <div
         className="px-3 py-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
         ref={activeFiltersHeaderRef}
       >
@@ -451,9 +451,9 @@ export function FilterPanel() {
           <>
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-sm font-semibold text-foreground">Active Filters</h3>
-              <Button 
+              <Button
                 variant="ghost"
-                size="sm" 
+                size="sm"
                 className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 onClick={clearAllFilters}
               >
@@ -493,10 +493,10 @@ export function FilterPanel() {
           </div>
         )}
       </div>
-      
+
       <div className={cn("flex-grow px-3")} >
-        <Accordion 
-          type="multiple" 
+        <Accordion
+          type="multiple"
           className="w-full space-y-1"
           defaultValue={["participation-score", "geographic-filters", "voter-info"]}
           onValueChange={handleAccordionChange}
@@ -540,6 +540,9 @@ export function FilterPanel() {
                   }}
                 />
               </div>
+              <div>
+                <Separator className=" mt-4 my-3 mt-5" />
+              </div>
               {/* Never Voted Switch */}
               <div className="flex items-center justify-between space-x-2 pt-1">
                 <label htmlFor="never-voted-switch" className="text-xs font-medium">
@@ -578,11 +581,15 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
-              <Separator className="my-3" />
+              <div>
+                <Separator className="my-3 mt-5" />
+              </div>
 
               {/* Add Precinct Filters component */}
               <PrecinctFilters />
-              <Separator className="my-3" />
+              <div>
+                <Separator className="my-3 mt-5" />
+              </div>
 
               {/* Congressional District Filter */}
               <div className="space-y-2">
@@ -595,7 +602,9 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
-              <Separator className="my-3" />
+              <div>
+                <Separator className="my-3 mt-5" />
+              </div>
 
               {/* State Senate District Filter */}
               <div className="space-y-2">
@@ -608,7 +617,9 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
-              <Separator className="my-3" />
+              <div>
+                <Separator className="my-3 mt-5" />
+              </div>
 
               {/* State House District Filter */}
               <div className="space-y-2">
@@ -621,7 +632,9 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
-              <Separator className="my-3" />
+              <div>
+                <Separator className="my-3 mt-5" />
+              </div>
 
               <MultiSelect
                 label="Redistricting Type"
@@ -632,7 +645,7 @@ export function FilterPanel() {
               />
             </AccordionContent>
           </AccordionItem>
-          
+
           {/* Voter Info Filters */}
           <AccordionItem value="voter-info" data-accordion-id="voter-info">
             <AccordionTrigger className={cn(
@@ -656,7 +669,7 @@ export function FilterPanel() {
                   isLoading={isLoading}
                   compact={true}
                 />
-                                <Separator className="my-3" />
+                <Separator className="my-3" />
 
                 <MultiSelect
                   label="Inactive Status Reasons"
@@ -666,7 +679,7 @@ export function FilterPanel() {
                   isLoading={isLoading}
                   compact={true}
                 />
-                                <Separator className="my-3" />
+                <Separator className="my-3" />
 
                 <div>
                   <label className="text-xs font-medium">First Name</label>
@@ -674,7 +687,7 @@ export function FilterPanel() {
                     placeholder="Enter first name..."
                     className="h-8 text-xs"
                     value={firstNameInput}
-                    onChange={(e)=>setFirstNameInput(e.target.value)}
+                    onChange={(e) => setFirstNameInput(e.target.value)}
                     onBlur={() => updateFilter('firstName', firstNameInput.trim())}
                   />
                 </div>
@@ -684,7 +697,7 @@ export function FilterPanel() {
                     placeholder="Enter last name..."
                     className="h-8 text-xs"
                     value={lastNameInput}
-                    onChange={(e)=>setLastNameInput(e.target.value)}
+                    onChange={(e) => setLastNameInput(e.target.value)}
                     onBlur={() => updateFilter('lastName', lastNameInput.trim())}
                   />
                   {/* Apply button visible on mobile or always */}
@@ -709,8 +722,8 @@ export function FilterPanel() {
                     updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
                   }}
                 />
-                        <Separator className="my-3" />
-        
+                <Separator className="my-3" />
+
                 <MultiSelect
                   label="Registered Voter Party"
                   options={parties.length > 0 ? parties : []}
@@ -745,7 +758,7 @@ export function FilterPanel() {
                   setValue={(value) => updateFilter('age', value)}
                   compact={true}
                 />
-                                <Separator className="my-3" />
+                <Separator className="my-3" />
 
                 <MultiSelect
                   label="Gender"
@@ -772,9 +785,9 @@ export function FilterPanel() {
           {/* Elections Section (Formerly Voting History) - Renamed Header, Reordered Filters, Renamed Label */}
           <AccordionItem value="voting-history" data-accordion-id="voting-history">
             <AccordionTrigger className={cn(
-                "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
-                sectionColorConfig.votingHistory.accordionTriggerClasses
-              )}>
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              sectionColorConfig.votingHistory.accordionTriggerClasses
+            )}>
               <span>Elections</span>
               {votingHistoryFilterCount > 0 && (
                 <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.votingHistory.countBubble)}>
@@ -784,54 +797,54 @@ export function FilterPanel() {
             </AccordionTrigger>
             <AccordionContent className="pt-1 pl-2 space-y-3">
               <div className="space-y-3">
-                <DistrictMultiSelect 
-                  label="Election Date" 
-                  options={ELECTION_DATE_OPTIONS} 
-                  value={ensureStringArray(filters.electionDate)} 
-                  setValue={(value) => updateFilter('electionDate', value)} 
-                  compact={true} 
+                <DistrictMultiSelect
+                  label="Election Date"
+                  options={ELECTION_DATE_OPTIONS}
+                  value={ensureStringArray(filters.electionDate)}
+                  setValue={(value) => updateFilter('electionDate', value)}
+                  compact={true}
                   formatLabel={formatDateLabel}
                 />
-                                <Separator className="my-3" />
+                <Separator className="my-3" />
 
-                <MultiSelect 
+                <MultiSelect
                   label="Election Type"
-                  options={ELECTION_TYPE_OPTIONS} 
-                  value={ensureStringArray(filters.electionType)} 
-                  setValue={(value) => updateFilter('electionType', value)} 
+                  options={ELECTION_TYPE_OPTIONS}
+                  value={ensureStringArray(filters.electionType)}
+                  setValue={(value) => updateFilter('electionType', value)}
                   compact={true}
                 />
-                                <Separator className="my-3" />
+                <Separator className="my-3" />
 
-                <MultiSelect 
-                  label="Election Year" 
-                  options={ELECTION_YEAR_OPTIONS} 
-                  value={ensureStringArray(filters.electionYear)} 
-                  setValue={(value) => updateFilter('electionYear', value)} 
+                <MultiSelect
+                  label="Election Year"
+                  options={ELECTION_YEAR_OPTIONS}
+                  value={ensureStringArray(filters.electionYear)}
+                  setValue={(value) => updateFilter('electionYear', value)}
                   compact={true}
                 />
-                                <Separator className="my-3" />
+                <Separator className="my-3" />
 
-                <MultiSelect 
+                <MultiSelect
                   label="Selected Party"
-                  options={eventParties.length > 0 ? eventParties : []} 
-                  value={ensureStringArray(filters.eventParty)} 
-                  setValue={(value) => updateFilter('eventParty', value)} 
-                  isLoading={isLoading} 
+                  options={eventParties.length > 0 ? eventParties : []}
+                  value={ensureStringArray(filters.eventParty)}
+                  setValue={(value) => updateFilter('eventParty', value)}
+                  isLoading={isLoading}
                   compact={true}
                 />
-                                <Separator className="my-3" />
+                <Separator className="my-3" />
 
-                <MultiSelect 
-                  label="Ballot Style" 
-                  options={ballotStyles.length > 0 ? ballotStyles : []} 
-                  value={ensureStringArray(filters.ballotStyle)} 
-                  setValue={(value) => updateFilter('ballotStyle', value)} 
-                  isLoading={isLoading} 
+                <MultiSelect
+                  label="Ballot Style"
+                  options={ballotStyles.length > 0 ? ballotStyles : []}
+                  value={ensureStringArray(filters.ballotStyle)}
+                  setValue={(value) => updateFilter('ballotStyle', value)}
+                  isLoading={isLoading}
                   compact={true}
                 />
-                              <Separator className="my-3" />
-  
+                <Separator className="my-3" />
+
                 <div>
                   <div className="text-xs font-medium mb-1">Ballot Cast</div>
                   <div className="flex flex-wrap gap-2">

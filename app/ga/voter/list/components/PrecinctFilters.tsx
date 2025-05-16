@@ -304,8 +304,9 @@ export function PrecinctFilters() {
       <div className="space-y-2">
         {renderCountyPrecinctSection()}
       </div>
-      <Separator className="my-3" />
-
+      <div>
+        <Separator className="my-3 mt-5" />
+      </div>
       {/* Municipal Precinct Filter */}
       <div className="space-y-2">
         {renderMunicipalPrecinctSection()}
