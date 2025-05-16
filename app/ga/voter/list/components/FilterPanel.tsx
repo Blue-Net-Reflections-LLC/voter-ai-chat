@@ -504,7 +504,7 @@ export function FilterPanel() {
           {/* Participation Section - Renamed Header and Input Label, Moved Filter In */}
           <AccordionItem value="participation-score" data-accordion-id="participation-score">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.participationScore.accordionTriggerClasses
             )}>
               <span>Participation</span>
@@ -561,7 +561,7 @@ export function FilterPanel() {
           {/* Geographic Filters Section - Renamed Header */}
           <AccordionItem value="geographic-filters" data-accordion-id="geographic-filters">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.geographic.accordionTriggerClasses
             )}>
               <span>Geography</span>
@@ -649,7 +649,7 @@ export function FilterPanel() {
           {/* Voter Info Filters */}
           <AccordionItem value="voter-info" data-accordion-id="voter-info">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.voterInfo.accordionTriggerClasses
             )}>
               <span>Voter Info</span>
@@ -739,7 +739,7 @@ export function FilterPanel() {
           {/* Demographic Filters */}
           <AccordionItem value="demographics" data-accordion-id="demographics">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.demographics.accordionTriggerClasses
             )}>
               <span>Demographics</span>
@@ -785,7 +785,7 @@ export function FilterPanel() {
           {/* Elections Section (Formerly Voting History) - Renamed Header, Reordered Filters, Renamed Label */}
           <AccordionItem value="voting-history" data-accordion-id="voting-history">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-1 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.votingHistory.accordionTriggerClasses
             )}>
               <span>Elections</span>
