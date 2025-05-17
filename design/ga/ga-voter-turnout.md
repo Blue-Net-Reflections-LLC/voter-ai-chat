@@ -242,6 +242,107 @@ This section outlines the proposed visual structure and key UI components for th
 - This feature replaces charts previously in `/ga/voter/charts`.
 - Existing code for charts in that section should be backed up or archived before removal.
 
+## 9. Implementation Task List
+
+This section outlines a high-level list of tasks required to implement the Georgia Voter Turnout Analysis feature.
+
+### 9.1. Backend Development
+1.  **API Design & Prototyping:**
+    *   Define request/response schemas for the new turnout data endpoint(s).
+    *   Consider parameters for geography, election date, selected turnout dimensions (race, gender, age), census inclusion.
+2.  **Database Query Development (Core Logic):**
+    *   Develop SQL queries or data retrieval logic for fetching registered voters and participated voters based on dynamic geography selections (County, District, Precinct, Municipality, Zip Code) and a selected election date.
+    *   Implement logic for calculating overall turnout rates.
+3.  **Database Query Development (Turnout Dimension Breakdowns):
+    *   Extend queries to handle single turnout dimension breakdowns (Race, Gender, Age Range), providing counts and turnout rates per category.
+    *   Implement logic for Cartesian product breakdowns (up to 3 dimensions) for reporting, providing counts and turnout rates per combined category.
+4.  **Database Query Development (Charting Data - MVP):
+    *   For charts with a single selected data point (e.g., Age Range): Develop queries to calculate turnout rates *within each specific demographic category* for each geographical unit.
+    *   Ensure queries can provide data needed to calculate the "Summed Demographic Turnout Rate" for sorting.
+    *   For charts with no data point selected: Ensure queries provide overall turnout for each geographical unit.
+5.  **Census Data Integration:**
+    *   Develop logic to join voter data with aggregated census data (`stg_processed_census_tract_data` or similar) based on the selected geography.
+    *   Ensure census metrics are correctly averaged/aggregated to the report's geographical level.
+6.  **API Endpoint Implementation:**
+    *   Build robust API endpoint(s) that orchestrate the query execution based on input parameters.
+    *   Implement data transformation/formatting for the response.
+    *   Ensure proper error handling and status codes.
+7.  **Performance Optimization:**
+    *   Review and optimize all database queries for performance, aiming for the <1 minute SLA.
+    *   Consider indexing strategies for relevant tables.
+
+### 9.2. Frontend Development
+1.  **Project Setup & Structure:**
+    *   Create new route and page components for `/ga/voter/turnout`.
+2.  **Controls UI Implementation (Section 2.10.A):
+    *   Implement Geography selection controls (dropdowns for Area Type, Specific Area, conditional Sub-Area Type, Specific Sub-Area), including logic for populating dependent dropdowns.
+    *   Implement Election Date selection dropdown.
+    *   Implement Data Point selection for Reporting (multi-select/checkbox group for Race, Gender, Age Range).
+    *   Implement Data Point selection for Charting (MVP - single select dropdown for Race, Gender, Age Range).
+    *   Implement "Include Census Data" checkbox.
+    *   Implement "Generate Report & Chart" button with logic for enabling/disabling based on required selections.
+3.  **State Management:**
+    *   Implement state management (e.g., using React Context, Zustand, Redux, or component state) for all user selections, fetched data, loading states, and error states.
+4.  **API Integration:**
+    *   Develop service/hook to call the new backend API endpoint(s).
+    *   Handle API request/response lifecycle (loading, success, error).
+5.  **Report Display UI (Section 2.10.B1):
+    *   Implement dynamic table rendering for the report based on API response (dynamic columns and rows).
+    *   Display calculated metrics (counts, turnout rates, census data).
+    *   Implement display of report aggregations (Average Turnout Rate, Total Voters Participated).
+    *   Implement "Download Report (CSV/Excel)" functionality.
+6.  **Chart Display UI (MVP - Section 2.10.B2):
+    *   Integrate a charting library (e.g., Recharts, Chart.js, Nivo).
+    *   Implement logic to render a standard horizontal bar chart (no data point selected).
+    *   Implement logic to render a row stacked horizontal bar chart (single data point selected), ensuring segments represent demographic-specific turnout and total bar length is the sum of these rates.
+    *   Implement sorting of chart rows as per requirements.
+    *   Implement X-axis scaling to accommodate sums >100%.
+    *   Implement chart legends.
+    *   Implement "Download Chart (SVG)" and "Download Chart (PNG)" functionality.
+    *   Add tooltips for chart elements.
+7.  **URL Parameter Management:**
+    *   Implement logic to read initial selections from URL query parameters on page load.
+    *   Implement logic to update URL query parameters when user selections change and a report/chart is generated.
+8.  **Responsiveness & Styling:**
+    *   Ensure the page layout and components are responsive.
+    *   Apply consistent styling, reusing existing UI library components where possible.
+    *   Implement loading indicators and user-friendly error messages.
+
+### 9.3. Data Setup & Verification
+1.  **Finalize Demographic Categories:**
+    *   Confirm and document the definitive list of categories for Race and Gender to be used in queries and display.
+    *   Ensure Age Range categories are consistent between constants, backend logic, and frontend display.
+2.  **Verify Census Data Mapping:**
+    *   Confirm the linkage between geographical units in voter data and census tracts/data.
+    *   Verify accuracy of aggregated census metrics.
+
+### 9.4. Testing
+1.  **Backend Unit Tests:**
+    *   Test individual query components and calculation logic.
+2.  **API Integration Tests:**
+    *   Test API endpoints with various valid and invalid parameter combinations.
+    *   Verify response schemas and data accuracy.
+3.  **Frontend Unit/Component Tests:**
+    *   Test UI components in isolation (controls, report table, chart wrapper).
+    *   Test state management logic.
+4.  **End-to-End (E2E) Tests:**
+    *   Simulate user flows: selecting filters, generating reports/charts, verifying data, downloading.
+    *   Test scenarios with different geography levels and data point combinations.
+    *   Verify URL parameter updates.
+5.  **Performance Testing:**
+    *   Test report and chart generation times under typical and high-load scenarios.
+6.  **Cross-Browser & Cross-Device Testing:**
+    *   Ensure consistent functionality and appearance across major browsers and common device sizes.
+
+### 9.5. Documentation & Deployment
+1.  **Code Documentation:**
+    *   Ensure backend and frontend code is well-commented, especially complex logic.
+2.  **Deployment Preparation:**
+    *   Prepare deployment scripts/configurations.
+3.  **Old Feature Archival/Removal:**
+    *   Backup code for the old `/ga/voter/charts` section.
+    *   Remove the old `/ga/voter/charts` routes and components after successful deployment and verification of the new feature.
+
 
 
 
