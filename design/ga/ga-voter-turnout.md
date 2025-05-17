@@ -233,6 +233,121 @@ This section outlines the proposed visual structure and key UI components for th
 ### 6.5. Backend API
 - New API endpoints will be required to support fetching data for reports and charts based on user selections. These endpoints will encapsulate the complex query logic.
 
+**Proposed Endpoint Design: Voter Turnout Analysis**
+
+**Endpoint:** `POST /api/ga/voter/turnout-analysis`
+
+**Method:** `POST` (Using POST to accommodate potentially complex/numerous filter parameters in the request body)
+
+**Request Body (JSON):**
+```json
+{
+  "geography": {
+    "areaType": "County", // "County", "District", "ZipCode"
+    "areaValue": "067",   // e.g., County FIPS code, District ID, Zip Code
+    "subAreaType": "Precinct", // Optional: "Precinct", "Municipality" (if areaType is "County")
+    "subAreaValue": "P001" // Optional: e.g., Precinct ID, Municipality ID
+  },
+  "electionDate": "2024-11-05", // YYYY-MM-DD format
+  "reportDataPoints": ["Race", "AgeRange"], // Array of strings: "Race", "Gender", "AgeRange". Max 3. Empty array if no breakdown.
+  "chartDataPoint": "AgeRange", // Single string: "Race", "Gender", "AgeRange", or null/empty for basic turnout chart.
+  "includeCensusData": true // boolean
+}
+```
+
+**Parameters Description:**
+*   `geography`: Object defining the selected geographical scope.
+    *   `areaType`: The primary level of geography selected.
+    *   `areaValue`: The specific value for the selected `areaType`.
+    *   `subAreaType` (Optional): If `areaType` is "County", this can specify a finer level like "Precinct" or "Municipality".
+    *   `subAreaValue` (Optional): The specific value for the `subAreaType`.
+*   `electionDate`: The selected election date.
+*   `reportDataPoints`: An array of strings specifying the demographic dimensions for the report's Cartesian product breakdown.
+*   `chartDataPoint`: A single string specifying the demographic dimension for the chart's breakdown (MVP). If null or empty, a basic overall turnout chart is expected.
+*   `includeCensusData`: Boolean indicating whether to include aggregated census data in the report.
+
+**Response Body (JSON Success Example - Chart by AgeRange, Report by Race & AgeRange):**
+```json
+{
+  "report": {
+    "rows": [
+      {
+        "geoLabel": "Precinct P001 (Cobb County)", // e.g., "Cobb County", "District 5", "Precinct P001", "City of Marietta"
+        "totalRegistered": 5000,
+        "totalVoted": 3000,
+        "overallTurnoutRate": 0.60, // (totalVoted / totalRegistered)
+        "breakdowns": { // Cartesian product for reportDataPoints
+          "White_18-23_Registered": 100,
+          "White_18-23_Voted": 40,
+          "White_18-23_Turnout": 0.40,
+          "Black_18-23_Registered": 80,
+          "Black_18-23_Voted": 30,
+          "Black_18-23_Turnout": 0.375,
+          // ... other combinations for Race & AgeRange
+        },
+        "censusData": { // Only if includeCensusData was true
+          "avgMedianHouseholdIncome": 75000,
+          "avgPctBachelorsOrHigher": 0.45
+          // ... other census metrics
+        }
+      }
+      // ... other geographical rows (e.g., multiple precincts if a county was selected and subAreaType was Precinct)
+    ],
+    "aggregations": {
+      "averageOverallTurnoutRate": 0.58, // Average of overallTurnoutRate from all rows
+      "grandTotalVoted": 15000 // Sum of totalVoted from all rows
+    }
+  },
+  "chart": { // Data specifically for the selected chartDataPoint
+    "type": "stackedRow", // "stackedRow" or "bar" (if no chartDataPoint)
+    "rows": [
+      {
+        "geoLabel": "Precinct P001 (Cobb County)",
+        "summedDemographicTurnoutRate": 1.85, // Sum of turnout rates for each age group below
+        "segments": [ // One entry per category in chartDataPoint (e.g., AgeRange)
+          { "label": "18-23", "turnoutRate": 0.45, "color": "#FF0000" }, // (Voted 18-23 / Registered 18-23)
+          { "label": "25-44", "turnoutRate": 0.40, "color": "#00FF00" },
+          { "label": "45-64", "turnoutRate": 0.60, "color": "#0000FF" },
+          { "label": "65-74", "turnoutRate": 0.25, "color": "#FFFF00" },
+          { "label": "75+", "turnoutRate": 0.15, "color": "#FF00FF" }
+        ]
+      }
+      // ... other geographical rows, sorted by summedDemographicTurnoutRate (lowest first)
+    ],
+    "xAxisMax": 2.50 // Suggested max for X-axis if summed rates can exceed 1.0 (100%)
+  },
+  "metadata": {
+    "requestParameters": { /* echo back the request for reference */ },
+    "generatedAt": "2023-10-27T10:30:00Z",
+    "notes": "Data prepared for chart sorted by Summed Demographic Turnout Rate."
+  }
+}
+```
+
+**Key aspects of the Response:**
+*   **`report.rows`**: Array of objects, each representing a geographical unit.
+    *   Includes overall registration, voted counts, and turnout rate for that unit.
+    *   `breakdowns`: Contains the Cartesian product results for the selected `reportDataPoints`. Each key is a combination (e.g., "White_18-23"), and the value is an object with registered, voted, and turnout for that specific slice.
+    *   `censusData`: Included if requested.
+*   **`report.aggregations`**: Summary statistics for the entire report.
+*   **`chart.rows`**: Array of objects, each representing a geographical unit, formatted for the chart.
+    *   `summedDemographicTurnoutRate`: Crucial for sorting and understanding the bar length in the "summed" stacked bar chart.
+    *   `segments`: An array where each object represents a segment in the stacked bar (e.g., one age group), containing its specific turnout rate. This is the turnout *within* that demographic for that location.
+*   **`chart.type`**: Indicates to the frontend which chart type to render.
+*   **`chart.xAxisMax`**: A hint for the frontend for scaling the X-axis of the summed stacked bar chart.
+*   **`metadata`**: Useful for debugging and context.
+
+**Error Response Example:**
+```json
+{
+  "error": {
+    "code": "INVALID_PARAMETER",
+    "message": "Invalid election date format. Expected YYYY-MM-DD.",
+    "details": "electionDate: '2023/10/27'"
+  }
+}
+```
+
 ## 7. Out of Scope for MVP (Minimum Viable Product)
 
 - **Charting Cartesian Products:** Charts will only support a single selected data point for breakdown in the MVP. Multi-data point (Cartesian product) visualizations are deferred.
