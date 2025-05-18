@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PanelLeftOpen, PanelRightOpen } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { TurnoutControlsSidebar } from './TurnoutControlsSidebar';
 import { ReportTabContent } from './ReportTabContent';
@@ -13,12 +14,13 @@ import { useLookupData, MultiSelectOption } from '@/app/ga/voter/list/hooks/useL
 
 // API request body structure (subset of TurnoutSelections)
 export interface ApiGeographySelection {
-  areaType: 'County' | 'District';
+  areaType: 'County' | 'District' | 'ZipCode';
   areaValue: string; // Specific county FIPS, district number, or "ALL"
   districtType?: 'Congressional' | 'StateSenate' | 'StateHouse'; // Only if areaType is 'District'
   // Sub-area type for breaking down the selected County/District
   // The backend will group by these within the primary areaValue
   subAreaType?: 'Precinct' | 'Municipality' | 'ZipCode'; 
+  subAreaValue?: string;
 }
 
 // API response data types
@@ -80,12 +82,12 @@ export interface TurnoutSelections {
 }
 
 const initialSelections: TurnoutSelections = {
-  primaryGeoType: null,
-  specificCounty: null,
+  primaryGeoType: 'County',
+  specificCounty: 'ALL',
   specificDistrictType: null,
   specificDistrictNumber: null,
   secondaryBreakdown: null,
-  electionDate: null,
+  electionDate: '2020-11-03',
   reportDataPoints: [],
   chartDataPoint: null,
   includeCensusData: false,
@@ -94,11 +96,17 @@ const initialSelections: TurnoutSelections = {
 const GeorgiaVoterTurnoutPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selections, setSelections] = useState<TurnoutSelections>(initialSelections);
+  
+  // Add a ref to track if we already processed URL params
+  const initialParamsProcessedRef = useRef(false);
 
   const [apiData, setApiData] = useState<TurnoutAnalysisApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('report');
+  
+  // Move the useSearchParams hook here, at component level
+  const searchParams = useSearchParams();
 
   // Integrate useLookupData
   const {
@@ -114,7 +122,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     setSelections(prevSelections => ({ ...prevSelections, ...newSelectionValues }));
   }, []);
 
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
@@ -136,6 +144,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       };
       if (selections.secondaryBreakdown && selections.specificCounty !== 'ALL') {
         apiGeography.subAreaType = selections.secondaryBreakdown;
+        apiGeography.subAreaValue = "ALL";
       }
     } else if (selections.primaryGeoType === 'District') {
       if (!selections.specificDistrictType || !selections.specificDistrictNumber) {
@@ -150,6 +159,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       };
       if (selections.secondaryBreakdown && selections.specificDistrictNumber !== 'ALL') {
         apiGeography.subAreaType = selections.secondaryBreakdown;
+        apiGeography.subAreaValue = "ALL";
       }
     }
 
@@ -158,6 +168,33 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       setIsLoading(false);
       return;
     }
+    
+    // Update URL parameters for bookmarking/sharing (without triggering navigation)
+    const urlParams = new URLSearchParams();
+    
+    // Set basic URL params
+    urlParams.set('areaType', apiGeography.areaType);
+    urlParams.set('areaValue', apiGeography.areaValue);
+    if (apiGeography.districtType) {
+      urlParams.set('districtType', apiGeography.districtType);
+    }
+    if (apiGeography.subAreaType) {
+      urlParams.set('subAreaType', apiGeography.subAreaType);
+    }
+    if (selections.electionDate) {
+      urlParams.set('electionDate', selections.electionDate);
+    }
+    if (selections.reportDataPoints.length > 0) {
+      urlParams.set('reportDataPoints', JSON.stringify(selections.reportDataPoints));
+    }
+    if (selections.chartDataPoint) {
+      urlParams.set('chartDataPoint', selections.chartDataPoint);
+    }
+    urlParams.set('includeCensusData', String(selections.includeCensusData));
+    urlParams.set('outputType', outputType);
+    
+    // Update URL without navigation
+    window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
 
     try {
       const requestBody = {
@@ -195,7 +232,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selections, activeTab, setIsLoading, setError, setApiData]);
   
   useEffect(() => {
     const handleResize = () => {
@@ -210,6 +247,82 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // After the useEffect for window resize, add URL parameter handling
+  // This will only generate a report if valid parameters are found in the URL
+  useEffect(() => {
+    // Only process URL params once to avoid infinite loops
+    if (initialParamsProcessedRef.current) return;
+    
+    // Only try to load from URL params if lookup data is available
+    if (!isLookupLoading && !lookupError) {
+      // Check if we have geography and election date parameters
+      const areaType = searchParams.get('areaType');
+      const areaValue = searchParams.get('areaValue');
+      const electionDate = searchParams.get('electionDate');
+      
+      if (areaType && areaValue && electionDate) {
+        // We have the minimum parameters to generate a report
+        const urlSelections: Partial<TurnoutSelections> = {
+          primaryGeoType: (areaType as 'County' | 'District' | null),
+          electionDate: electionDate
+        };
+        
+        // Set appropriate additional parameters
+        if (areaType === 'County') {
+          urlSelections.specificCounty = areaValue;
+          
+          // Handle sub-area breakdown if present
+          const subAreaType = searchParams.get('subAreaType');
+          if (subAreaType) {
+            urlSelections.secondaryBreakdown = (subAreaType as 'Precinct' | 'Municipality' | 'ZipCode' | null);
+          }
+        } else if (areaType === 'District') {
+          urlSelections.specificDistrictNumber = areaValue;
+          const districtType = searchParams.get('districtType');
+          if (districtType) {
+            urlSelections.specificDistrictType = (districtType as 'Congressional' | 'StateSenate' | 'StateHouse' | null);
+          }
+        }
+        
+        // Set report data points if present
+        const reportDataPoints = searchParams.get('reportDataPoints');
+        if (reportDataPoints) {
+          try {
+            urlSelections.reportDataPoints = JSON.parse(reportDataPoints);
+          } catch (e) {
+            console.warn('Invalid reportDataPoints in URL params');
+          }
+        }
+        
+        // Set chart data point if present
+        const chartDataPoint = searchParams.get('chartDataPoint');
+        if (chartDataPoint) {
+          urlSelections.chartDataPoint = chartDataPoint;
+        }
+        
+        // Set census data inclusion if present
+        const includeCensusData = searchParams.get('includeCensusData');
+        if (includeCensusData) {
+          urlSelections.includeCensusData = includeCensusData === 'true';
+        }
+        
+        // Update selections
+        setSelections(prev => ({ ...prev, ...urlSelections }));
+        
+        // Mark as processed before triggering the report generation
+        initialParamsProcessedRef.current = true;
+        
+        // Generate the report directly, but after a timeout to ensure state updates
+        setTimeout(() => {
+          handleGenerateReport();
+        }, 0);
+      } else {
+        // No valid URL params, still mark as processed
+        initialParamsProcessedRef.current = true;
+      }
+    }
+  }, [isLookupLoading, lookupError, searchParams]); // Remove handleGenerateReport from deps
+
   // Display lookup loading/error states if necessary
   if (isLookupLoading) {
     return <div className="flex items-center justify-center h-screen">Loading lookup data...</div>;
@@ -220,7 +333,12 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
 
   return (
     <div className={`flex h-screen bg-background`}>
-      <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+      <Sheet open={isSidebarOpen} onOpenChange={(open) => {
+        // Only update if the value actually changed
+        if (open !== isSidebarOpen) {
+          setIsSidebarOpen(open);
+        }
+      }}>
         <SheetContent side="left" className="w-80 sm:w-96 p-0 flex flex-col border-r">
           <TurnoutControlsSidebar 
             selections={selections}
@@ -250,26 +368,28 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
 
         <div className="p-4 flex-grow overflow-y-auto">
           <div className="w-full">
-            <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="report">Report</TabsTrigger>
-                <TabsTrigger value="chart">Chart</TabsTrigger>
-              </TabsList>
-              <TabsContent value="report">
-                <ReportTabContent 
-                  reportData={apiData?.report || null} 
-                  isLoading={isLoading && activeTab === 'report'}
-                  error={error}
-                />
-              </TabsContent>
-              <TabsContent value="chart">
-                <ChartTabContent 
-                  chartData={apiData?.chart || null} 
-                  isLoading={isLoading && activeTab === 'chart'} 
-                  error={error} 
-                />
-              </TabsContent>
-            </Tabs>
+            <div className="mb-4">
+              <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="report">Report</TabsTrigger>
+                  <TabsTrigger value="chart">Chart</TabsTrigger>
+                </TabsList>
+                <TabsContent value="report">
+                  <ReportTabContent 
+                    reportData={apiData?.report || null} 
+                    isLoading={isLoading && activeTab === 'report'}
+                    error={error}
+                  />
+                </TabsContent>
+                <TabsContent value="chart">
+                  <ChartTabContent 
+                    chartData={apiData?.chart || null} 
+                    isLoading={isLoading && activeTab === 'chart'} 
+                    error={error} 
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
           
           {isLoading && !isLookupLoading && (

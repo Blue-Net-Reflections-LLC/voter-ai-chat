@@ -8,7 +8,7 @@ interface TurnoutAnalysisRequestBody {
   geography: {
     areaType: 'County' | 'District' | 'ZipCode';
     areaValue: string;
-    subAreaType?: 'Precinct' | 'Municipality';
+    subAreaType?: 'Precinct' | 'Municipality' | 'ZipCode';
     subAreaValue?: string;
   };
   electionDate: string; // YYYY-MM-DD
@@ -27,7 +27,7 @@ function isValidRequestBody(body: any): body is TurnoutAnalysisRequestBody {
   
   // Validate subAreaType and subAreaValue if areaType is County and subAreaType is provided
   if (body.geography.areaType === 'County' && body.geography.subAreaType) {
-    if (!['Precinct', 'Municipality'].includes(body.geography.subAreaType)) return false;
+    if (!['Precinct', 'Municipality', 'ZipCode'].includes(body.geography.subAreaType)) return false;
     if (typeof body.geography.subAreaValue !== 'string' || body.geography.subAreaValue.trim() === '') return false;
   }
   if (body.geography.areaType !== 'County' && (body.geography.subAreaType || body.geography.subAreaValue)) {

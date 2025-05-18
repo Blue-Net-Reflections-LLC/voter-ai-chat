@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,11 @@ import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
   useReactTable,
 } from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { ApiReportRow, ApiReportData } from './page'; // Import types from page.tsx
 
 // Props interface updated to use specific types
@@ -35,6 +38,10 @@ const formatNumber = (value: number | null | undefined) => {
 };
 
 export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, isLoading, error }) => {
+  // Add sorting state - default to sort by overallTurnoutRate ascending (lowest to highest)
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'overallTurnoutRate', desc: false }
+  ]);
 
   const columns = useMemo<ColumnDef<ApiReportRow>[]>(() => {
     if (!reportData || reportData.rows.length === 0) return [];
@@ -42,12 +49,79 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
     const firstRow = reportData.rows[0];
     const dynamicColumns: ColumnDef<ApiReportRow>[] = [];
 
-    // Base columns
+    // Base columns with sortable headers
     dynamicColumns.push(
-      { accessorKey: 'geoLabel', header: 'Geo Unit' },
-      { accessorKey: 'totalRegistered', header: 'Total Registered', cell: ({ getValue }) => formatNumber(getValue<number>()) },
-      { accessorKey: 'totalVoted', header: 'Total Voted', cell: ({ getValue }) => formatNumber(getValue<number>()) },
-      { accessorKey: 'overallTurnoutRate', header: 'Overall Turnout', cell: ({ getValue }) => formatPercent(getValue<number>()) }
+      { 
+        accessorKey: 'geoLabel', 
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
+          >
+            Geo Unit
+            <span className="ml-2">
+              {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
+               column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
+               <ArrowUpDown className="h-4 w-4" />}
+            </span>
+          </Button>
+        ),
+      },
+      { 
+        accessorKey: 'totalRegistered', 
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
+          >
+            Total Registered
+            <span className="ml-2">
+              {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
+               column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
+               <ArrowUpDown className="h-4 w-4" />}
+            </span>
+          </Button>
+        ),
+        cell: ({ getValue }) => formatNumber(getValue<number>()) 
+      },
+      { 
+        accessorKey: 'totalVoted', 
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
+          >
+            Total Voted
+            <span className="ml-2">
+              {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
+               column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
+               <ArrowUpDown className="h-4 w-4" />}
+            </span>
+          </Button>
+        ),
+        cell: ({ getValue }) => formatNumber(getValue<number>()) 
+      },
+      { 
+        accessorKey: 'overallTurnoutRate', 
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
+          >
+            Overall Turnout
+            <span className="ml-2">
+              {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
+               column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
+               <ArrowUpDown className="h-4 w-4" />}
+            </span>
+          </Button>
+        ),
+        cell: ({ getValue }) => formatPercent(getValue<number>()) 
+      }
     );
 
     // Breakdown columns (dynamically generated)
@@ -69,7 +143,20 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
         });
         dynamicColumns.push({
           id: `breakdown-${breakdownKey}-turnout`,
-          header: `${breakdownHeader} - Turnout`,
+          header: ({ column }) => (
+            <Button
+              variant="ghost"
+              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+              className="p-0 hover:bg-transparent whitespace-nowrap"
+            >
+              {`${breakdownHeader} - Turnout`}
+              <span className="ml-2">
+                {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
+                column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
+                <ArrowUpDown className="h-4 w-4" />}
+              </span>
+            </Button>
+          ),
           accessorFn: (row) => row.breakdowns[breakdownKey]?.turnout,
           cell: ({ getValue }) => formatPercent(getValue<number>()),
         });
@@ -88,7 +175,20 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
 
             dynamicColumns.push({
                 accessorKey: `censusData.${censusKey}`,
-                header: `Census: ${header}`,
+                header: ({ column }) => (
+                  <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="p-0 hover:bg-transparent whitespace-nowrap"
+                  >
+                    {`Census: ${header}`}
+                    <span className="ml-2">
+                      {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
+                      column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
+                      <ArrowUpDown className="h-4 w-4" />}
+                    </span>
+                  </Button>
+                ),
                 cell: ({ getValue }) => {
                     const val = getValue<number | string>();
                     if (typeof val === 'number') {
@@ -110,6 +210,11 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
   const table = useReactTable({
     data: reportData?.rows || [],
     columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
     getCoreRowModel: getCoreRowModel(),
   });
 
