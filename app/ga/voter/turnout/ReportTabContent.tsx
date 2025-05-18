@@ -128,117 +128,46 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
     if (firstRow.breakdowns) {
       const breakdownKeys = Object.keys(firstRow.breakdowns);
       if (breakdownKeys.length > 0) {
-        // Group breakdown keys by data point type (Race, Gender, AgeRange)
-        const groupedBreakdowns: Record<string, string[]> = {};
-        
+        // New logic to handle single and Cartesian product keys
         breakdownKeys.forEach(key => {
-          const [dataPoint, category] = key.split(':');
-          if (!groupedBreakdowns[dataPoint]) {
-            groupedBreakdowns[dataPoint] = [];
-          }
-          groupedBreakdowns[dataPoint].push(key);
-        });
-        
-        // For each data point type, add the columns for all categories
-        Object.entries(groupedBreakdowns).forEach(([dataPoint, keys]) => {
-          // Add a header column for this data point group
-          dynamicColumns.push({
-            id: `header-${dataPoint}`,
-            header: () => (
-              <div className="font-bold text-center border-b pb-1 mb-1">
-                {dataPoint} Breakdown
-              </div>
-            ),
-            cell: () => null
+          // Example key for single: "Race:White"
+          // Example key for Cartesian: "AgeRange:18-23_Race:White"
+          
+          const parts = key.split('_'); // ["AgeRange:18-23", "Race:White"] or ["Race:White"]
+          
+          const categoryDisplayParts: string[] = [];
+          parts.forEach(part => {
+            const [dimension, categoryValue] = part.split(':');
+            // Use a mapping for more readable category values if necessary, similar to existing displayCategory
+            // For now, directly use categoryValue, or enhance this mapping as needed.
+            let displayValue = categoryValue;
+            if (dimension === 'Race') {
+              displayValue = categoryValue === 'WH' ? 'White' : 
+                             categoryValue === 'BH' ? 'Black' : 
+                             categoryValue === 'AP' ? 'Asian/Pacific' :
+                             categoryValue === 'HP' ? 'Hispanic' :
+                             categoryValue === 'OT' ? 'Other' :
+                             categoryValue === 'U' ? 'Unknown' : categoryValue;
+            } else if (dimension === 'Gender') {
+              displayValue = categoryValue === 'M' ? 'Male' :
+                             categoryValue === 'F' ? 'Female' :
+                             categoryValue === 'O' ? 'Other' : categoryValue; // Assuming 'O' for Other if used
+            }
+            // Add other dimension mappings if needed (e.g., AgeRange is usually fine as is)
+            categoryDisplayParts.push(displayValue);
           });
           
-          // Add columns for each category in this data point
-          keys.forEach(key => {
-            const [dataPoint, category] = key.split(':');
-            const displayCategory = category === 'WH' ? 'White' : 
-                                   category === 'BH' ? 'Black' : 
-                                   category === 'AP' ? 'Asian/Pacific' :
-                                   category === 'HP' ? 'Hispanic' :
-                                   category === 'OT' ? 'Other' :
-                                   category === 'U' ? 'Unknown' :
-                                   category === 'M' ? 'Male' :
-                                   category === 'F' ? 'Female' : category;
-            
-            dynamicColumns.push({
-              id: `${key}-registered`,
-              header: ({ column }) => (
-                <Button
-                  variant="ghost"
-                  onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                  className="p-0 hover:bg-transparent whitespace-nowrap"
-                >
-                  {`${displayCategory} - Reg.`}
-                  <span className="ml-2">
-                    {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
-                    column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
-                    <ArrowUpDown className="h-4 w-4" />}
-                  </span>
-                </Button>
-              ),
-              accessorFn: (row) => row.breakdowns[key]?.registered,
-              cell: ({ getValue }) => formatNumber(getValue<number>()),
-            });
-            
-            dynamicColumns.push({
-              id: `${key}-voted`,
-              header: ({ column }) => (
-                <Button
-                  variant="ghost"
-                  onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                  className="p-0 hover:bg-transparent whitespace-nowrap"
-                >
-                  {`${displayCategory} - Voted`}
-                  <span className="ml-2">
-                    {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
-                    column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
-                    <ArrowUpDown className="h-4 w-4" />}
-                  </span>
-                </Button>
-              ),
-              accessorFn: (row) => row.breakdowns[key]?.voted,
-              cell: ({ getValue }) => formatNumber(getValue<number>()),
-            });
-            
-            dynamicColumns.push({
-              id: `${key}-turnout`,
-              header: ({ column }) => (
-                <Button
-                  variant="ghost"
-                  onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                  className="p-0 hover:bg-transparent whitespace-nowrap"
-                >
-                  {`${displayCategory} - Turnout`}
-                  <span className="ml-2">
-                    {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
-                    column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
-                    <ArrowUpDown className="h-4 w-4" />}
-                  </span>
-                </Button>
-              ),
-              accessorFn: (row) => row.breakdowns[key]?.turnout,
-              cell: ({ getValue }) => formatPercent(getValue<number>()),
-            });
-          });
-        });
-      } else {
-        // Legacy handling for old format of breakdowns if needed
-        Object.keys(firstRow.breakdowns).forEach(breakdownKey => {
-          // Example breakdownKey: "Race:WHITE | Gender:MALE"
-          const breakdownHeader = breakdownKey.split('|').map(s => s.trim()).join(' / ');
+          const headerPrefix = categoryDisplayParts.join(' & '); // e.g., "18-23 & White" or "White"
+
           dynamicColumns.push({
-            id: `breakdown-${breakdownKey}-registered`,
+            id: `${key}-registered`,
             header: ({ column }) => (
               <Button
                 variant="ghost"
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 className="p-0 hover:bg-transparent whitespace-nowrap"
               >
-                {`${breakdownHeader} - Reg.`}
+                {`${headerPrefix} - Reg.`}
                 <span className="ml-2">
                   {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
                   column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
@@ -246,18 +175,19 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
                 </span>
               </Button>
             ),
-            accessorFn: (row) => row.breakdowns[breakdownKey]?.registered,
+            accessorFn: (row) => row.breakdowns[key]?.registered,
             cell: ({ getValue }) => formatNumber(getValue<number>()),
           });
+          
           dynamicColumns.push({
-            id: `breakdown-${breakdownKey}-voted`,
+            id: `${key}-voted`,
             header: ({ column }) => (
               <Button
                 variant="ghost"
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 className="p-0 hover:bg-transparent whitespace-nowrap"
               >
-                {`${breakdownHeader} - Voted`}
+                {`${headerPrefix} - Voted`}
                 <span className="ml-2">
                   {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
                   column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
@@ -265,18 +195,19 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
                 </span>
               </Button>
             ),
-            accessorFn: (row) => row.breakdowns[breakdownKey]?.voted,
+            accessorFn: (row) => row.breakdowns[key]?.voted,
             cell: ({ getValue }) => formatNumber(getValue<number>()),
           });
+          
           dynamicColumns.push({
-            id: `breakdown-${breakdownKey}-turnout`,
+            id: `${key}-turnout`,
             header: ({ column }) => (
               <Button
                 variant="ghost"
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 className="p-0 hover:bg-transparent whitespace-nowrap"
               >
-                {`${breakdownHeader} - Turnout`}
+                {`${headerPrefix} - Turnout`}
                 <span className="ml-2">
                   {column.getIsSorted() === "asc" ? <ArrowUp className="h-4 w-4" /> : 
                   column.getIsSorted() === "desc" ? <ArrowDown className="h-4 w-4" /> : 
@@ -284,7 +215,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
                 </span>
               </Button>
             ),
-            accessorFn: (row) => row.breakdowns[breakdownKey]?.turnout,
+            accessorFn: (row) => row.breakdowns[key]?.turnout,
             cell: ({ getValue }) => formatPercent(getValue<number>()),
           });
         });
