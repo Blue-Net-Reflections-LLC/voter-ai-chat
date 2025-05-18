@@ -18,8 +18,8 @@ This document outlines the requirements for a new Voter Turnout analysis feature
 ### 2.2. Geography Selection
 - Users must be able to select a single geographical area for analysis.
 - Supported geographical levels:
-    - County
-    - Districts
+  - County
+  - Districts
     - Precincts (available for selection only when a County is selected)
     - Municipalities (available for selection only when a County is selected)
     - Zip Code (can be a subset of a County, District, Precinct, or Municipality)
