@@ -62,12 +62,13 @@ export function TabsTrigger({ value, children, disabled = false}: TabsTriggerPro
 interface TabsContentProps {
   value: string;
   children: React.ReactNode;
+  className?: string;
 }
-export function TabsContent({ value, children }: TabsContentProps) {
+export function TabsContent({ value, children, className = "" }: TabsContentProps) {
   const ctx = React.useContext(TabsContext);
   if (!ctx) throw new Error("TabsContent must be used within Tabs");
   if (ctx.value !== value) return null;
-  return <div className="mt-2" role="tabpanel">{children}</div>;
+  return <div className={`mt-2 ${className}`} role="tabpanel">{children}</div>;
 }
 
 const TabsContext = React.createContext<{

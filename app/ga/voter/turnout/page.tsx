@@ -364,19 +364,23 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               <TabsTrigger value="chart">Chart</TabsTrigger>
             </TabsList>
             <div className="flex-1 min-h-0 overflow-y-auto mt-4 h-screen" style={{ height: 'calc(100vh - 224px)' }}>
-              <TabsContent value="report">
-                <ReportTabContent 
-                  reportData={apiData?.report || null} 
-                  isLoading={isLoading && activeTab === 'report'}
-                  error={error}
-                />
+              <TabsContent value="report" className="h-full">
+                <div className='h-full'>
+                  <ReportTabContent 
+                    reportData={apiData?.report || null} 
+                    isLoading={isLoading && activeTab === 'report'}
+                    error={error}
+                  />
+                </div>
               </TabsContent>
-              <TabsContent value="chart">
-                <ChartTabContent 
-                  chartData={apiData?.chart || null} 
-                  isLoading={isLoading && activeTab === 'chart'} 
-                  error={error} 
-                />
+              <TabsContent value="chart" className="h-full">
+                <div className='h-full'>
+                  <ChartTabContent 
+                    chartData={apiData?.chart || null} 
+                    isLoading={isLoading && activeTab === 'chart'} 
+                    error={error} 
+                  />
+                </div>
               </TabsContent>
             </div>
           </Tabs>
