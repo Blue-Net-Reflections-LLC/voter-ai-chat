@@ -329,12 +329,9 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
   }
 
   return (
-    <div className={`flex h-screen bg-background`}>
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-background" style={{ height: '100%' }}>
       <Sheet open={isSidebarOpen} onOpenChange={(open) => {
-        // Only update if the value actually changed
-        if (open !== isSidebarOpen) {
-          setIsSidebarOpen(open);
-        }
+        if (open !== isSidebarOpen) setIsSidebarOpen(open);
       }}>
         <SheetContent side="left" className="w-80 sm:w-96 p-0 flex flex-col border-r">
           <TurnoutControlsSidebar 
@@ -342,17 +339,15 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             onSelectionsChange={handleSelectionsChange}
             onGenerate={handleGenerateReport}
             activeTab={activeTab}
-            // Pass lookup data as props
-            countyOptions={counties} // from useLookupData, type: MultiSelectOption[]
+            countyOptions={counties}
             congressionalDistrictOptions={congressionalDistricts}
             stateSenateDistrictOptions={stateSenateDistricts}
             stateHouseDistrictOptions={stateHouseDistricts}
           />
         </SheetContent>
       </Sheet>
-
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="p-4 border-b flex items-center justify-between min-h-[69px]">
+      <main className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <header className="p-4 border-b flex items-center justify-between shrink-0 min-h-[69px]">
           <div className="flex items-center">
             <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-3">
               {isSidebarOpen ? <PanelLeftOpen className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
@@ -362,46 +357,42 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             </div>
           </div>
         </header>
-
-        <div className="p-4 flex-grow overflow-y-auto">
-          <div className="w-full">
-            <div className="mb-4">
-              <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="report">Report</TabsTrigger>
-                  <TabsTrigger value="chart">Chart</TabsTrigger>
-                </TabsList>
-                <TabsContent value="report">
-                  <ReportTabContent 
-                    reportData={apiData?.report || null} 
-                    isLoading={isLoading && activeTab === 'report'}
-                    error={error}
-                  />
-                </TabsContent>
-                <TabsContent value="chart">
-                  <ChartTabContent 
-                    chartData={apiData?.chart || null} 
-                    isLoading={isLoading && activeTab === 'chart'} 
-                    error={error} 
-                  />
-                </TabsContent>
-              </Tabs>
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden p-4">
+          <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2 shrink-0"> 
+              <TabsTrigger value="report">Report</TabsTrigger>
+              <TabsTrigger value="chart">Chart</TabsTrigger>
+            </TabsList>
+            <div className="flex-1 min-h-0 overflow-y-auto mt-4 h-screen" style={{ height: 'calc(100vh - 224px)' }}>
+              <TabsContent value="report">
+                <ReportTabContent 
+                  reportData={apiData?.report || null} 
+                  isLoading={isLoading && activeTab === 'report'}
+                  error={error}
+                />
+              </TabsContent>
+              <TabsContent value="chart">
+                <ChartTabContent 
+                  chartData={apiData?.chart || null} 
+                  isLoading={isLoading && activeTab === 'chart'} 
+                  error={error} 
+                />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+        {isLoading && !isLookupLoading && (
+          <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+            <div className="bg-background p-4 rounded-lg shadow-xl">
+              <p>Loading analysis data...</p>
             </div>
           </div>
-          
-          {isLoading && !isLookupLoading && (
-            <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-              <div className="bg-background p-4 rounded-lg shadow-xl">
-                <p>Loading analysis data...</p>
-              </div>
-            </div>
-          )}
-          {error && !isLoading && (
-             <div className="mt-4 p-4 border rounded bg-destructive/10 text-destructive text-center">
-              <p>Error: {error}</p>
-            </div>
-          )}
-        </div>
+        )}
+        {error && !isLoading && (
+          <div className="mt-4 p-4 border rounded bg-destructive/10 text-destructive text-center">
+            <p>Error: {error}</p>
+          </div>
+        )}
       </main>
     </div>
   );
