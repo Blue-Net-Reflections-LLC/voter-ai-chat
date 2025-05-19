@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import {
   ColumnDef,
   flexRender,
@@ -54,9 +54,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
 
     const firstRow = reportData.rows[0];
     const dynamicColumns: ColumnDef<ApiReportRow>[] = [];
+    const aggregations = reportData.aggregations;
 
-    // Add this function at the top of the columns useMemo to handle cell formatting
-    // based on column ID for any census data
     const getCellFormatter = (columnId: string, value: any) => {
       let numericValue = typeof value === 'string' ? parseFloat(value) : value;
       const fieldName = columnId.includes('.') ? columnId.split('.').pop()?.toLowerCase() || '' : columnId.toLowerCase();
@@ -112,6 +111,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
             </span>
           </Button>
         ),
+        footer: () => "Totals / Averages",
       },
       { 
         accessorKey: 'totalRegistered', 
@@ -129,7 +129,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
             </span>
           </Button>
         ),
-        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>())
+        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>()),
+        footer: () => aggregations ? formatNumber(aggregations.grandTotalRegistered) : null,
       },
       { 
         accessorKey: 'totalVoted', 
@@ -147,7 +148,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
             </span>
           </Button>
         ),
-        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>())
+        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>()),
+        footer: () => aggregations ? formatNumber(aggregations.grandTotalVoted) : null,
       },
       { 
         accessorKey: 'overallTurnoutRate', 
@@ -165,7 +167,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
             </span>
           </Button>
         ),
-        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>())
+        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>()),
+        footer: () => aggregations ? formatPercent(aggregations.averageOverallTurnoutRate) : null,
       }
     );
 
@@ -221,7 +224,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
               </Button>
             ),
             accessorFn: (row) => row.breakdowns[key]?.registered,
-            cell: ({ getValue }) => formatNumber(getValue<number>()),
+            cell: ({ getValue }) => getCellFormatter(`${key}-registered`, getValue<number>()),
+            footer: () => aggregations ? formatNumber(aggregations[`${key}_totalRegistered`]) : null,
           });
           
           dynamicColumns.push({
@@ -241,7 +245,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
               </Button>
             ),
             accessorFn: (row) => row.breakdowns[key]?.voted,
-            cell: ({ getValue }) => formatNumber(getValue<number>()),
+            cell: ({ getValue }) => getCellFormatter(`${key}-voted`, getValue<number>()),
+            footer: () => aggregations ? formatNumber(aggregations[`${key}_totalVoted`]) : null,
           });
           
           dynamicColumns.push({
@@ -261,7 +266,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
               </Button>
             ),
             accessorFn: (row) => row.breakdowns[key]?.turnout,
-            cell: ({ getValue }) => formatPercent(getValue<number>()),
+            cell: ({ getValue }) => getCellFormatter(`${key}-turnout`, getValue<number>()),
+            footer: () => aggregations ? formatPercent(aggregations[`${key}_averageTurnoutRate`]) : null,
           });
         });
       }
@@ -276,6 +282,9 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
                 .replace(/([A-Z])/g, ' $1') // Add space before caps for camelCase/PascalCase
                 .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
                 .trim();
+
+            const lowerCensusKey = censusKey.toLowerCase();
+            const isNonAggregable = lowerCensusKey === 'distincttractidsingeography' || lowerCensusKey === 'censusdatasourcetyear';
 
             dynamicColumns.push({
                 accessorKey: `censusData.${censusKey}`,
@@ -298,6 +307,39 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
                     
                     // Use the global formatter instead of duplicating logic
                     return getCellFormatter(`censusData.${censusKey}`, val);
+                },
+                footer: () => {
+                  const lowerCensusKey = censusKey.toLowerCase(); // e.g., "totaleducationpop25plus", "avgmedianhouseholdincome"
+                  if (aggregations) {
+                      if (lowerCensusKey === 'distincttractidsingeography') return ''; // No footer for this
+                      
+                      if (lowerCensusKey === 'censusdatasourcetyear') {
+                          // Backend currently doesn't provide a specific aggregation for censusDataSourceYear in censusSums.
+                          // If it did, e.g. as aggregations[`summary_censusDataSourceYear`], we could display it.
+                          // For now, it will be N/A as neither grandTotal_ nor avg_ will typically exist for it.
+                          const yearAgg = aggregations[`avg_${censusKey}`] || aggregations[`summary_${censusKey}`]; 
+                          return yearAgg ? getCellFormatter(`summary_${censusKey}`, yearAgg) : 'N/A';
+                      }
+
+                      let aggValueToFormat: any = 'N/A';
+                      let aggKeyForFormatter: string = censusKey; // Original key for context to formatter
+
+                      // Prefer grandTotal for keys that represent totals
+                      const hasGrandTotalKey = `grandTotal_${censusKey}`;
+                      if ((lowerCensusKey.startsWith('total') || lowerCensusKey.includes('population') || lowerCensusKey.endsWith('plus')) && aggregations[hasGrandTotalKey] !== undefined) {
+                          aggValueToFormat = aggregations[hasGrandTotalKey];
+                          aggKeyForFormatter = hasGrandTotalKey; 
+                      } 
+                      // Otherwise, use the avg_ version if it exists
+                      else if (aggregations[`avg_${censusKey}`] !== undefined) {
+                          aggValueToFormat = aggregations[`avg_${censusKey}`];
+                          aggKeyForFormatter = `avg_${censusKey}`;
+                      } 
+                      // If neither, it remains 'N/A' with original censusKey for formatting context (though unlikely to format well)
+                      
+                      return getCellFormatter(aggKeyForFormatter, aggValueToFormat);
+                  }
+                  return null;
                 }
             });
         });
@@ -398,24 +440,24 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
                 </TableRow>
               )}
             </TableBody>
+            <TableFooter>
+              {table.getFooterGroups().map(footerGroup => (
+                <TableRow key={footerGroup.id}>
+                  {footerGroup.headers.map(header => (
+                    <TableHead key={header.id} className="whitespace-nowrap font-semibold">
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.footer,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableFooter>
           </Table>
         </div>
-        
-        {reportData.aggregations && (
-          <div className="mt-6 pt-4 border-t">
-            <h4 className="text-lg font-semibold mb-3">Report Summary</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Average Overall Turnout Rate:</span>
-                <Badge variant="outline">{formatPercent(reportData.aggregations.averageOverallTurnoutRate)}</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Grand Total Voted (Participated):</span>
-                <Badge variant="outline">{formatNumber(reportData.aggregations.grandTotalVoted)}</Badge>
-              </div>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

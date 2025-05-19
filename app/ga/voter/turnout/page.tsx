@@ -35,10 +35,7 @@ export interface ApiReportRow {
 
 export interface ApiReportData {
   rows: ApiReportRow[];
-  aggregations: {
-    averageOverallTurnoutRate: number;
-    grandTotalVoted: number;
-  };
+  aggregations: Record<string, any>;
 }
 
 export interface ApiChartSegment {

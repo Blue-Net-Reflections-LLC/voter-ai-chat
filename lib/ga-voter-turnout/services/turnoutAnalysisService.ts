@@ -60,10 +60,7 @@ interface ProcessedChartRow {
 interface ProcessedTurnoutPayload {
     report?: {
         rows: ProcessedReportRow[];
-        aggregations: {
-            averageOverallTurnoutRate: number;
-            grandTotalVoted: number;
-        };
+        aggregations: Record<string, any>;
     };
     chart?: {
         type: 'stackedRow' | 'bar';
@@ -728,12 +725,71 @@ export async function generateTurnoutAnalysisData(
                 return rest;
             });
 
+            // Calculate aggregations
+            let grandTotalRegisteredOverall = 0;
+            let grandTotalVotedOverall = 0;
+            const breakdownSums: Record<string, { sumRegistered: number; sumVoted: number }> = {};
+            const censusSums: Record<string, { sumValue: number; count: number }> = {};
+            const censusNonNumericKeys = ['distincttractidsingeography', 'censusdatasourcetyear']; // lowercase
+
+            initialReportRows.forEach(row => {
+                grandTotalRegisteredOverall += row.totalRegistered;
+                grandTotalVotedOverall += row.totalVoted;
+
+                Object.entries(row.breakdowns).forEach(([key, breakdown]) => {
+                    if (!breakdownSums[key]) {
+                        breakdownSums[key] = { sumRegistered: 0, sumVoted: 0 };
+                    }
+                    breakdownSums[key].sumRegistered += breakdown.registered;
+                    breakdownSums[key].sumVoted += breakdown.voted;
+                });
+
+                if (row.censusData) {
+                    Object.entries(row.censusData).forEach(([key, value]) => {
+                        const lowerKey = key.toLowerCase();
+                        if (!censusNonNumericKeys.includes(lowerKey)) {
+                            const numValue = typeof value === 'string' ? parseFloat(value) : value as number;
+                            if (typeof numValue === 'number' && !isNaN(numValue)) {
+                                if (!censusSums[key]) {
+                                    censusSums[key] = { sumValue: 0, count: 0 };
+                                }
+                                censusSums[key].sumValue += numValue;
+                                censusSums[key].count += 1;
+                            }
+                        }
+                    });
+                }
+            });
+
+            const finalAggregations: Record<string, any> = {
+                grandTotalRegistered: grandTotalRegisteredOverall,
+                grandTotalVoted: grandTotalVotedOverall,
+                averageOverallTurnoutRate: grandTotalRegisteredOverall > 0 ? grandTotalVotedOverall / grandTotalRegisteredOverall : 0,
+            };
+
+            Object.entries(breakdownSums).forEach(([key, sums]) => {
+                finalAggregations[`${key}_totalRegistered`] = sums.sumRegistered;
+                finalAggregations[`${key}_totalVoted`] = sums.sumVoted;
+                finalAggregations[`${key}_averageTurnoutRate`] = sums.sumRegistered > 0 ? sums.sumVoted / sums.sumRegistered : 0;
+            });
+
+            Object.entries(censusSums).forEach(([key, sums]) => {
+                if (sums.count > 0) {
+                    // Always provide the average for numeric census fields
+                    finalAggregations[`avg_${key}`] = sums.sumValue / sums.count;
+
+                    // If the original key itself implies it's a sum (e.g., starts with "total", includes "pop", ends with "plus")
+                    // then also provide the grand total.
+                    const lowerKey = key.toLowerCase();
+                    if (lowerKey.startsWith('total') || lowerKey.includes('pop') || lowerKey.endsWith('plus')) {
+                        finalAggregations[`grandTotal_${key}`] = sums.sumValue;
+                    }
+                }
+            });
+
             payload.report = {
                 rows: finalReportRows,
-                aggregations: {
-                    averageOverallTurnoutRate: totalRegisteredAgg > 0 ? totalVotedAgg / totalRegisteredAgg : 0,
-                    grandTotalVoted: totalVotedAgg
-                }
+                aggregations: finalAggregations
             };
             
         } catch (e: any) {
