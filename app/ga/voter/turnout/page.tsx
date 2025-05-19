@@ -385,13 +385,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             </div>
           </Tabs>
         </div>
-        {isLoading && !isLookupLoading && (
-          <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-            <div className="bg-background p-4 rounded-lg shadow-xl">
-              <p>Loading analysis data...</p>
-            </div>
-          </div>
-        )}
         {error && !isLoading && (
           <div className="mt-4 p-4 border rounded bg-destructive/10 text-destructive text-center">
             <p>Error: {error}</p>

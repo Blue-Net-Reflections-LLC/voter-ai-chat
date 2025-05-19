@@ -182,12 +182,10 @@ function getGeoGroupingColumnSQL(
                 // This might need adjustment if precinct IDs are global or structured differently.
                 return `${voterTableAlias}.county_precinct`; 
             case 'Municipality':
-                // Assuming municipalities are identified by municipal_code or similar.
-                // This needs to map to the correct column in GA_VOTER_REGISTRATION_LIST.
-                // Placeholder: adjust municipal_code if GA_VOTER_REGISTRATION_LIST uses a different name for municipality IDs.
-                return `${voterTableAlias}.municipal_code`; // IMPORTANT: Verify this column name
+                // Using municipal_precinct which is the correct column in the database
+                return `${voterTableAlias}.municipal_precinct`;
             case 'ZipCode':
-                return `${voterTableAlias}.zip_code`; // Or residence_zipcode based on earlier TODO
+                return `${voterTableAlias}.residence_zipcode`;
             default:
                 console.warn(`Unknown subAreaType for grouping: ${subAreaType}. Defaulting to primary area.`);
                 // Fall through to primary area grouping if subAreaType is unknown
@@ -299,7 +297,7 @@ export async function generateTurnoutAnalysisData(
                 groupByColumn = 'county_precinct';
                 groupLabel = 'Precinct';
             } else if (geography.subAreaType === 'Municipality') {
-                groupByColumn = 'municipal_code'; // Or municipal_precinct
+                groupByColumn = 'municipal_precinct'; // Changed from municipal_code to municipal_precinct
                 groupLabel = 'Municipality';
             } else if (geography.subAreaType === 'ZipCode') {
                 groupByColumn = 'residence_zipcode';
@@ -337,7 +335,7 @@ export async function generateTurnoutAnalysisData(
             if (geography.subAreaType && geography.subAreaValue && geography.subAreaValue !== 'ALL') {
                 let subAreaCol = '';
                 if (geography.subAreaType === 'Precinct') subAreaCol = 'vrl.county_precinct';
-                else if (geography.subAreaType === 'Municipality') subAreaCol = 'vrl.municipal_code'; // Verify column
+                else if (geography.subAreaType === 'Municipality') subAreaCol = 'vrl.municipal_precinct'; // Changed from municipal_code
                 else if (geography.subAreaType === 'ZipCode') subAreaCol = 'vrl.residence_zipcode';
                 
                 if (subAreaCol) whereClause += ` AND ${subAreaCol} = '${geography.subAreaValue.replace(/'/g, "''")}'`;
@@ -416,7 +414,8 @@ export async function generateTurnoutAnalysisData(
             gd.geo_unit_id;
     `;
     
-    console.log("Executing consolidated query:", consolidatedQuery);
+    // Remove excessive logging
+    // console.log("Executing consolidated query:", consolidatedQuery);
     
     const payload: ProcessedTurnoutPayload = {};
 
@@ -431,8 +430,6 @@ export async function generateTurnoutAnalysisData(
                 geography.subAreaType === 'Precinct' && dbRows.length > 0) {
                 // ... (existing precinctData fetching logic, ensure it uses correct county identifier if needed)
             }
-            
-            if (dbRows.length > 0) console.log("Sample DB row (consolidated):", dbRows[0]);
             
             let totalRegisteredAgg = 0;
             let totalVotedAgg = 0;
@@ -625,7 +622,8 @@ export async function generateTurnoutAnalysisData(
                                 vrl.status = 'ACTIVE'
                                 AND ${subQuerySpecificWhere}
                         `;
-                        console.log(`Executing consolidated breakdown sub-query for geo unit ${geoUnitIdForSubQuery} (${reportRow.geoLabel}):`, breakdownSubQuery);
+                        // Remove breakdown subquery logging
+                        // console.log(`Executing consolidated breakdown sub-query for geo unit ${geoUnitIdForSubQuery} (${reportRow.geoLabel}):`, breakdownSubQuery);
                         try {
                             const breakdownResult = await sql.unsafe(breakdownSubQuery);
                             const breakdownDataRow = (Array.isArray(breakdownResult) ? breakdownResult[0] : (breakdownResult as any).rows?.[0]) || {};
@@ -649,7 +647,8 @@ export async function generateTurnoutAnalysisData(
                             reportRow.breakdowns[combo.key] = { registered: 0, voted: 0, turnout: 0 };
                         });
                     }
-                    console.log(`Final breakdowns for ${reportRow.geoLabel}:`, JSON.stringify(reportRow.breakdowns, null, 2));
+                    // Remove breakdown logging
+                    // console.log(`Final breakdowns for ${reportRow.geoLabel}:`, JSON.stringify(reportRow.breakdowns, null, 2));
                 }
             } else { // No reportDataPoints selected, ensure breakdowns is empty object
                  initialReportRows.forEach(reportRow => {
@@ -659,8 +658,17 @@ export async function generateTurnoutAnalysisData(
             
             // Moved Census Data integration to its own loop after all initial rows are processed
             if (includeCensusData) {
+                // TODO: Improve performance for census data fetching
+                // Current implementation makes individual queries for each geographic unit's census tracts
+                // and then another query for the census data. This could be optimized by:
+                // 1. Fetching all relevant tract IDs in a single query
+                // 2. Using a single query with IN clause for all census data
+                // 3. Caching frequently accessed census data
+                // 4. Consider pre-aggregating census data at region levels
+                
                 for (const reportRow of initialReportRows) { // Iterate again specifically for census data
-                    console.log(`Fetching census data for geo unit ${reportRow.dbGeoUnitId} (${reportRow.geoLabel})`);
+                    // Remove census logging
+                    // console.log(`Fetching census data for geo unit ${reportRow.dbGeoUnitId} (${reportRow.geoLabel})`);
                     let censusQuerySpecificWhere = '';
                     const geoUnitIdStringForCensus = String(reportRow.dbGeoUnitId).replace(/'/g, "''");
 
@@ -683,7 +691,8 @@ export async function generateTurnoutAnalysisData(
                           AND vrl.census_tract IS NOT NULL
                           AND TRIM(vrl.census_tract) <> '';
                     `;
-                    console.log("Executing tracts query:", tractsQuery);
+                    // Remove census query logging
+                    // console.log("Executing tracts query:", tractsQuery);
                     try {
                         const tractResult = await sql.unsafe(tractsQuery);
                         const tractRows: { census_tract: string }[] = Array.isArray(tractResult) ? tractResult : (tractResult && 'rows' in tractResult ? (tractResult as any).rows : []);
@@ -704,11 +713,13 @@ export async function generateTurnoutAnalysisData(
                                 FROM stg_processed_census_tract_data
                                 WHERE tract_id IN (${tractIds.map(id => `'${id.replace(/'/g, "''")}'`).join(',')});
                             `;
-                            console.log("Executing census data aggregation query:", censusDataQuery);
+                            // Remove census data query logging
+                            // console.log("Executing census data aggregation query:", censusDataQuery);
                             const censusResult = await sql.unsafe(censusDataQuery);
                             const censusData = (Array.isArray(censusResult) ? censusResult[0] : (censusResult as any).rows?.[0]) || {};
                             reportRow.censusData = censusData;
-                            console.log(`Census data for ${reportRow.geoLabel}:`, censusData);
+                            // Remove census data logging
+                            // console.log(`Census data for ${reportRow.geoLabel}:`, censusData);
                         } else {
                             console.log(`No census tracts found for ${reportRow.geoLabel}`);
                             reportRow.censusData = {};
