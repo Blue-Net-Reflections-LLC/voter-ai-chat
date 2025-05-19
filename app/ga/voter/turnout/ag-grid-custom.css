@@ -1,0 +1,83 @@
+/* Custom AG Grid styling with theme adaptation */
+
+/* Common styles for both themes */
+.ag-theme-quartz {
+  --ag-font-size: 0.85rem;
+  --ag-header-font-size: 0.85rem;
+  --ag-font-family: var(--font-sans);
+  --ag-header-font-family: var(--font-sans);
+  
+  /* Adjust row height */
+  --ag-row-height: 32px;
+  --ag-header-height: 36px;
+  
+  /* Make borders more subtle */
+  --ag-cell-horizontal-border: none;
+  
+  /* Remove rounded corners */
+  --ag-border-radius: 0;
+}
+
+/* Remove card border radius */
+.ag-theme-quartz .ag-root-wrapper {
+  border-radius: 0 !important;
+}
+
+/* Light theme styles */
+:root:not(.dark) .ag-theme-quartz {
+  --ag-background-color: hsl(var(--background));
+  --ag-header-background-color: hsl(var(--muted) / 0.5);
+  --ag-odd-row-background-color: hsl(var(--muted) / 0.2);
+  --ag-row-hover-color: hsl(var(--muted) / 0.3);
+  --ag-foreground-color: hsl(var(--foreground));
+  --ag-border-color: hsl(var(--border) / 0.6);
+}
+
+/* Dark theme styles */
+:root.dark .ag-theme-quartz {
+  --ag-background-color: hsl(var(--background));
+  --ag-header-background-color: hsl(var(--muted) / 0.8);
+  --ag-odd-row-background-color: hsl(var(--muted-foreground) / 0.05);
+  --ag-row-hover-color: hsl(var(--muted-foreground) / 0.1);
+  --ag-header-foreground-color: hsl(var(--foreground) / 0.87);
+  --ag-foreground-color: hsl(var(--foreground) / 0.8);
+  --ag-secondary-foreground-color: hsl(var(--foreground) / 0.7);
+  --ag-disabled-foreground-color: hsl(var(--foreground) / 0.5);
+  --ag-border-color: hsl(var(--border) / 0.3);
+}
+
+/* Style the pinned bottom row (aggregation row) */
+:root:not(.dark) .ag-theme-quartz .ag-row-pinned {
+  font-weight: 600;
+  background-color: hsl(var(--muted) / 0.7);
+}
+
+:root.dark .ag-theme-quartz .ag-row-pinned {
+  font-weight: 600;
+  background-color: hsl(var(--muted) / 0.4);
+}
+
+/* Style header cells */
+.ag-theme-quartz .ag-header-cell-label {
+  font-weight: 600;
+}
+
+/* Style filter button */
+.ag-theme-quartz .ag-header-cell-menu-button:hover {
+  color: hsl(var(--primary));
+}
+
+/* Style selected rows */
+:root:not(.dark) .ag-theme-quartz .ag-row-selected {
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+:root.dark .ag-theme-quartz .ag-row-selected {
+  background-color: hsl(var(--primary) / 0.2);
+}
+
+/* Adjust cell padding */
+.ag-theme-quartz .ag-cell {
+  padding-left: 8px;
+  padding-right: 8px;
+} 

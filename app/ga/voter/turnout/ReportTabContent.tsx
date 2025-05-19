@@ -8,6 +8,9 @@ import { ColDef, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-theme-quartz.css'; // Theme
 import { ApiReportRow, ApiReportData } from './page';
 
+// Add custom CSS for AG Grid styling
+import './ag-grid-custom.css';
+
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -367,7 +370,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
   }
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col h-full border-none rounded-none">
       <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
         <div>
           <CardTitle>Voter Turnout Report</CardTitle>
@@ -378,11 +381,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
         </Button>
       </CardHeader>
       <CardContent className="flex-grow p-0">
-        {/* Ensure this div has a defined height for AG Grid. 
-            It should get its height from the flex layout defined in page.tsx 
-            where the parent of ReportTabContent is set to scroll.
-            The ag-theme-quartz class provides styling.
-        */}
+        {/* Use theme-adaptive styling from our CSS */}
         <div className="ag-theme-quartz h-full w-full">
           <AgGridReact<ApiReportRow>
             rowData={rowData}
@@ -391,6 +390,10 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
             domLayout='normal'
             pinnedBottomRowData={pinnedBottomRowData}
             suppressAggFuncInHeader={true}
+            rowHeight={32}
+            headerHeight={36}
+            suppressMovableColumns={false}
+            className="h-full"
           />
         </div>
       </CardContent>

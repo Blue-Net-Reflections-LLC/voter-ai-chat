@@ -363,7 +363,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               <TabsTrigger value="report">Report</TabsTrigger>
               <TabsTrigger value="chart">Chart</TabsTrigger>
             </TabsList>
-            <div className="flex-1 min-h-0 overflow-y-auto mt-4 h-screen" style={{ height: 'calc(100vh - 224px)' }}>
+            <div className="flex-1 mt-4 h-screen" style={{ height: 'calc(100vh - 224px)' }}>
               <TabsContent value="report" className="h-full">
                 <div className='h-full'>
                   <ReportTabContent 
