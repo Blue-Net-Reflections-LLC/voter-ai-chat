@@ -359,7 +359,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         </header>
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden p-4">
           <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 shrink-0"> 
+            <TabsList className="grid w-full grid-cols-2 shrink-0">
               <TabsTrigger value="report">Report</TabsTrigger>
               <TabsTrigger value="chart">Chart</TabsTrigger>
             </TabsList>
