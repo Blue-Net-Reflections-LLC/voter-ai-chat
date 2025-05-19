@@ -417,7 +417,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
           <ol className="list-decimal list-inside space-y-2 text-left">
             <li>Use the sidebar controls on the left (click the menu icon if hidden)</li>
             <li>Select a <strong>Primary Geography</strong> (County or District)</li>
-            <li>Choose a specific area or "All" from the dropdown</li>
+            <li>Choose a specific area or &quot;All&quot; from the dropdown</li>
             <li>Select an <strong>Election Date</strong> from the available options</li>
             <li>Add <strong>Data Points</strong> to include in your analysis</li>
             <li>Click the <strong>Generate</strong> button at the bottom of the sidebar</li>
