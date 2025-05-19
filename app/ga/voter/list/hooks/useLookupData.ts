@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { MultiSelectOption } from '../components/MultiSelect';
+// import { MultiSelectOption } from '../components/MultiSelect'; // Assuming this was old or local
 import { BALLOT_STYLE_OPTIONS, EVENT_PARTY_OPTIONS } from '../constants';
+
+// Export this type
+export type MultiSelectOption = {
+  value: string;
+  label: string;
+};
 
 export type LookupField = {
   name: string;
