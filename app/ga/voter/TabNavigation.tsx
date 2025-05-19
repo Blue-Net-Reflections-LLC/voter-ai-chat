@@ -37,7 +37,7 @@ function useParticipationScore(
   }, [residenceAddressFilters]);
 
   useEffect(() => {
-    if (pathname === '/ga/voter') {
+    if (pathname === '/ga/voter' || pathname.startsWith('/ga/voter/turnout')) {
       setScoreData(null);
       setLoading(false);
       setError(null);
@@ -125,6 +125,7 @@ export default function TabNavigation() {
 
   const isProfilePage = pathname.startsWith('/ga/voter/profile/');
   const isLandingPage = pathname === '/ga/voter';
+  const isTurnoutPage = pathname.startsWith('/ga/voter/turnout');
   const registrationNumber = isProfilePage && typeof params.registration_number === 'string' ? params.registration_number : null;
 
   const { 
@@ -135,7 +136,7 @@ export default function TabNavigation() {
 
   const scoreLabel = isProfilePage ? "Score" : "Score";
 
-  if (isLandingPage) {
+  if (isLandingPage || isTurnoutPage) {
     return null;
   }
 

@@ -407,12 +407,22 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
     );
   }
 
-  // Note: AG Grid handles "No data" overlay by default if rowData is empty.
   // We will keep the explicit "No report data to display" for when reportData is null.
   if (!reportData) {
      return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">No report data to display. Please generate an analysis.</p>
+      <div className="flex flex-col items-center justify-center h-64 p-6 text-center">
+        <p className="text-muted-foreground mb-4">No report data to display. Please generate an analysis.</p>
+        <div className="max-w-lg text-sm text-muted-foreground">
+          <p className="mb-2">To generate a turnout report:</p>
+          <ol className="list-decimal list-inside space-y-2 text-left">
+            <li>Use the sidebar controls on the left (click the menu icon if hidden)</li>
+            <li>Select a <strong>Primary Geography</strong> (County or District)</li>
+            <li>Choose a specific area or "All" from the dropdown</li>
+            <li>Select an <strong>Election Date</strong> from the available options</li>
+            <li>Add <strong>Data Points</strong> to include in your analysis</li>
+            <li>Click the <strong>Generate</strong> button at the bottom of the sidebar</li>
+          </ol>
+        </div>
       </div>
     );
   }
