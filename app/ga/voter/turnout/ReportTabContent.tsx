@@ -37,6 +37,12 @@ const formatNumber = (value: number | null | undefined) => {
   return value.toLocaleString();
 };
 
+// Helper to format currency
+const formatCurrency = (value: number | null | undefined) => {
+  if (value === null || typeof value === 'undefined') return 'N/A';
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
+
 export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, isLoading, error }) => {
   // Add sorting state - default to sort by overallTurnoutRate ascending (lowest to highest)
   const [sorting, setSorting] = useState<SortingState>([
@@ -48,6 +54,45 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
 
     const firstRow = reportData.rows[0];
     const dynamicColumns: ColumnDef<ApiReportRow>[] = [];
+
+    // Add this function at the top of the columns useMemo to handle cell formatting
+    // based on column ID for any census data
+    const getCellFormatter = (columnId: string, value: any) => {
+      let numericValue = typeof value === 'string' ? parseFloat(value) : value;
+      const fieldName = columnId.includes('.') ? columnId.split('.').pop()?.toLowerCase() || '' : columnId.toLowerCase();
+
+      // Exclude specific string fields from any numeric formatting attempts
+      if (fieldName === 'distincttractidsingeography' || fieldName === 'censusdatasourcetyear') {
+        return String(value);
+      }
+
+      if (typeof numericValue !== 'number' || isNaN(numericValue)) {
+        return String(value); 
+      }
+      
+      // console.log(`Formatter: colId=${columnId}, field=${fieldName}, val=${numericValue}, originalType=${typeof value}`);
+
+      if (columnId === 'overallTurnoutRate') {
+        return formatPercent(numericValue); // Expects 0-1 range
+      }
+      
+      if (columnId.startsWith('censusData.')) {
+        if (fieldName.includes('income') || 
+            fieldName.includes('salary') || 
+            (fieldName.includes('household') && fieldName.includes('income'))) {
+          return formatCurrency(numericValue);
+        }
+        
+        // Census percentages are now also 0-1 from backend
+        if (fieldName.includes('pct') || 
+            fieldName.includes('rate') ||
+            fieldName.includes('percentage')) {
+          return formatPercent(numericValue); // Expects 0-1 range
+        }
+      }
+      
+      return formatNumber(numericValue);
+    };
 
     // Base columns with sortable headers
     dynamicColumns.push(
@@ -84,7 +129,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
             </span>
           </Button>
         ),
-        cell: ({ getValue }) => formatNumber(getValue<number>()) 
+        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>())
       },
       { 
         accessorKey: 'totalVoted', 
@@ -102,7 +147,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
             </span>
           </Button>
         ),
-        cell: ({ getValue }) => formatNumber(getValue<number>()) 
+        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>())
       },
       { 
         accessorKey: 'overallTurnoutRate', 
@@ -120,7 +165,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
             </span>
           </Button>
         ),
-        cell: ({ getValue }) => formatPercent(getValue<number>()) 
+        cell: ({ getValue, column }) => getCellFormatter(column.id, getValue<number>())
       }
     );
 
@@ -250,14 +295,9 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
                 ),
                 cell: ({ getValue }) => {
                     const val = getValue<number | string>();
-                    if (typeof val === 'number') {
-                        // Assuming census percentages are 0-100, not 0-1
-                        if (header.toLowerCase().includes('percentage') || header.toLowerCase().includes('rate')) {
-                             return (val / 100).toLocaleString(undefined, { style: 'percent', minimumFractionDigits: 1 });
-                        }
-                        return formatNumber(val);
-                    }
-                    return String(val);
+                    
+                    // Use the global formatter instead of duplicating logic
+                    return getCellFormatter(`censusData.${censusKey}`, val);
                 }
             });
         });

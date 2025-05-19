@@ -660,6 +660,69 @@ export async function generateTurnoutAnalysisData(
                 });
             }
             
+            // Moved Census Data integration to its own loop after all initial rows are processed
+            if (includeCensusData) {
+                for (const reportRow of initialReportRows) { // Iterate again specifically for census data
+                    console.log(`Fetching census data for geo unit ${reportRow.dbGeoUnitId} (${reportRow.geoLabel})`);
+                    let censusQuerySpecificWhere = '';
+                    const geoUnitIdStringForCensus = String(reportRow.dbGeoUnitId).replace(/'/g, "''");
+
+                    // Determine the correct column for linking to ga_voter_registration_list based on how geo_unit_id was derived
+                    let geoLinkColumnInVRL = consolidatedQueryGroupByClean; // Default to the cleaned group by column
+                    if (geography.areaType === 'County' && geography.areaValue === 'ALL') {
+                        // In this case, geo_unit_id is county_name, so link vrl.county_name
+                        censusQuerySpecificWhere = `UPPER(vrl.${mainCountyNameColumn}) = UPPER('${geoUnitIdStringForCensus}')`;
+                    } else {
+                        // For other cases, geo_unit_id was derived from consolidatedQueryGroupByClean
+                        // (e.g. congressional_district, residence_zipcode, county_precinct)
+                        censusQuerySpecificWhere = `CAST(vrl.${geoLinkColumnInVRL} AS TEXT) = '${geoUnitIdStringForCensus}'`;
+                    }
+
+
+                    const tractsQuery = `
+                        SELECT DISTINCT vrl.census_tract
+                        FROM ga_voter_registration_list vrl
+                        WHERE ${censusQuerySpecificWhere}
+                          AND vrl.census_tract IS NOT NULL
+                          AND TRIM(vrl.census_tract) <> '';
+                    `;
+                    console.log("Executing tracts query:", tractsQuery);
+                    try {
+                        const tractResult = await sql.unsafe(tractsQuery);
+                        const tractRows: { census_tract: string }[] = Array.isArray(tractResult) ? tractResult : (tractResult && 'rows' in tractResult ? (tractResult as any).rows : []);
+                        const tractIds = tractRows.map(r => r.census_tract).filter(t => t);
+
+                        if (tractIds.length > 0) {
+                            const censusDataQuery = `
+                                SELECT
+                                    AVG(median_household_income)::numeric AS "avgMedianHouseholdIncome",
+                                    (AVG(pct_bachelors_degree_only) / 100.0)::numeric AS "avgPctBachelorsDegreeOnly",
+                                    (AVG(pct_bachelors_degree_or_higher) / 100.0)::numeric AS "avgPctBachelorsOrHigher",
+                                    (AVG(labor_force_participation_rate) / 100.0)::numeric AS "avgLaborForceParticipationRate",
+                                    (AVG(unemployment_rate) / 100.0)::numeric AS "avgUnemploymentRate",
+                                    (AVG(employment_rate) / 100.0)::numeric AS "avgEmploymentRate",
+                                    SUM(education_total_pop_25_plus)::numeric AS "totalEducationPop25Plus",
+                                    STRING_AGG(DISTINCT tract_id, ', ' ORDER BY tract_id) AS "distinctTractIdsInGeography",
+                                    MAX(census_data_year) AS "censusDataSourceYear"
+                                FROM stg_processed_census_tract_data
+                                WHERE tract_id IN (${tractIds.map(id => `'${id.replace(/'/g, "''")}'`).join(',')});
+                            `;
+                            console.log("Executing census data aggregation query:", censusDataQuery);
+                            const censusResult = await sql.unsafe(censusDataQuery);
+                            const censusData = (Array.isArray(censusResult) ? censusResult[0] : (censusResult as any).rows?.[0]) || {};
+                            reportRow.censusData = censusData;
+                            console.log(`Census data for ${reportRow.geoLabel}:`, censusData);
+                        } else {
+                            console.log(`No census tracts found for ${reportRow.geoLabel}`);
+                            reportRow.censusData = {};
+                        }
+                    } catch (censusErr: any) {
+                        console.error(`Error fetching census data for ${reportRow.geoLabel}: ${censusErr.message}`, censusErr);
+                        reportRow.censusData = {}; // Ensure censusData key exists even on error
+                    }
+                }
+            }
+
             const finalReportRows = initialReportRows.map(row => {
                 const { dbGeoUnitId, ...rest } = row;
                 return rest;
