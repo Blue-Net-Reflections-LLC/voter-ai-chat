@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { FileDown } from 'lucide-react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-theme-quartz.css'; // Theme
@@ -53,6 +54,8 @@ const formatCurrency = (value: number | null | undefined) => {
 
 
 export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, isLoading, error }) => {
+  // Add a ref to the AG Grid component
+  const gridRef = useRef<AgGridReact>(null);
 
   const columnDefs = useMemo<ColDef<ApiReportRow>[]>(() => {
     if (!reportData || reportData.rows.length === 0) {
@@ -337,6 +340,51 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
     };
   }, []);
 
+  // Add an export function for CSV
+  const handleExportCSV = useCallback(() => {
+    if (gridRef.current && gridRef.current.api) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const fileName = `voter_turnout_report_${timestamp}.csv`;
+      
+      // Use the AG Grid export API
+      gridRef.current.api.exportDataAsCsv({
+        fileName,
+        processCellCallback: (params) => {
+          // Format values for export
+          if (params.value === null || params.value === undefined) {
+            return '';
+          }
+          
+          // Format numbers and percentages appropriately
+          const colDef = params.column.getColDef();
+          
+          // Type-safe check for valueFormatter as function
+          const valueFormatter = colDef.valueFormatter;
+          if (valueFormatter && typeof valueFormatter === 'function') {
+            // Apply the formatter function directly
+            const formattedValue = valueFormatter({
+              value: params.value,
+              data: params.node?.data,
+              colDef: params.column.getColDef(),
+              column: params.column,
+              api: params.api,
+              node: params.node ?? null,
+              context: params.context
+            });
+            
+            // Clean up formatted values for CSV (remove currency symbols, etc)
+            if (typeof formattedValue === 'string') {
+              return formattedValue.replace(/[$,%]/g, '');
+            }
+            return formattedValue;
+          }
+          
+          // Return the raw value for other cases
+          return params.value;
+        }
+      });
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -376,14 +424,21 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
           <CardTitle>Voter Turnout Report</CardTitle>
           <CardDescription>Detailed breakdown of voter turnout based on your selections.</CardDescription>
         </div>
-        <Button variant="outline" size="sm" disabled={isLoading || !reportData || reportData.rows.length === 0}>
-          Download Report (CSV/Excel) {/* TODO: Implement AG Grid export */}
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleExportCSV}
+          disabled={isLoading || !reportData || reportData.rows.length === 0}
+        >
+          <FileDown className="mr-2 h-4 w-4" />
+          Download CSV
         </Button>
       </CardHeader>
       <CardContent className="flex-grow p-0">
         {/* Use theme-adaptive styling from our CSS */}
         <div className="ag-theme-quartz h-full w-full">
           <AgGridReact<ApiReportRow>
+            ref={gridRef}
             rowData={rowData}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
