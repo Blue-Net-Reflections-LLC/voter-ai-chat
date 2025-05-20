@@ -19,7 +19,7 @@ export function Tabs({ defaultValue, children, onValueChange }: TabsProps) {
   
   return (
     <TabsContext.Provider value={{ value, setValue: handleValueChange }}>
-      <div>{children}</div>
+      {children}
     </TabsContext.Provider>
   );
 }

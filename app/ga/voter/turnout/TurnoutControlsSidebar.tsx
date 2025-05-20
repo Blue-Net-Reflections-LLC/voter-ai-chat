@@ -76,20 +76,7 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
     onSelectionsChange({ secondaryBreakdown: value === '' || value === 'None' ? null : value });
   };
 
-  const handleReportDataPointChange = (pointId: string, checked: boolean) => {
-    const currentPoints = selections.reportDataPoints;
-    let newPoints = [...currentPoints];
-    if (checked) {
-      if (!currentPoints.includes(pointId) && currentPoints.length < 3) {
-        newPoints.push(pointId);
-      }
-    } else {
-      newPoints = currentPoints.filter(p => p !== pointId);
-    }
-    if (newPoints.length <=3) {
-        onSelectionsChange({ reportDataPoints: newPoints });
-    }
-  };
+    const handleReportDataPointChange = (pointId: string, checked: boolean) => {    const currentPoints = selections.dataPoints;    let newPoints = [...currentPoints];    if (checked) {      if (!currentPoints.includes(pointId) && currentPoints.length < 3) {        newPoints.push(pointId);      }    } else {      newPoints = currentPoints.filter(p => p !== pointId);    }    if (newPoints.length <=3) {        onSelectionsChange({ dataPoints: newPoints });    }  };
 
   const getDistrictNumberOptions = () => {
     if (!selections.specificDistrictType) return [];
@@ -107,6 +94,10 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
     if (selections.primaryGeoType === 'District' && (!selections.specificDistrictType || !selections.specificDistrictNumber)) return true;
     if (!selections.primaryGeoType) return true; // Must select a primary geo type
     return false;
+  };
+
+  const handleChartDataPointChange = (value: string) => {
+    onSelectionsChange({ dataPoints: value === 'overall' ? [] : [value] });
   };
 
   return (
@@ -262,12 +253,12 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
                     {REPORT_DATA_POINTS.map(point => (
                       <div key={point.id} className="flex items-center space-x-2">
                         <Switch 
-                          id={`report-${point.id.toLowerCase()}`}
-                          checked={selections.reportDataPoints.includes(point.id)}
+                          id={`dp-${point.id}`}
+                          checked={(selections.dataPoints || []).includes(point.id)}
                           onCheckedChange={(checked) => handleReportDataPointChange(point.id, checked)}
-                          disabled={!selections.reportDataPoints.includes(point.id) && selections.reportDataPoints.length >= 3}
+                          disabled={(selections.dataPoints || []).length >= 3 && !(selections.dataPoints || []).includes(point.id)}
                         />
-                        <Label htmlFor={`report-${point.id.toLowerCase()}`}>{point.label}</Label>
+                        <Label htmlFor={`dp-${point.id}`}>{point.label}</Label>
                       </div>
                     ))}
                   </div>
@@ -285,8 +276,8 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
                 <div className="space-y-1">
                   <Label htmlFor="chart-data-point">Data Point</Label>
                   <Select
-                    value={selections.chartDataPoint || 'overall'}
-                    onValueChange={(value) => onSelectionsChange({ chartDataPoint: value === 'overall' ? null : value })}
+                    value={selections.dataPoints.length > 0 ? selections.dataPoints[0] : 'overall'}
+                    onValueChange={handleChartDataPointChange}
                   >
                     <SelectTrigger id="chart-data-point">
                       <SelectValue placeholder="Select data point..." />
@@ -302,22 +293,24 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
             </Card>
           )}
 
-          {/* Census Data Inclusion Card */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Additional Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2 pt-1">
-                <Switch 
-                  id="include-census" 
-                  checked={selections.includeCensusData}
-                  onCheckedChange={(checked) => onSelectionsChange({ includeCensusData: checked })}
-                />
-                <Label htmlFor="include-census">Include Census Data</Label>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Census Data Inclusion Card - Only shown in Report tab */}
+          {activeTab === 'report' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Additional Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-2 pt-1">
+                  <Switch 
+                    id="include-census" 
+                    checked={selections.includeCensusData}
+                    onCheckedChange={(checked) => onSelectionsChange({ includeCensusData: checked })}
+                  />
+                  <Label htmlFor="include-census">Include Census Data</Label>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </ScrollArea>
       

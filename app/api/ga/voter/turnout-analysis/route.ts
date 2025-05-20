@@ -12,10 +12,8 @@ interface TurnoutAnalysisRequestBody {
     subAreaValue?: string;
   };
   electionDate: string; // YYYY-MM-DD
-  reportDataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
-  chartDataPoint?: 'Race' | 'Gender' | 'AgeRange' | null;
+  dataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
   includeCensusData: boolean;
-  outputType: 'report' | 'chart';
 }
 
 // Basic validation for the request body (can be expanded)
@@ -25,24 +23,16 @@ function isValidRequestBody(body: any): body is TurnoutAnalysisRequestBody {
   if (!['County', 'District', 'ZipCode'].includes(body.geography.areaType)) return false;
   if (typeof body.geography.areaValue !== 'string' || body.geography.areaValue.trim() === '') return false;
   
-  // Validate subAreaType and subAreaValue if areaType is County and subAreaType is provided
-  if (body.geography.areaType === 'County' && body.geography.subAreaType) {
+  // Validate subAreaType and subAreaValue if they are provided
+  if (body.geography.subAreaType) {
     if (!['Precinct', 'Municipality', 'ZipCode'].includes(body.geography.subAreaType)) return false;
     if (typeof body.geography.subAreaValue !== 'string' || body.geography.subAreaValue.trim() === '') return false;
   }
-  if (body.geography.areaType !== 'County' && (body.geography.subAreaType || body.geography.subAreaValue)) {
-    // subAreaType/Value should only be present if areaType is County
-    return false; 
-  }
 
   if (typeof body.electionDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.electionDate)) return false;
-  if (!Array.isArray(body.reportDataPoints) || 
-      body.reportDataPoints.some((dp: any) => !['Race', 'Gender', 'AgeRange'].includes(dp))) return false;
-  if (body.chartDataPoint !== undefined && body.chartDataPoint !== null && 
-      !['Race', 'Gender', 'AgeRange'].includes(body.chartDataPoint)) return false;
+  if (!Array.isArray(body.dataPoints) || 
+      body.dataPoints.some((dp: any) => !['Race', 'Gender', 'AgeRange'].includes(dp))) return false;
   if (typeof body.includeCensusData !== 'boolean') return false;
-  // Validate outputType
-  if (!body.outputType || (body.outputType !== 'report' && body.outputType !== 'chart')) return false;
   return true;
 }
 
@@ -66,25 +56,20 @@ export async function POST(request: NextRequest) {
     const validatedParams: TurnoutAnalysisRequestBody = body;
 
     // Call the service function to get the processed data
-    const processedData = await generateTurnoutAnalysisData(validatedParams);
+    const { rows } = await generateTurnoutAnalysisData(validatedParams);
 
-    // Structure the final API response, including metadata
-    const responsePayload: any = {
+    // Structure the final API response with rows directly at the top level
+    // along with metadata
+    const responsePayload = {
+      rows,
       metadata: {
         requestParameters: validatedParams, // Echo back the validated parameters
         generatedAt: new Date().toISOString(),
-        notes: validatedParams.outputType === 'report' 
-               ? (processedData.report?.rows && processedData.report.rows.length > 0 ? 'Report data successfully processed.' : 'No report data found for the given criteria.')
-               : (processedData.chart?.rows && processedData.chart.rows.length > 0 ? 'Chart data successfully processed.' : 'No chart data found for the given criteria.')
-      },
+        notes: rows && rows.length > 0 
+               ? 'Data successfully processed.' 
+               : 'No data found for the given criteria.'
+      }
     };
-
-    if (processedData.report) {
-        responsePayload.report = processedData.report;
-    }
-    if (processedData.chart) {
-        responsePayload.chart = processedData.chart;
-    }
 
     return NextResponse.json(responsePayload, { status: 200 });
 
