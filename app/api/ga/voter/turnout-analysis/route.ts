@@ -63,25 +63,20 @@ export async function POST(request: NextRequest) {
     const validatedParams: TurnoutAnalysisRequestBody = body;
 
     // Call the service function to get the processed data
-    const processedData = await generateTurnoutAnalysisData(validatedParams);
+    const { rows } = await generateTurnoutAnalysisData(validatedParams);
 
-    // Structure the final API response, including metadata
-    const responsePayload: any = {
+    // Structure the final API response with rows directly at the top level
+    // along with metadata
+    const responsePayload = {
+      rows,
       metadata: {
         requestParameters: validatedParams, // Echo back the validated parameters
         generatedAt: new Date().toISOString(),
-        notes: processedData.report?.rows && processedData.report.rows.length > 0 
+        notes: rows && rows.length > 0 
                ? 'Data successfully processed.' 
                : 'No data found for the given criteria.'
-      },
+      }
     };
-
-    if (processedData.report) {
-        responsePayload.report = processedData.report;
-    }
-    if (processedData.chart) {
-        responsePayload.chart = processedData.chart;
-    }
 
     return NextResponse.json(responsePayload, { status: 200 });
 

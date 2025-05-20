@@ -33,11 +33,6 @@ export interface ApiReportRow {
   censusData?: Record<string, any>;
 }
 
-export interface ApiReportData {
-  rows: ApiReportRow[];
-  aggregations: Record<string, any>;
-}
-
 export interface ApiChartSegment {
   label: string;
   turnoutRate: number;
@@ -57,11 +52,38 @@ export interface ApiChartData {
   xAxisMax: number;
 }
 
+// Updated API response structure: flat array of rows at top level
 export interface TurnoutAnalysisApiResponse {
-  report?: ApiReportData;
-  chart?: ApiChartData;
+  rows: ApiReportRow[];
   metadata?: any;
 }
+
+// Constants for chart data transformation
+const RACE_CHART_CATEGORIES = ['WH', 'BH', 'HP', 'AP', 'OT', 'U'];
+const GENDER_CHART_CATEGORIES = ['M', 'F', 'O']; // Assuming 'O' is 'Other' from backend if present
+const AGE_RANGE_CHART_CATEGORIES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65-74', '75+'];
+
+const DEMOGRAPHIC_COLORS: Record<string, string[]> = {
+  Race: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+  Gender: ['#FF6384', '#36A2EB', '#FFCE56'],
+  AgeRange: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#C9CBCF', '#FF9F40'],
+};
+
+const getCategoryDisplayName = (dimension: 'Race' | 'Gender' | 'AgeRange' | string, categoryValue: string): string => {
+  if (dimension === 'Race') {
+    return categoryValue === 'WH' ? 'White' :
+           categoryValue === 'BH' ? 'Black' :
+           categoryValue === 'AP' ? 'Asian/Pacific' :
+           categoryValue === 'HP' ? 'Hispanic' :
+           categoryValue === 'OT' ? 'Other' :
+           categoryValue === 'U' ? 'Unknown' : categoryValue;
+  } else if (dimension === 'Gender') {
+    return categoryValue === 'M' ? 'Male' :
+           categoryValue === 'F' ? 'Female' :
+           categoryValue === 'O' ? 'Other' : categoryValue;
+  }
+  return categoryValue; // For AgeRange, the categoryValue itself is the display name
+};
 
 // Updated TurnoutSelections for the new granular geography controls
 export interface TurnoutSelections {
@@ -101,6 +123,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('report');
+  const [processedChartData, setProcessedChartData] = useState<ApiChartData | null>(null);
   
   // Move the useSearchParams hook here, at component level
   const searchParams = useSearchParams();
@@ -317,6 +340,58 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     }
   }, [isLookupLoading, lookupError, searchParams]); // Remove handleGenerateReport from deps
 
+  // Effect to transform ApiReportRow[] to ApiChartData
+  useEffect(() => {
+    if (!apiData?.rows || !apiData.rows.length) {
+      setProcessedChartData(null);
+      return;
+    }
+
+    const chartPoint = selections.chartDataPoint;
+    let newChartData: ApiChartData | null = null;
+
+    if (chartPoint && (chartPoint === 'Race' || chartPoint === 'Gender' || chartPoint === 'AgeRange')) {
+      const categories = chartPoint === 'Race' ? RACE_CHART_CATEGORIES :
+                         chartPoint === 'Gender' ? GENDER_CHART_CATEGORIES : AGE_RANGE_CHART_CATEGORIES;
+      const colors = DEMOGRAPHIC_COLORS[chartPoint] || [];
+
+      newChartData = {
+        type: 'stackedRow',
+        rows: apiData.rows.map(reportRow => {
+          const segments: ApiChartSegment[] = [];
+          categories.forEach((catKey, index) => {
+            const breakdownKey = `${chartPoint}:${catKey}`; // e.g., Race:WH, AgeRange:18-24
+            const breakdownData = reportRow.breakdowns?.[breakdownKey];
+            if (breakdownData) {
+              segments.push({
+                label: getCategoryDisplayName(chartPoint, catKey),
+                turnoutRate: breakdownData.turnout,
+                color: colors[index % colors.length],
+              });
+            }
+          });
+          return {
+            geoLabel: reportRow.geoLabel,
+            segments,
+            overallTurnoutRate: reportRow.overallTurnoutRate, // Useful for context
+          };
+        }),
+        xAxisMax: 1, // Max 100% turnout
+      };
+    } else {
+      // Default to bar chart of overall turnout
+      newChartData = {
+        type: 'bar',
+        rows: apiData.rows.map(row => ({
+          geoLabel: row.geoLabel,
+          overallTurnoutRate: row.overallTurnoutRate,
+        })),
+        xAxisMax: 1, // Max 100% turnout
+      };
+    }
+    setProcessedChartData(newChartData);
+  }, [apiData, selections.chartDataPoint]);
+
   // Display lookup loading/error states if necessary
   if (isLookupLoading) {
     return <div className="flex items-center justify-center h-screen">Loading lookup data...</div>;
@@ -364,7 +439,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               <TabsContent value="report" className="h-full">
                 <div className='h-full'>
                   <ReportTabContent 
-                    reportData={apiData?.report || null} 
+                    rows={apiData?.rows || null} 
                     isLoading={isLoading && activeTab === 'report'}
                     error={error}
                   />
@@ -373,7 +448,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               <TabsContent value="chart" className="h-full">
                 <div className='h-full'>
                   <ChartTabContent 
-                    chartData={apiData?.chart || null} 
+                    chartData={processedChartData}
                     isLoading={isLoading && activeTab === 'chart'} 
                     error={error} 
                   />

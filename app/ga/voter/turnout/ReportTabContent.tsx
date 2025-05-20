@@ -7,7 +7,7 @@ import { FileDown } from 'lucide-react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-theme-quartz.css'; // Theme
-import { ApiReportRow, ApiReportData } from './page';
+import { ApiReportRow } from './page';
 
 // Add custom CSS for AG Grid styling
 import './ag-grid-custom.css';
@@ -16,7 +16,7 @@ import './ag-grid-custom.css';
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface ReportTabContentProps {
-  reportData: ApiReportData | null;
+  rows: ApiReportRow[] | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -53,17 +53,59 @@ const formatCurrency = (value: number | null | undefined) => {
 };
 
 
-export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, isLoading, error }) => {
+export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoading, error }) => {
   // Add a ref to the AG Grid component
   const gridRef = useRef<AgGridReact>(null);
 
+  // Calculate aggregations for the report - replacing backend aggregations that were removed
+  const reportAggregations = useMemo(() => {
+    if (!rows || rows.length === 0) return null;
+    
+    let grandTotalRegistered = 0;
+    let grandTotalVoted = 0;
+    
+    // Calculate basic aggregations
+    rows.forEach(row => {
+      grandTotalRegistered += row.totalRegistered;
+      grandTotalVoted += row.totalVoted;
+    });
+    
+    const averageOverallTurnoutRate = grandTotalRegistered > 0 ? grandTotalVoted / grandTotalRegistered : 0;
+    
+    // Calculate breakdown aggregations
+    const breakdownSums: Record<string, { totalRegistered: number; totalVoted: number }> = {};
+    
+    rows.forEach(row => {
+      Object.entries(row.breakdowns).forEach(([key, data]) => {
+        if (!breakdownSums[key]) {
+          breakdownSums[key] = { totalRegistered: 0, totalVoted: 0 };
+        }
+        breakdownSums[key].totalRegistered += data.registered;
+        breakdownSums[key].totalVoted += data.voted;
+      });
+    });
+    
+    const breakdownRates: Record<string, number> = {};
+    Object.entries(breakdownSums).forEach(([key, data]) => {
+      breakdownRates[key] = data.totalRegistered > 0 ? data.totalVoted / data.totalRegistered : 0;
+    });
+    
+    return {
+      grandTotalRegistered,
+      grandTotalVoted,
+      averageOverallTurnoutRate,
+      breakdownSums,
+      breakdownRates
+    };
+  }, [rows]);
+
   const columnDefs = useMemo<ColDef<ApiReportRow>[]>(() => {
-    if (!reportData || reportData.rows.length === 0) {
+    if (!rows || rows.length === 0) {
       // Return a default column def if no data, or AG Grid might complain
       return [{ headerName: 'Status', valueGetter: () => 'No data to display or generate an analysis.' }];
     }
 
-    const firstRow = reportData.rows[0];
+    const firstRow = rows[0];
     const dynamicColDefs: ColDef<ApiReportRow>[] = [];
 
     // Base columns
@@ -248,86 +290,27 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
       });
     }
     return dynamicColDefs;
-  }, [reportData]);
+  }, [rows]);
 
   const rowData = useMemo(() => {
-    return reportData?.rows || [];
-  }, [reportData]);
+    return rows || [];
+  }, [rows]);
 
   const pinnedBottomRowData = useMemo(() => {
-    if (!reportData || !reportData.aggregations) {
+    if (!reportAggregations) {
       return [];
     }
 
-    // Log the full aggregations object to inspect the actual keys
-    console.log('Aggregations object:', reportData.aggregations);
-
-    const aggregations = reportData.aggregations;
+    const { grandTotalRegistered, grandTotalVoted, averageOverallTurnoutRate } = reportAggregations;
     const totalRow: any = {
       geoLabel: 'Grand Total', // Label for the first column
-      totalRegistered: aggregations.grandTotalRegistered ?? null,
-      totalVoted: aggregations.grandTotalVoted ?? null,
-      overallTurnoutRate: aggregations.averageOverallTurnoutRate ?? null,
+      totalRegistered: grandTotalRegistered ?? null,
+      totalVoted: grandTotalVoted ?? null,
+      overallTurnoutRate: averageOverallTurnoutRate ?? null,
     };
 
-    console.log('Base totalRow:', totalRow);
-
-    // Map breakdown aggregations
-    if (reportData.rows.length > 0 && reportData.rows[0].breakdowns) {
-      const breakdownKeys = Object.keys(reportData.rows[0].breakdowns);
-      console.log('Breakdown keys:', breakdownKeys);
-      
-      breakdownKeys.forEach(key => {
-        // The key structure might be different in the aggregations object
-        // Log both the key and the potential aggregation keys to check
-        console.log(`Processing breakdown key: ${key}`);
-        
-        // Try different potential key formats
-        const potential1 = `${key}_totalRegistered`;
-        const potential2 = `${key.replace(':', '_')}_totalRegistered`;
-        
-        console.log('Potential keys:', {
-          potential1,
-          potential2,
-          valueForPotential1: aggregations[potential1],
-          valueForPotential2: aggregations[potential2]
-        });
-        
-        // Use the field names exactly as they would be accessed in the grid
-        totalRow[`breakdowns.${key}.registered`] = aggregations[`${key}_totalRegistered`] ?? 
-                                                   aggregations[`${key.replace(':', '_')}_totalRegistered`] ?? 
-                                                   null;
-        
-        totalRow[`breakdowns.${key}.voted`] = aggregations[`${key}_totalVoted`] ?? 
-                                              aggregations[`${key.replace(':', '_')}_totalVoted`] ?? 
-                                              null;
-        
-        totalRow[`breakdowns.${key}.turnout`] = aggregations[`${key}_averageTurnoutRate`] ?? 
-                                               aggregations[`${key.replace(':', '_')}_averageTurnoutRate`] ?? 
-                                               null;
-      });
-      
-      console.log('Final totalRow after breakdowns:', totalRow);
-    }
-
-    // Map census aggregations
-    if (reportData.rows.length > 0 && reportData.rows[0].censusData) {
-      Object.keys(reportData.rows[0].censusData).forEach(censusKey => {
-        if (censusKey === 'census_tract' || censusKey === 'census_year') {
-          totalRow[`censusData.${censusKey}`] = null; // Explicitly null for N/A
-        } else {
-          // Prioritize grandTotal for counts, then avg, then direct key, then null
-          const value = reportData.aggregations?.[`grandTotal_${censusKey}`] ??
-                        reportData.aggregations?.[`avg_${censusKey}`] ??
-                        reportData.aggregations?.[censusKey] ??
-                        null;
-          totalRow[`censusData.${censusKey}`] = value;
-        }
-      });
-    }
-    
     return [totalRow];
-  }, [reportData]);
+  }, [reportAggregations]);
 
   // Default ColDef, applies to all columns unless overridden
   const defaultColDef = useMemo<ColDef>(() => {
@@ -407,8 +390,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
     );
   }
 
-  // We will keep the explicit "No report data to display" for when reportData is null.
-  if (!reportData) {
+  // We will keep the explicit "No report data to display" for when rows is null.
+  if (!rows) {
      return (
       <div className="flex flex-col items-center justify-center h-64 p-6 text-center">
         <p className="text-muted-foreground mb-4">No report data to display. Please generate an analysis.</p>
@@ -438,7 +421,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ reportData, 
           variant="outline" 
           size="sm"
           onClick={handleExportCSV}
-          disabled={isLoading || !reportData || reportData.rows.length === 0}
+          disabled={isLoading || !rows || rows.length === 0}
         >
           <FileDown className="mr-2 h-4 w-4" />
           Download CSV

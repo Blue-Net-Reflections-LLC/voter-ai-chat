@@ -20,10 +20,11 @@ import { enrichRowsWithCensusData } from './censusService';
 
 /**
  * Main function to generate turnout analysis data
+ * Returns flattened rows array without nested report/chart objects
  */
 export async function generateTurnoutAnalysisData(
     params: ValidatedTurnoutAnalysisParams
-): Promise<ProcessedTurnoutPayload> {
+): Promise<{ rows: ProcessedReportRow[] }> {
     console.log('Service: Generating turnout analysis data with params:', params);
 
     const { geography, electionDate, reportDataPoints, includeCensusData } = params;
@@ -139,8 +140,6 @@ export async function generateTurnoutAnalysisData(
         ORDER BY 
             gd.geo_unit_id;
     `;
-    
-    const payload: ProcessedTurnoutPayload = {};
 
     try {
         // Execute main query to get consolidated data
@@ -352,19 +351,11 @@ export async function generateTurnoutAnalysisData(
             return rest;
         });
 
-        // Calculate aggregations
-        const aggregations = calculateAggregations(finalReportRows);
-
-        // Set the report data in the payload
-        payload.report = {
-            rows: finalReportRows,
-            aggregations: aggregations
-        };
+        // Return flattened rows directly as the top level of the response
+        return { rows: finalReportRows };
         
     } catch (e: any) {
        console.error("Error executing query or processing data:", e);
        throw new Error(`Failed to generate data: ${e.message}`);
     }
-    
-    return payload;
 } 
