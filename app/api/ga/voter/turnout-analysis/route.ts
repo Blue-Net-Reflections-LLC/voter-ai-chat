@@ -13,7 +13,6 @@ interface TurnoutAnalysisRequestBody {
   };
   electionDate: string; // YYYY-MM-DD
   dataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
-  chartDataPoint?: 'Race' | 'Gender' | 'AgeRange' | null;
   includeCensusData: boolean;
 }
 
@@ -24,21 +23,15 @@ function isValidRequestBody(body: any): body is TurnoutAnalysisRequestBody {
   if (!['County', 'District', 'ZipCode'].includes(body.geography.areaType)) return false;
   if (typeof body.geography.areaValue !== 'string' || body.geography.areaValue.trim() === '') return false;
   
-  // Validate subAreaType and subAreaValue if areaType is County and subAreaType is provided
-  if (body.geography.areaType === 'County' && body.geography.subAreaType) {
+  // Validate subAreaType and subAreaValue if they are provided
+  if (body.geography.subAreaType) {
     if (!['Precinct', 'Municipality', 'ZipCode'].includes(body.geography.subAreaType)) return false;
     if (typeof body.geography.subAreaValue !== 'string' || body.geography.subAreaValue.trim() === '') return false;
-  }
-  if (body.geography.areaType !== 'County' && (body.geography.subAreaType || body.geography.subAreaValue)) {
-    // subAreaType/Value should only be present if areaType is County
-    return false; 
   }
 
   if (typeof body.electionDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.electionDate)) return false;
   if (!Array.isArray(body.dataPoints) || 
       body.dataPoints.some((dp: any) => !['Race', 'Gender', 'AgeRange'].includes(dp))) return false;
-  if (body.chartDataPoint !== undefined && body.chartDataPoint !== null && 
-      !['Race', 'Gender', 'AgeRange'].includes(body.chartDataPoint)) return false;
   if (typeof body.includeCensusData !== 'boolean') return false;
   return true;
 }

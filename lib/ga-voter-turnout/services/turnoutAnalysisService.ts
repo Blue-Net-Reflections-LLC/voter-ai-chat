@@ -57,13 +57,29 @@ export async function generateTurnoutAnalysisData(
         }
     } else if (geography.areaType === 'District') {
         if (!geography.districtType) throw new Error('District type is required for District geography');
-        switch (geography.districtType) {
-            case 'Congressional': groupByColumn = 'congressional_district'; break;
-            case 'StateSenate': groupByColumn = 'state_senate_district'; break;
-            case 'StateHouse': groupByColumn = 'state_house_district'; break;
-            default: throw new Error(`Unknown district type: ${geography.districtType}`);
+        
+        if (geography.subAreaType) {
+            // Handle sub-area breakdown for Districts
+            if (geography.subAreaType === 'Precinct') {
+                groupByColumn = 'county_precinct';
+                groupLabel = 'Precinct';
+            } else if (geography.subAreaType === 'Municipality') {
+                groupByColumn = 'municipal_precinct';
+                groupLabel = 'Municipality';
+            } else if (geography.subAreaType === 'ZipCode') {
+                groupByColumn = 'residence_zipcode';
+                groupLabel = 'ZIP Code';
+            }
+        } else {
+            // No sub-area breakdown, use district column
+            switch (geography.districtType) {
+                case 'Congressional': groupByColumn = 'congressional_district'; break;
+                case 'StateSenate': groupByColumn = 'state_senate_district'; break;
+                case 'StateHouse': groupByColumn = 'state_house_district'; break;
+                default: throw new Error(`Unknown district type: ${geography.districtType}`);
+            }
+            groupLabel = geography.districtType;
         }
-        groupLabel = geography.districtType;
     } else if (geography.areaType === 'ZipCode') {
         groupByColumn = 'residence_zipcode';
         groupLabel = 'ZIP Code';
@@ -111,11 +127,18 @@ export async function generateTurnoutAnalysisData(
         : consolidatedQueryGroupBy;
     
     const mainCountyNameColumn = 'county_name';
+    let mainDistrictColumn = '';
+    if (geography.areaType === 'District' && geography.districtType) {
+        if (geography.districtType === 'Congressional') mainDistrictColumn = 'congressional_district';
+        else if (geography.districtType === 'StateSenate') mainDistrictColumn = 'state_senate_district';
+        else if (geography.districtType === 'StateHouse') mainDistrictColumn = 'state_house_district';
+    }
 
     const consolidatedQuery = `
         WITH geo_data AS (
             SELECT 
                 ${ (geography.areaType === 'County' && geography.subAreaType && consolidatedQueryGroupByClean !== mainCountyNameColumn) ? `vrl.${mainCountyNameColumn} AS query_county_name,` : '' }
+                ${ (geography.areaType === 'District' && geography.subAreaType && mainDistrictColumn) ? `vrl.${mainDistrictColumn} AS query_district_id,` : '' }
                 ${consolidatedQueryGroupBy} AS geo_unit_id, 
                 COUNT(DISTINCT vrl.voter_registration_number) AS total_registered_overall,
                 SUM(CASE WHEN vrl.voting_events @> '[{"election_date": "${electionDate}"}]'::jsonb THEN 1 ELSE 0 END) AS total_voted_overall
@@ -127,6 +150,7 @@ export async function generateTurnoutAnalysisData(
                 AND TRIM(CAST(vrl.${consolidatedQueryGroupByClean} AS TEXT)) <> ''
             GROUP BY 
                 ${ (geography.areaType === 'County' && geography.subAreaType && consolidatedQueryGroupByClean !== mainCountyNameColumn) ? `vrl.${mainCountyNameColumn},` : '' }
+                ${ (geography.areaType === 'District' && geography.subAreaType && mainDistrictColumn) ? `vrl.${mainDistrictColumn},` : '' }
                 ${consolidatedQueryGroupBy}
         )
         SELECT 
@@ -179,6 +203,14 @@ export async function generateTurnoutAnalysisData(
                     } else { 
                         geoLabel = `${groupLabel} ${currentGeoUnitId}`; 
                     }
+                }
+            } else if (geography.areaType === 'District') {
+                if (geography.subAreaType) {
+                    const districtType = geography.districtType || '';
+                    const districtId = dbRow.query_district_id || geography.areaValue;
+                    geoLabel = `${groupLabel} (${districtType} ${districtId}) ${currentGeoUnitId}`;
+                } else {
+                    geoLabel = `${groupLabel} ${currentGeoUnitId}`;
                 }
             } else { 
                  geoLabel = `${groupLabel} ${currentGeoUnitId}`;

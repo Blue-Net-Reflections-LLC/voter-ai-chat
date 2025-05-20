@@ -20,7 +20,6 @@ export interface ValidatedTurnoutAnalysisParams {
     };
     electionDate: string; // YYYY-MM-DD
     dataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
-    chartDataPoint?: 'Race' | 'Gender' | 'AgeRange' | null;
     includeCensusData: boolean;
 }
 
@@ -54,6 +53,7 @@ export interface ProcessedTurnoutPayload {
 
 export interface ConsolidatedDbRow {
     query_county_name?: string;
+    query_district_id?: string;
     geo_unit_id: string | number;
     total_registered_overall: number;
     total_voted_overall: number;
