@@ -67,9 +67,18 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
   }
   
   console.log('[ChartTabContent RENDER]: Rendering chart', chartData);
+
+  // Calculate dynamic chart height
+  const MINIMUM_CHART_HEIGHT = 400; // Minimum height in pixels
+  const PIXELS_PER_BAR = 40; // Updated: 24px bar + 16px spacing
+  let chartHeight = MINIMUM_CHART_HEIGHT;
+  if (chartData && chartData.rows && chartData.rows.length > 0) {
+    chartHeight = Math.max(MINIMUM_CHART_HEIGHT, chartData.rows.length * PIXELS_PER_BAR);
+  }
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
         <div>
           <CardTitle>Voter Turnout Chart</CardTitle>
           <CardDescription>
@@ -82,9 +91,9 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
           disabled={isLoading || !chartData || chartData.rows.length === 0}
         />
       </CardHeader>
-      <CardContent>
-        
-        <div ref={chartContainerRef} style={{ height: 'calc(100vh - 308px)' }} className="">
+      <CardContent className="flex-grow overflow-y-auto">
+        {/* The direct child div of CardContent will handle scrolling if needed */}
+        <div ref={chartContainerRef} style={{ height: `${chartHeight}px`, minHeight: `${MINIMUM_CHART_HEIGHT}px` }}>
           {chartData.type === 'bar' ? (
             <TurnoutBarChart rows={chartData.rows} xAxisMax={chartData.xAxisMax} />
           ) : (

@@ -54,7 +54,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 // Define a custom shape for the Bar to enforce minimum height
 const CustomBarShape = (props: any) => {
   const { x, y, width, height, fill } = props;
-  const minHeight = 32;
+  const minHeight = 24;
   const displayHeight = Math.max(height, minHeight);
   // Adjust y position so the bar still grows upwards from the baseline
   const displayY = y + height - displayHeight;
@@ -125,7 +125,7 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
           dataKey="turnout" 
           fill="hsl(var(--primary))" 
           name="Overall Turnout Rate"
-          barSize={30}
+          barSize={24}
           shape={<CustomBarShape />}
         >
           <LabelList 
