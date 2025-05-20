@@ -76,22 +76,7 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
     onSelectionsChange({ secondaryBreakdown: value === '' || value === 'None' ? null : value });
   };
 
-  const handleReportDataPointChange = (pointId: string, checked: boolean) => {
-    const currentPoints = selections.dataPoints || [];
-    let newPoints = [...currentPoints];
-    if (checked) {
-      if (newPoints.length < 3 || currentPoints.includes(pointId)) {
-         if (!currentPoints.includes(pointId)) {
-            newPoints.push(pointId);
-         }
-      }
-    } else {
-      newPoints = currentPoints.filter(p => p !== pointId);
-    }
-    if (newPoints.length <= 3) { 
-        onSelectionsChange({ dataPoints: newPoints });
-    }
-  };
+    const handleReportDataPointChange = (pointId: string, checked: boolean) => {    const currentPoints = selections.dataPoints;    let newPoints = [...currentPoints];    if (checked) {      if (!currentPoints.includes(pointId) && currentPoints.length < 3) {        newPoints.push(pointId);      }    } else {      newPoints = currentPoints.filter(p => p !== pointId);    }    if (newPoints.length <=3) {        onSelectionsChange({ dataPoints: newPoints });    }  };
 
   const getDistrictNumberOptions = () => {
     if (!selections.specificDistrictType) return [];
@@ -112,7 +97,7 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
   };
 
   const handleChartDataPointChange = (value: string) => {
-    onSelectionsChange({ chartDataPoint: value === 'overall' ? null : value });
+    onSelectionsChange({ dataPoints: value === 'overall' ? [] : [value] });
   };
 
   return (
@@ -291,7 +276,7 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
                 <div className="space-y-1">
                   <Label htmlFor="chart-data-point">Data Point</Label>
                   <Select
-                    value={selections.chartDataPoint || 'overall'}
+                    value={selections.dataPoints.length > 0 ? selections.dataPoints[0] : 'overall'}
                     onValueChange={handleChartDataPointChange}
                   >
                     <SelectTrigger id="chart-data-point">
