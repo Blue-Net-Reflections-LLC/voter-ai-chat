@@ -488,7 +488,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
       </CardHeader>
       <CardContent className="flex-grow p-0 h-full">
         {/* Use theme-adaptive styling from our CSS */}
-        <div className="ag-theme-quartz" style={{ height: 'calc(100vh - 308px)' }}>
+        <div className="ag-theme-quartz" style={{ height: 'calc(100% - 8px)' }}>
           <AgGridReact<ApiReportRow>
             ref={gridRef}
             rowData={rowData}

@@ -137,6 +137,7 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
             interval={0} // Show all labels
             stroke="hsl(var(--muted-foreground))"
             tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 10 }}
           />
           <Tooltip 
             formatter={(value: number) => [formatPercent(value), 'Overall Turnout']}

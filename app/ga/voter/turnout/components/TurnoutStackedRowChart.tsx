@@ -153,9 +153,10 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
           <YAxis 
             dataKey="name" 
             type="category" 
-            width={90}
+            width={150}
             stroke="hsl(var(--muted-foreground))"
             tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 10 }}
           />
           <Tooltip 
             content={<CustomTooltip />}

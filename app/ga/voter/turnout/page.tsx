@@ -131,6 +131,11 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
   // Move the useSearchParams hook here, at component level
   const searchParams = useSearchParams();
 
+  // Determine data points for SelectionsHeader based on activeTab and appliedSelections
+  const headerDataPoints = activeTab === 'chart'
+    ? (appliedSelections.dataPoints.length > 0 ? [appliedSelections.dataPoints[0]] : [])
+    : appliedSelections.dataPoints;
+
   // Integrate useLookupData
   const {
     counties,
@@ -240,11 +245,23 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
 
     try {
+      // Determine dataPoints and includeCensusData for the API request based on activeTab
+      let apiDataPoints: string[];
+      let apiIncludeCensusData: boolean;
+
+      if (activeTab === 'chart') {
+        apiDataPoints = selections.dataPoints.length > 0 ? [selections.dataPoints[0]] : [];
+        apiIncludeCensusData = false; // Charts do not use census data
+      } else { // 'report' tab
+        apiDataPoints = selections.dataPoints;
+        apiIncludeCensusData = selections.includeCensusData;
+      }
+
       const requestBody = {
         geography: apiGeography,
         electionDate: selections.electionDate,
-        dataPoints: selections.dataPoints,
-        includeCensusData: selections.includeCensusData,
+        dataPoints: apiDataPoints, // Use the tab-aware apiDataPoints
+        includeCensusData: apiIncludeCensusData, // Use tab-aware census flag
       };
 
       const response = await fetch('/api/ga/voter/turnout-analysis', {
@@ -377,6 +394,21 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     }
   }, [isLookupLoading, lookupError, searchParams]); // Remove handleGenerateReport from deps
 
+  // New Effect: Adjust selections.dataPoints when activeTab changes
+  useEffect(() => {
+    if (activeTab === 'chart') {
+      setSelections(prevSelections => {
+        if (prevSelections.dataPoints.length > 1) {
+          // If more than one data point, keep only the first for charts
+          return { ...prevSelections, dataPoints: [prevSelections.dataPoints[0]] };
+        }
+        return prevSelections; // No change if 0 or 1 data point
+      });
+    }
+    // No specific adjustment needed when switching to 'report' tab from 'chart',
+    // as the report tab can handle 0 or 1 data point selected in chart tab.
+  }, [activeTab]); // Dependency: activeTab. setSelections is stable via useState.
+
   // Effect to transform ApiReportRow[] to ApiChartData for the Chart Tab
   useEffect(() => {
     if (!rawChartData || !rawChartData.length) {
@@ -486,7 +518,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             </div>
           </div>
         </header>
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden p-4">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden pb-0 p-4">
           <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2 shrink-0">
               <TabsTrigger value="report">Report</TabsTrigger>
@@ -496,7 +528,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             {/* Add the SelectionsHeader when we have applied selections */}
             {(rawReportData || rawChartData) && (
               <SelectionsHeader 
-                appliedSelections={appliedSelections}
+                appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
                 countyOptions={counties}
                 districtOptions={
                   appliedSelections.specificDistrictType === 'Congressional' ? congressionalDistricts :
@@ -507,9 +539,9 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               />
             )}
             
-            <div className="flex-1 mt-1 h-screen" style={{ height: 'calc(100vh - 260px)', overflowY: 'auto' }}>
-              <TabsContent value="report" className="">
-                <div className=''>
+            <div className="flex-1 mt-1 h-screen" style={{ height: 'calc(100vh - 260px)' }}>
+              <TabsContent value="report" className="h-full">
+                <div className='h-full '>
                   <ReportTabContent 
                     rows={rawReportData || null} 
                     isLoading={isReportLoading} // Use isReportLoading
