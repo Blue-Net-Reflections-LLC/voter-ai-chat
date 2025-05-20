@@ -59,7 +59,7 @@ export interface TurnoutAnalysisApiResponse {
 }
 
 // Constants for chart data transformation
-const RACE_CHART_CATEGORIES = ['WH', 'BH', 'HP', 'AP', 'OT', 'U'];
+const RACE_CHART_CATEGORIES = ['White', 'Black', 'Hispanic', 'Asian', 'Other'];
 const GENDER_CHART_CATEGORIES = ['M', 'F', 'O']; // Assuming 'O' is 'Other' from backend if present
 const AGE_RANGE_CHART_CATEGORIES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65-74', '75+'];
 
@@ -71,12 +71,7 @@ const DEMOGRAPHIC_COLORS: Record<string, string[]> = {
 
 const getCategoryDisplayName = (dimension: 'Race' | 'Gender' | 'AgeRange' | string, categoryValue: string): string => {
   if (dimension === 'Race') {
-    return categoryValue === 'WH' ? 'White' :
-           categoryValue === 'BH' ? 'Black' :
-           categoryValue === 'AP' ? 'Asian/Pacific' :
-           categoryValue === 'HP' ? 'Hispanic' :
-           categoryValue === 'OT' ? 'Other' :
-           categoryValue === 'U' ? 'Unknown' : categoryValue;
+    return categoryValue; // Category value from RACE_CHART_CATEGORIES is now the display name
   } else if (dimension === 'Gender') {
     return categoryValue === 'M' ? 'Male' :
            categoryValue === 'F' ? 'Female' :
