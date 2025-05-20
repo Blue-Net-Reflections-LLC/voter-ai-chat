@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
   LabelList,
   Cell,
+  ReferenceLine,
 } from 'recharts';
 import { ApiChartRow } from '../page';
 // import { formatPercent } from '@/lib/utils/formatters'; // Removed faulty import
@@ -95,7 +96,12 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
           bottom: 5,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+        {/* Remove CartesianGrid and replace with explicit ReferenceLines */}
+        {/* These reference lines will appear as vertical lines in a vertical layout */}
+        <ReferenceLine x={0.25} stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
+        <ReferenceLine x={0.5} stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
+        <ReferenceLine x={0.75} stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
+        
         <XAxis 
           type="number" 
           domain={[0, xAxisMax]} 
@@ -103,6 +109,7 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
           allowDecimals={false}
           stroke="hsl(var(--muted-foreground))"
           tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
+          ticks={[0, 0.25, 0.5, 0.75, 1]} // Keep explicit ticks
         />
         <YAxis 
           dataKey="name" 
