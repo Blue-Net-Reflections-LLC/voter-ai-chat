@@ -60,8 +60,9 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
   if (!chartData || !chartData.rows || chartData.rows.length === 0) {
     console.log('[ChartTabContent RENDER]: No chart data', chartData);
     return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-muted-foreground">No chart data to display. Please ensure a chart breakdown is selected and data is generated.</p>
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <p className="text-muted-foreground mb-2">No chart data to display. Please ensure a chart breakdown is selected and data is generated.</p>
+        <p className="text-xs font-medium text-blue-600">After making selections in the sidebar, click "Draw Chart" to generate your visualization.</p>
       </div>
     );
   }
@@ -83,6 +84,7 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
           <CardTitle>Voter Turnout Chart</CardTitle>
           <CardDescription>
             Visual representation of voter turnout ({chartData.type === 'bar' ? 'Overall Turnout' : 'Demographic Breakdown'})
+            <div className="mt-1 text-xs font-medium text-blue-600">Note: Click "Draw Chart" after changing selections to update the chart.</div>
           </CardDescription>
         </div>
         <ChartExporter 

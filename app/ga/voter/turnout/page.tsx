@@ -64,9 +64,9 @@ const GENDER_CHART_CATEGORIES = ['M', 'F', 'O']; // Assuming 'O' is 'Other' from
 const AGE_RANGE_CHART_CATEGORIES = ['18-23', '25-44', '45-64', '65-74', '75+'];
 
 const DEMOGRAPHIC_COLORS: Record<string, string[]> = {
-  Race: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
-  Gender: ['#FF6384', '#36A2EB', '#FFCE56'],
-  AgeRange: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#C9CBCF', '#FF9F40'],
+  Race: ['#8884d8', '#FF9F40', '#FFCE56', '#4BC0C0', '#9966FF'],  // Purple for White, Orange for Black
+  Gender: ['#8884d8', '#FF9F40', '#FFCE56'],  // Changed to match new color scheme
+  AgeRange: ['#8884d8', '#FF9F40', '#FFCE56', '#4BC0C0', '#9966FF', '#C9CBCF'],
 };
 
 const getCategoryDisplayName = (dimension: 'Race' | 'Gender' | 'AgeRange' | string, categoryValue: string): string => {
@@ -100,7 +100,7 @@ const initialSelections: TurnoutSelections = {
   specificDistrictType: null,
   specificDistrictNumber: null,
   secondaryBreakdown: null,
-  electionDate: '2020-11-03',
+  electionDate: '2024-11-05',
   dataPoints: [], // Data points for both report and chart visualizations
   includeCensusData: false,
 };
@@ -108,6 +108,8 @@ const initialSelections: TurnoutSelections = {
 const GeorgiaVoterTurnoutPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selections, setSelections] = useState<TurnoutSelections>(initialSelections);
+  // New state to track the applied/rendered selections (only updated on button click)
+  const [appliedSelections, setAppliedSelections] = useState<TurnoutSelections>(initialSelections);
   
   // Add a ref to track if we already processed URL params
   const initialParamsProcessedRef = useRef(false);
@@ -139,10 +141,15 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
   } = useLookupData();
 
   const handleSelectionsChange = useCallback((newSelectionValues: Partial<TurnoutSelections>) => {
+    // Just update the state without automatically triggering report generation
     setSelections(prevSelections => ({ ...prevSelections, ...newSelectionValues }));
   }, []);
 
   const handleGenerateReport = useCallback(async () => {
+    // Update applied selections when Generate/Draw button is clicked
+    setAppliedSelections(selections);
+    
+    // This is now called only when the Generate/Draw button is clicked
     // setIsLoading(true); // Replaced
     if (activeTab === 'report') {
       setIsReportLoading(true);
@@ -350,8 +357,10 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           urlSelections.includeCensusData = includeCensusData === 'true';
         }
         
-        // Update selections
-        setSelections(prev => ({ ...prev, ...urlSelections }));
+        // Update selections and appliedSelections
+        const newSelections = { ...initialSelections, ...urlSelections };
+        setSelections(newSelections);
+        setAppliedSelections(newSelections); // Also update appliedSelections
         
         // Mark as processed before triggering the report generation
         initialParamsProcessedRef.current = true;
@@ -374,21 +383,38 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       return;
     }
 
-    // Use the first dataPoint (if available) for chart visualization
-    const chartPoint = selections.dataPoints.length > 0 ? selections.dataPoints[0] : null;
+    // IMPORTANT CHANGE: Use appliedSelections instead of selections
+    // This ensures chart only updates when Generate/Draw button is clicked
+    const chartPoint = appliedSelections.dataPoints.length > 0 ? appliedSelections.dataPoints[0] : null;
     let newChartData: ApiChartData | null = null;
 
     if (chartPoint && (chartPoint === 'Race' || chartPoint === 'Gender' || chartPoint === 'AgeRange')) {
+      console.log(`[ChartData] Processing ${chartPoint} data point`);
       const categories = chartPoint === 'Race' ? RACE_CHART_CATEGORIES :
-                         chartPoint === 'Gender' ? GENDER_CHART_CATEGORIES : AGE_RANGE_CHART_CATEGORIES;
+                        chartPoint === 'Gender' ? GENDER_CHART_CATEGORIES : AGE_RANGE_CHART_CATEGORIES;
       const colors = DEMOGRAPHIC_COLORS[chartPoint] || [];
 
+      // Find all available breakdown keys for the selected chartPoint
+      const availableBreakdownKeys = new Set<string>();
+      rawChartData.forEach(reportRow => {
+        if (reportRow.breakdowns) {
+          Object.keys(reportRow.breakdowns).forEach(key => {
+            if (key.startsWith(`${chartPoint}:`)) {
+              availableBreakdownKeys.add(key.split(':')[1]); // Extract category value after ':'
+            }
+          });
+        }
+      });
+      
+      console.log(`[ChartData] Available ${chartPoint} categories:`, [...availableBreakdownKeys]);
+      console.log(`[ChartData] Configured ${chartPoint} categories:`, categories);
+      
       newChartData = {
         type: 'stackedRow',
         rows: rawChartData.map(reportRow => { // Uses rawChartData
           const segments: ApiChartSegment[] = [];
           categories.forEach((catKey, index) => {
-            const breakdownKey = `${chartPoint}:${catKey}`; // e.g., Race:WH, AgeRange:18-24
+            const breakdownKey = `${chartPoint}:${catKey}`; // e.g., Race:White, AgeRange:18-23
             const breakdownData = reportRow.breakdowns?.[breakdownKey];
             if (breakdownData) {
               segments.push({
@@ -396,6 +422,8 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
                 turnoutRate: breakdownData.turnout,
                 color: colors[index % colors.length],
               });
+            } else {
+              console.log(`[ChartData] Missing data for ${breakdownKey} in ${reportRow.geoLabel}`);
             }
           });
           return {
@@ -418,7 +446,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       };
     }
     setProcessedChartData(newChartData);
-  }, [rawChartData, selections.dataPoints]); // Updated dependencies
+  }, [rawChartData, appliedSelections.dataPoints]); // Updated dependencies to use appliedSelections
 
   // Display lookup loading/error states if necessary
   if (isLookupLoading) {
