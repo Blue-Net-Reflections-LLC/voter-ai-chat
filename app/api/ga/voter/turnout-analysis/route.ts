@@ -15,7 +15,6 @@ interface TurnoutAnalysisRequestBody {
   reportDataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
   chartDataPoint?: 'Race' | 'Gender' | 'AgeRange' | null;
   includeCensusData: boolean;
-  outputType: 'report' | 'chart';
 }
 
 // Basic validation for the request body (can be expanded)
@@ -41,8 +40,6 @@ function isValidRequestBody(body: any): body is TurnoutAnalysisRequestBody {
   if (body.chartDataPoint !== undefined && body.chartDataPoint !== null && 
       !['Race', 'Gender', 'AgeRange'].includes(body.chartDataPoint)) return false;
   if (typeof body.includeCensusData !== 'boolean') return false;
-  // Validate outputType
-  if (!body.outputType || (body.outputType !== 'report' && body.outputType !== 'chart')) return false;
   return true;
 }
 
@@ -73,9 +70,9 @@ export async function POST(request: NextRequest) {
       metadata: {
         requestParameters: validatedParams, // Echo back the validated parameters
         generatedAt: new Date().toISOString(),
-        notes: validatedParams.outputType === 'report' 
-               ? (processedData.report?.rows && processedData.report.rows.length > 0 ? 'Report data successfully processed.' : 'No report data found for the given criteria.')
-               : (processedData.chart?.rows && processedData.chart.rows.length > 0 ? 'Chart data successfully processed.' : 'No chart data found for the given criteria.')
+        notes: processedData.report?.rows && processedData.report.rows.length > 0 
+               ? 'Data successfully processed.' 
+               : 'No data found for the given criteria.'
       },
     };
 

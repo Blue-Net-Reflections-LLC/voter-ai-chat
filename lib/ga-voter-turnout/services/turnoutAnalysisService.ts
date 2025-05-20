@@ -36,7 +36,6 @@ interface ValidatedTurnoutAnalysisParams {
     reportDataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
     chartDataPoint?: 'Race' | 'Gender' | 'AgeRange' | null;
     includeCensusData: boolean;
-    outputType: 'report' | 'chart';
 }
 
 // This will eventually be the detailed structure returned by database queries
@@ -282,7 +281,7 @@ export async function generateTurnoutAnalysisData(
 ): Promise<ProcessedTurnoutPayload> {
     console.log('Service: Generating turnout analysis data with params:', params);
 
-    const { geography, electionDate, reportDataPoints, chartDataPoint, includeCensusData, outputType } = params;
+    const { geography, electionDate, reportDataPoints, chartDataPoint, includeCensusData } = params;
     
     let groupByColumn = 'county_name'; // Default
     let groupLabel = 'County';
@@ -414,404 +413,394 @@ export async function generateTurnoutAnalysisData(
             gd.geo_unit_id;
     `;
     
-    // Remove excessive logging
-    // console.log("Executing consolidated query:", consolidatedQuery);
-    
     const payload: ProcessedTurnoutPayload = {};
 
-    if (outputType === 'report') {
-        try {
-            const result = await sql.unsafe(consolidatedQuery);
-            const dbRows: ConsolidatedDbRow[] = Array.isArray(result) ? result : (result && 'rows' in result ? (result as any).rows : []);
-            console.log(`Consolidated query returned ${dbRows.length} rows`);
-            
-            let precinctData: Record<string, { name: string, address: string }> = {};
-            if (geography.areaType === 'County' && geography.areaValue !== 'ALL' && 
-                geography.subAreaType === 'Precinct' && dbRows.length > 0) {
-                // ... (existing precinctData fetching logic, ensure it uses correct county identifier if needed)
-            }
-            
-            let totalRegisteredAgg = 0;
-            let totalVotedAgg = 0;
-            
-            const initialReportRows = dbRows.map((dbRow: ConsolidatedDbRow) => {
-                const registeredOverall = Number(dbRow.total_registered_overall) || 0;
-                const votedOverall = Number(dbRow.total_voted_overall) || 0;
-                const overallTurnoutRate = Number(dbRow.overall_turnout_rate_calculated) || 0;
+    try {
+        const result = await sql.unsafe(consolidatedQuery);
+        const dbRows: ConsolidatedDbRow[] = Array.isArray(result) ? result : (result && 'rows' in result ? (result as any).rows : []);
+        console.log(`Consolidated query returned ${dbRows.length} rows`);
+        
+        let precinctData: Record<string, { name: string, address: string }> = {};
+        if (geography.areaType === 'County' && geography.areaValue !== 'ALL' && 
+            geography.subAreaType === 'Precinct' && dbRows.length > 0) {
+            // ... (existing precinctData fetching logic, ensure it uses correct county identifier if needed)
+        }
+        
+        let totalRegisteredAgg = 0;
+        let totalVotedAgg = 0;
+        
+        const initialReportRows = dbRows.map((dbRow: ConsolidatedDbRow) => {
+            const registeredOverall = Number(dbRow.total_registered_overall) || 0;
+            const votedOverall = Number(dbRow.total_voted_overall) || 0;
+            const overallTurnoutRate = Number(dbRow.overall_turnout_rate_calculated) || 0;
 
-                totalRegisteredAgg += registeredOverall;
-                totalVotedAgg += votedOverall;
-                
-                let geoLabel = '';
-                const currentGeoUnitId = String(dbRow.geo_unit_id); 
+            totalRegisteredAgg += registeredOverall;
+            totalVotedAgg += votedOverall;
+            
+            let geoLabel = '';
+            const currentGeoUnitId = String(dbRow.geo_unit_id); 
 
-                if (geography.areaType === 'County') {
-                    if (geography.areaValue === 'ALL') {
-                        geoLabel = `${groupLabel} ${currentGeoUnitId}`; 
-                    } else { 
-                        if (geography.subAreaType) {
-                            const countyContext = dbRow.query_county_name || geography.areaValue;
-                            geoLabel = `${groupLabel} (${countyContext}) ${currentGeoUnitId}`;
-                             if (geography.subAreaType === 'Precinct' && precinctData[currentGeoUnitId]) {
-                                 geoLabel += `: ${precinctData[currentGeoUnitId].name}`;
-                             }
-                        } else { 
-                            geoLabel = `${groupLabel} ${currentGeoUnitId}`; 
-                        }
-                    }
+            if (geography.areaType === 'County') {
+                if (geography.areaValue === 'ALL') {
+                    geoLabel = `${groupLabel} ${currentGeoUnitId}`; 
                 } else { 
-                     geoLabel = `${groupLabel} ${currentGeoUnitId}`;
-                }
-
-
-                const currentReportRow: ProcessedReportRow & { dbGeoUnitId: string | number } = {
-                    dbGeoUnitId: dbRow.geo_unit_id,
-                    geoLabel,
-                    totalRegistered: registeredOverall,
-                    totalVoted: votedOverall,
-                    overallTurnoutRate: overallTurnoutRate,
-                    breakdowns: {} // Will be populated by the new logic
-                };
-
-                // Removed direct race breakdown population from dbRow here
-                return currentReportRow;
-            });
-            
-            // New logic for Cartesian product breakdowns
-            const getDemographicConditionSQL = (dimension: string, category: string, electionYearForAgeCalc: number): string => {
-                if (dimension === 'Race') {
-                    const sqlRaceCategory = GA_SQL_RACE_CATEGORIES_MAP[category];
-                    return sqlRaceCategory ? `UPPER(vrl.race) = '${sqlRaceCategory.replace(/'/g, "''")}'` : '1=0'; // Ensure apostrophes in category value are escaped if any
-                } else if (dimension === 'Gender') {
-                    return `LOWER(vrl.gender) = LOWER('${category.replace(/'/g, "''")}')`;
-                } else if (dimension === 'AgeRange') {
-                    const ageRangeDef = AGE_RANGE_CATEGORIES_DEF[category as keyof typeof AGE_RANGE_CATEGORIES_DEF];
-                    if (!ageRangeDef) return '1=0';
-                    
-                    // Use birth_year for age calculation
-                    if (category === '75+') {
-                        const effectiveMaxBirthYear = electionYearForAgeCalc - ageRangeDef.min; // e.g., 2024 - 75 = 1949. Voters born in 1949 or earlier.
-                        return `vrl.birth_year <= ${effectiveMaxBirthYear}`;
-                    } else {
-                        const maxBirthYear = electionYearForAgeCalc - ageRangeDef.min; // e.g., for 18-23 in 2024: 2024 - 18 = 2006
-                        const minBirthYear = electionYearForAgeCalc - ageRangeDef.max; // e.g., for 18-23 in 2024: 2024 - 23 = 2001
-                        return `vrl.birth_year BETWEEN ${minBirthYear} AND ${maxBirthYear}`;
+                    if (geography.subAreaType) {
+                        const countyContext = dbRow.query_county_name || geography.areaValue;
+                        geoLabel = `${groupLabel} (${countyContext}) ${currentGeoUnitId}`;
+                         if (geography.subAreaType === 'Precinct' && precinctData[currentGeoUnitId]) {
+                             geoLabel += `: ${precinctData[currentGeoUnitId].name}`;
+                         }
+                    } else { 
+                        geoLabel = `${groupLabel} ${currentGeoUnitId}`; 
                     }
                 }
-                return '1=1'; 
+            } else { 
+                 geoLabel = `${groupLabel} ${currentGeoUnitId}`;
+            }
+
+            const currentReportRow: ProcessedReportRow & { dbGeoUnitId: string | number } = {
+                dbGeoUnitId: dbRow.geo_unit_id,
+                geoLabel,
+                totalRegistered: registeredOverall,
+                totalVoted: votedOverall,
+                overallTurnoutRate: overallTurnoutRate,
+                breakdowns: {} // Will be populated by the new logic
             };
 
-            if (reportDataPoints.length > 0) {
-                for (const reportRow of initialReportRows) {
-                    const geoUnitIdForSubQuery = reportRow.dbGeoUnitId; 
+            // Removed direct race breakdown population from dbRow here
+            return currentReportRow;
+        });
+        
+        // New logic for Cartesian product breakdowns
+        const getDemographicConditionSQL = (dimension: string, category: string, electionYearForAgeCalc: number): string => {
+            if (dimension === 'Race') {
+                const sqlRaceCategory = GA_SQL_RACE_CATEGORIES_MAP[category];
+                return sqlRaceCategory ? `UPPER(vrl.race) = '${sqlRaceCategory.replace(/'/g, "''")}'` : '1=0'; // Ensure apostrophes in category value are escaped if any
+            } else if (dimension === 'Gender') {
+                return `LOWER(vrl.gender) = LOWER('${category.replace(/'/g, "''")}')`;
+            } else if (dimension === 'AgeRange') {
+                const ageRangeDef = AGE_RANGE_CATEGORIES_DEF[category as keyof typeof AGE_RANGE_CATEGORIES_DEF];
+                if (!ageRangeDef) return '1=0';
+                
+                // Use birth_year for age calculation
+                if (category === '75+') {
+                    const effectiveMaxBirthYear = electionYearForAgeCalc - ageRangeDef.min; // e.g., 2024 - 75 = 1949. Voters born in 1949 or earlier.
+                    return `vrl.birth_year <= ${effectiveMaxBirthYear}`;
+                } else {
+                    const maxBirthYear = electionYearForAgeCalc - ageRangeDef.min; // e.g., for 18-23 in 2024: 2024 - 18 = 2006
+                    const minBirthYear = electionYearForAgeCalc - ageRangeDef.max; // e.g., for 18-23 in 2024: 2024 - 23 = 2001
+                    return `vrl.birth_year BETWEEN ${minBirthYear} AND ${maxBirthYear}`;
+                }
+            }
+            return '1=1'; 
+        };
 
-                    if (geoUnitIdForSubQuery === undefined || geoUnitIdForSubQuery === null) {
-                        console.warn(`dbGeoUnitId is missing for reportRow: ${reportRow.geoLabel}. Skipping breakdowns.`);
-                        // Initialize breakdowns to empty for consistency if skipped
-                        const tempCombinationsForEmptyInit: Array<{ key: string }> = [];
-                         if (reportDataPoints.length === 1) {
-                            const dim = reportDataPoints[0];
-                            const categories = (dim === 'Race' ? RACE_OPTIONS : dim === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                            categories.forEach(cat => tempCombinationsForEmptyInit.push({ key: `${dim}:${cat}` }));
-                        } else if (reportDataPoints.length === 2) {
-                            const [dim1, dim2] = reportDataPoints;
-                            const categories1 = (dim1 === 'Race' ? RACE_OPTIONS : dim1 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                            const categories2 = (dim2 === 'Race' ? RACE_OPTIONS : dim2 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                            categories1.forEach(cat1 => categories2.forEach(cat2 => tempCombinationsForEmptyInit.push({ key: `${dim1}:${cat1}_${dim2}:${cat2}` })));
-                        } else if (reportDataPoints.length === 3) {
-                            const [dim1, dim2, dim3] = reportDataPoints;
-                            const categories1 = (dim1 === 'Race' ? RACE_OPTIONS : dim1 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                            const categories2 = (dim2 === 'Race' ? RACE_OPTIONS : dim2 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                            const categories3 = (dim3 === 'Race' ? RACE_OPTIONS : dim3 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                            categories1.forEach(cat1 => categories2.forEach(cat2 => categories3.forEach(cat3 => tempCombinationsForEmptyInit.push({ key: `${dim1}:${cat1}_${dim2}:${cat2}_${dim3}:${cat3}` }))));
-                        }
-                        tempCombinationsForEmptyInit.forEach(combo => {
-                             reportRow.breakdowns[combo.key] = { registered: 0, voted: 0, turnout: 0 };
-                        });
-                        continue;
-                    }
+        if (reportDataPoints.length > 0) {
+            for (const reportRow of initialReportRows) {
+                const geoUnitIdForSubQuery = reportRow.dbGeoUnitId; 
 
-                    const electionYearForAgeCalc = new Date(queryElectionDate).getFullYear();
-                    const combinations: Array<{ key: string, sqlConditions: string[] }> = [];
-
-                    if (reportDataPoints.length === 1) {
+                if (geoUnitIdForSubQuery === undefined || geoUnitIdForSubQuery === null) {
+                    console.warn(`dbGeoUnitId is missing for reportRow: ${reportRow.geoLabel}. Skipping breakdowns.`);
+                    // Initialize breakdowns to empty for consistency if skipped
+                    const tempCombinationsForEmptyInit: Array<{ key: string }> = [];
+                     if (reportDataPoints.length === 1) {
                         const dim = reportDataPoints[0];
                         const categories = (dim === 'Race' ? RACE_OPTIONS : dim === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                        for (const cat of categories) {
-                            combinations.push({
-                                key: `${dim}:${cat}`,
-                                sqlConditions: [getDemographicConditionSQL(dim, cat, electionYearForAgeCalc)]
-                            });
-                        }
+                        categories.forEach(cat => tempCombinationsForEmptyInit.push({ key: `${dim}:${cat}` }));
                     } else if (reportDataPoints.length === 2) {
                         const [dim1, dim2] = reportDataPoints;
                         const categories1 = (dim1 === 'Race' ? RACE_OPTIONS : dim1 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
                         const categories2 = (dim2 === 'Race' ? RACE_OPTIONS : dim2 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                        for (const cat1 of categories1) {
-                            for (const cat2 of categories2) {
-                                combinations.push({
-                                    key: `${dim1}:${cat1}_${dim2}:${cat2}`,
-                                    sqlConditions: [
-                                        getDemographicConditionSQL(dim1, cat1, electionYearForAgeCalc),
-                                        getDemographicConditionSQL(dim2, cat2, electionYearForAgeCalc)
-                                    ]
-                                });
-                            }
-                        }
+                        categories1.forEach(cat1 => categories2.forEach(cat2 => tempCombinationsForEmptyInit.push({ key: `${dim1}:${cat1}_${dim2}:${cat2}` })));
                     } else if (reportDataPoints.length === 3) {
                         const [dim1, dim2, dim3] = reportDataPoints;
                         const categories1 = (dim1 === 'Race' ? RACE_OPTIONS : dim1 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
                         const categories2 = (dim2 === 'Race' ? RACE_OPTIONS : dim2 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
                         const categories3 = (dim3 === 'Race' ? RACE_OPTIONS : dim3 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
-                        for (const cat1 of categories1) {
-                            for (const cat2 of categories2) {
-                                for (const cat3 of categories3) {
-                                    combinations.push({
-                                        key: `${dim1}:${cat1}_${dim2}:${cat2}_${dim3}:${cat3}`,
-                                        sqlConditions: [
-                                            getDemographicConditionSQL(dim1, cat1, electionYearForAgeCalc),
-                                            getDemographicConditionSQL(dim2, cat2, electionYearForAgeCalc),
-                                            getDemographicConditionSQL(dim3, cat3, electionYearForAgeCalc)
-                                        ]
-                                    });
-                                }
+                        categories1.forEach(cat1 => categories2.forEach(cat2 => categories3.forEach(cat3 => tempCombinationsForEmptyInit.push({ key: `${dim1}:${cat1}_${dim2}:${cat2}_${dim3}:${cat3}` }))));
+                    }
+                    tempCombinationsForEmptyInit.forEach(combo => {
+                         reportRow.breakdowns[combo.key] = { registered: 0, voted: 0, turnout: 0 };
+                    });
+                    continue;
+                }
+
+                const electionYearForAgeCalc = new Date(queryElectionDate).getFullYear();
+                const combinations: Array<{ key: string, sqlConditions: string[] }> = [];
+
+                if (reportDataPoints.length === 1) {
+                    const dim = reportDataPoints[0];
+                    const categories = (dim === 'Race' ? RACE_OPTIONS : dim === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
+                    for (const cat of categories) {
+                        combinations.push({
+                            key: `${dim}:${cat}`,
+                            sqlConditions: [getDemographicConditionSQL(dim, cat, electionYearForAgeCalc)]
+                        });
+                    }
+                } else if (reportDataPoints.length === 2) {
+                    const [dim1, dim2] = reportDataPoints;
+                    const categories1 = (dim1 === 'Race' ? RACE_OPTIONS : dim1 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
+                    const categories2 = (dim2 === 'Race' ? RACE_OPTIONS : dim2 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
+                    for (const cat1 of categories1) {
+                        for (const cat2 of categories2) {
+                            combinations.push({
+                                key: `${dim1}:${cat1}_${dim2}:${cat2}`,
+                                sqlConditions: [
+                                    getDemographicConditionSQL(dim1, cat1, electionYearForAgeCalc),
+                                    getDemographicConditionSQL(dim2, cat2, electionYearForAgeCalc)
+                                ]
+                            });
+                        }
+                    }
+                } else if (reportDataPoints.length === 3) {
+                    const [dim1, dim2, dim3] = reportDataPoints;
+                    const categories1 = (dim1 === 'Race' ? RACE_OPTIONS : dim1 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
+                    const categories2 = (dim2 === 'Race' ? RACE_OPTIONS : dim2 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
+                    const categories3 = (dim3 === 'Race' ? RACE_OPTIONS : dim3 === 'Gender' ? GENDER_OPTIONS : AGE_RANGE_OPTIONS).map(o => o.value);
+                    for (const cat1 of categories1) {
+                        for (const cat2 of categories2) {
+                            for (const cat3 of categories3) {
+                                combinations.push({
+                                    key: `${dim1}:${cat1}_${dim2}:${cat2}_${dim3}:${cat3}`,
+                                    sqlConditions: [
+                                        getDemographicConditionSQL(dim1, cat1, electionYearForAgeCalc),
+                                        getDemographicConditionSQL(dim2, cat2, electionYearForAgeCalc),
+                                        getDemographicConditionSQL(dim3, cat3, electionYearForAgeCalc)
+                                    ]
+                                });
                             }
                         }
                     }
-                    
-                    let subQuerySelectExpressions: string[] = [];
-                    combinations.forEach(combo => {
-                        const validSqlConditions = combo.sqlConditions.filter(c => c !== '1=1' && c !== '1=0' && c.trim() !== '');
-                        const finalDemographicSqlFilter = validSqlConditions.length > 0 ? validSqlConditions.join(' AND ') : '1=1'; // Default to true if no specific conditions, or handle as error/skip
+                }
+                
+                let subQuerySelectExpressions: string[] = [];
+                combinations.forEach(combo => {
+                    const validSqlConditions = combo.sqlConditions.filter(c => c !== '1=1' && c !== '1=0' && c.trim() !== '');
+                    const finalDemographicSqlFilter = validSqlConditions.length > 0 ? validSqlConditions.join(' AND ') : '1=1'; // Default to true if no specific conditions, or handle as error/skip
 
-                        const aliasSuffix = combo.key.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
+                    const aliasSuffix = combo.key.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
 
-                        if (finalDemographicSqlFilter === '1=0' || validSqlConditions.length === 0 && combo.sqlConditions.some(c => c === '1=0')) { // If any condition is definitively false
-                             subQuerySelectExpressions.push(
-                                `0 AS registered_${aliasSuffix}`,
-                                `0 AS voted_${aliasSuffix}`
-                            );
-                        } else {
-                             subQuerySelectExpressions.push(
-                                `COUNT(DISTINCT CASE WHEN ${finalDemographicSqlFilter} THEN vrl.voter_registration_number ELSE NULL END) AS registered_${aliasSuffix}`,
-                                `SUM(CASE WHEN ${finalDemographicSqlFilter} AND vrl.voting_events @> '[{"election_date": "${queryElectionDate}"}]'::jsonb THEN 1 ELSE 0 END) AS voted_${aliasSuffix}`
-                            );
-                        }
-                    });
-
-                    if (subQuerySelectExpressions.length > 0) {
-                        // Construct the sub-query WHERE clause for the specific geo unit.
-                        let subQuerySpecificWhere = '';
-                        const geoUnitIdString = String(geoUnitIdForSubQuery).replace(/'/g, "''"); // Sanitize
-                        
-                        // consolidatedQueryGroupByClean is the actual column name, e.g. 'county_name', 'county_precinct'
-                        if (geography.areaType === 'County' && geography.areaValue === 'ALL') {
-                            // Here, consolidatedQueryGroupByClean should be 'county_name' and geoUnitIdString is a specific county name
-                            subQuerySpecificWhere = `UPPER(vrl.${mainCountyNameColumn}) = UPPER('${geoUnitIdString}')`;
-                        } else {
-                            subQuerySpecificWhere = `CAST(vrl.${consolidatedQueryGroupByClean} AS TEXT) = '${geoUnitIdString}'`;
-                        }
-
-
-                        const breakdownSubQuery = `
-                            SELECT
-                                ${subQuerySelectExpressions.join(',\n                                ')}
-                            FROM
-                                ga_voter_registration_list vrl
-                            WHERE
-                                vrl.status = 'ACTIVE'
-                                AND ${subQuerySpecificWhere}
-                        `;
-                        // Remove breakdown subquery logging
-                        // console.log(`Executing consolidated breakdown sub-query for geo unit ${geoUnitIdForSubQuery} (${reportRow.geoLabel}):`, breakdownSubQuery);
-                        try {
-                            const breakdownResult = await sql.unsafe(breakdownSubQuery);
-                            const breakdownDataRow = (Array.isArray(breakdownResult) ? breakdownResult[0] : (breakdownResult as any).rows?.[0]) || {};
-
-                            combinations.forEach(combo => {
-                                const aliasSuffix = combo.key.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
-                                const registered = Number(breakdownDataRow[`registered_${aliasSuffix}`]) || 0;
-                                const voted = Number(breakdownDataRow[`voted_${aliasSuffix}`]) || 0;
-                                const turnout = registered > 0 ? (voted / registered) : 0;
-                                reportRow.breakdowns[combo.key] = { registered, voted, turnout };
-                            });
-                        } catch (subErr: any) {
-                            console.error(`Error fetching breakdowns for geo unit ${geoUnitIdForSubQuery} (${reportRow.geoLabel}): ${subErr.message}`, subErr);
-                            combinations.forEach(combo => { // Ensure keys exist even on error
-                                reportRow.breakdowns[combo.key] = { registered: 0, voted: 0, turnout: 0 };
-                            });
-                        }
+                    if (finalDemographicSqlFilter === '1=0' || validSqlConditions.length === 0 && combo.sqlConditions.some(c => c === '1=0')) { // If any condition is definitively false
+                         subQuerySelectExpressions.push(
+                            `0 AS registered_${aliasSuffix}`,
+                            `0 AS voted_${aliasSuffix}`
+                        );
                     } else {
-                        // No valid combinations to query (e.g. all conditions were 1=0), fill with zeros
+                         subQuerySelectExpressions.push(
+                            `COUNT(DISTINCT CASE WHEN ${finalDemographicSqlFilter} THEN vrl.voter_registration_number ELSE NULL END) AS registered_${aliasSuffix}`,
+                            `SUM(CASE WHEN ${finalDemographicSqlFilter} AND vrl.voting_events @> '[{"election_date": "${queryElectionDate}"}]'::jsonb THEN 1 ELSE 0 END) AS voted_${aliasSuffix}`
+                        );
+                    }
+                });
+
+                if (subQuerySelectExpressions.length > 0) {
+                    // Construct the sub-query WHERE clause for the specific geo unit.
+                    let subQuerySpecificWhere = '';
+                    const geoUnitIdString = String(geoUnitIdForSubQuery).replace(/'/g, "''"); // Sanitize
+                    
+                    // consolidatedQueryGroupByClean is the actual column name, e.g. 'county_name', 'county_precinct'
+                    if (geography.areaType === 'County' && geography.areaValue === 'ALL') {
+                        // Here, consolidatedQueryGroupByClean should be 'county_name' and geoUnitIdString is a specific county name
+                        subQuerySpecificWhere = `UPPER(vrl.${mainCountyNameColumn}) = UPPER('${geoUnitIdString}')`;
+                    } else {
+                        subQuerySpecificWhere = `CAST(vrl.${consolidatedQueryGroupByClean} AS TEXT) = '${geoUnitIdString}'`;
+                    }
+
+
+                    const breakdownSubQuery = `
+                        SELECT
+                            ${subQuerySelectExpressions.join(',\n                            ')}
+                        FROM
+                            ga_voter_registration_list vrl
+                        WHERE
+                            vrl.status = 'ACTIVE'
+                            AND ${subQuerySpecificWhere}
+                    `;
+                    // Remove breakdown subquery logging
+                    // console.log(`Executing consolidated breakdown sub-query for geo unit ${geoUnitIdForSubQuery} (${reportRow.geoLabel}):`, breakdownSubQuery);
+                    try {
+                        const breakdownResult = await sql.unsafe(breakdownSubQuery);
+                        const breakdownDataRow = (Array.isArray(breakdownResult) ? breakdownResult[0] : (breakdownResult as any).rows?.[0]) || {};
+
                         combinations.forEach(combo => {
+                            const aliasSuffix = combo.key.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
+                            const registered = Number(breakdownDataRow[`registered_${aliasSuffix}`]) || 0;
+                            const voted = Number(breakdownDataRow[`voted_${aliasSuffix}`]) || 0;
+                            const turnout = registered > 0 ? (voted / registered) : 0;
+                            reportRow.breakdowns[combo.key] = { registered, voted, turnout };
+                        });
+                    } catch (subErr: any) {
+                        console.error(`Error fetching breakdowns for geo unit ${geoUnitIdForSubQuery} (${reportRow.geoLabel}): ${subErr.message}`, subErr);
+                        combinations.forEach(combo => { // Ensure keys exist even on error
                             reportRow.breakdowns[combo.key] = { registered: 0, voted: 0, turnout: 0 };
                         });
                     }
-                    // Remove breakdown logging
-                    // console.log(`Final breakdowns for ${reportRow.geoLabel}:`, JSON.stringify(reportRow.breakdowns, null, 2));
-                }
-            } else { // No reportDataPoints selected, ensure breakdowns is empty object
-                 initialReportRows.forEach(reportRow => {
-                    reportRow.breakdowns = {};
-                });
-            }
-            
-            // Moved Census Data integration to its own loop after all initial rows are processed
-            if (includeCensusData) {
-                // TODO: Improve performance for census data fetching
-                // Current implementation makes individual queries for each geographic unit's census tracts
-                // and then another query for the census data. This could be optimized by:
-                // 1. Fetching all relevant tract IDs in a single query
-                // 2. Using a single query with IN clause for all census data
-                // 3. Caching frequently accessed census data
-                // 4. Consider pre-aggregating census data at region levels
-                
-                for (const reportRow of initialReportRows) { // Iterate again specifically for census data
-                    // Remove census logging
-                    // console.log(`Fetching census data for geo unit ${reportRow.dbGeoUnitId} (${reportRow.geoLabel})`);
-                    let censusQuerySpecificWhere = '';
-                    const geoUnitIdStringForCensus = String(reportRow.dbGeoUnitId).replace(/'/g, "''");
-
-                    // Determine the correct column for linking to ga_voter_registration_list based on how geo_unit_id was derived
-                    let geoLinkColumnInVRL = consolidatedQueryGroupByClean; // Default to the cleaned group by column
-                    if (geography.areaType === 'County' && geography.areaValue === 'ALL') {
-                        // In this case, geo_unit_id is county_name, so link vrl.county_name
-                        censusQuerySpecificWhere = `UPPER(vrl.${mainCountyNameColumn}) = UPPER('${geoUnitIdStringForCensus}')`;
-                    } else {
-                        // For other cases, geo_unit_id was derived from consolidatedQueryGroupByClean
-                        // (e.g. congressional_district, residence_zipcode, county_precinct)
-                        censusQuerySpecificWhere = `CAST(vrl.${geoLinkColumnInVRL} AS TEXT) = '${geoUnitIdStringForCensus}'`;
-                    }
-
-
-                    const tractsQuery = `
-                        SELECT DISTINCT vrl.census_tract
-                        FROM ga_voter_registration_list vrl
-                        WHERE ${censusQuerySpecificWhere}
-                          AND vrl.census_tract IS NOT NULL
-                          AND TRIM(vrl.census_tract) <> '';
-                    `;
-                    // Remove census query logging
-                    // console.log("Executing tracts query:", tractsQuery);
-                    try {
-                        const tractResult = await sql.unsafe(tractsQuery);
-                        const tractRows: { census_tract: string }[] = Array.isArray(tractResult) ? tractResult : (tractResult && 'rows' in tractResult ? (tractResult as any).rows : []);
-                        const tractIds = tractRows.map(r => r.census_tract).filter(t => t);
-
-                        if (tractIds.length > 0) {
-                            const censusDataQuery = `
-                                SELECT
-                                    AVG(median_household_income)::numeric AS "avgMedianHouseholdIncome",
-                                    (AVG(pct_bachelors_degree_only) / 100.0)::numeric AS "avgPctBachelorsDegreeOnly",
-                                    (AVG(pct_bachelors_degree_or_higher) / 100.0)::numeric AS "avgPctBachelorsOrHigher",
-                                    (AVG(labor_force_participation_rate) / 100.0)::numeric AS "avgLaborForceParticipationRate",
-                                    (AVG(unemployment_rate) / 100.0)::numeric AS "avgUnemploymentRate",
-                                    (AVG(employment_rate) / 100.0)::numeric AS "avgEmploymentRate",
-                                    SUM(education_total_pop_25_plus)::numeric AS "totalEducationPop25Plus",
-                                    STRING_AGG(DISTINCT tract_id, ', ' ORDER BY tract_id) AS "distinctTractIdsInGeography",
-                                    MAX(census_data_year) AS "censusDataSourceYear"
-                                FROM stg_processed_census_tract_data
-                                WHERE tract_id IN (${tractIds.map(id => `'${id.replace(/'/g, "''")}'`).join(',')});
-                            `;
-                            // Remove census data query logging
-                            // console.log("Executing census data aggregation query:", censusDataQuery);
-                            const censusResult = await sql.unsafe(censusDataQuery);
-                            const censusData = (Array.isArray(censusResult) ? censusResult[0] : (censusResult as any).rows?.[0]) || {};
-                            reportRow.censusData = censusData;
-                            // Remove census data logging
-                            // console.log(`Census data for ${reportRow.geoLabel}:`, censusData);
-                        } else {
-                            console.log(`No census tracts found for ${reportRow.geoLabel}`);
-                            reportRow.censusData = {};
-                        }
-                    } catch (censusErr: any) {
-                        console.error(`Error fetching census data for ${reportRow.geoLabel}: ${censusErr.message}`, censusErr);
-                        reportRow.censusData = {}; // Ensure censusData key exists even on error
-                    }
-                }
-            }
-
-            const finalReportRows = initialReportRows.map(row => {
-                const { dbGeoUnitId, ...rest } = row;
-                return rest;
-            });
-
-            // Calculate aggregations
-            let grandTotalRegisteredOverall = 0;
-            let grandTotalVotedOverall = 0;
-            const breakdownSums: Record<string, { sumRegistered: number; sumVoted: number }> = {};
-            const censusSums: Record<string, { sumValue: number; count: number }> = {};
-            const censusNonNumericKeys = ['distincttractidsingeography', 'censusdatasourcetyear']; // lowercase
-
-            initialReportRows.forEach(row => {
-                grandTotalRegisteredOverall += row.totalRegistered;
-                grandTotalVotedOverall += row.totalVoted;
-
-                Object.entries(row.breakdowns).forEach(([key, breakdown]) => {
-                    if (!breakdownSums[key]) {
-                        breakdownSums[key] = { sumRegistered: 0, sumVoted: 0 };
-                    }
-                    breakdownSums[key].sumRegistered += breakdown.registered;
-                    breakdownSums[key].sumVoted += breakdown.voted;
-                });
-
-                if (row.censusData) {
-                    Object.entries(row.censusData).forEach(([key, value]) => {
-                        const lowerKey = key.toLowerCase();
-                        if (!censusNonNumericKeys.includes(lowerKey)) {
-                            const numValue = typeof value === 'string' ? parseFloat(value) : value as number;
-                            if (typeof numValue === 'number' && !isNaN(numValue)) {
-                                if (!censusSums[key]) {
-                                    censusSums[key] = { sumValue: 0, count: 0 };
-                                }
-                                censusSums[key].sumValue += numValue;
-                                censusSums[key].count += 1;
-                            }
-                        }
+                } else {
+                    // No valid combinations to query (e.g. all conditions were 1=0), fill with zeros
+                    combinations.forEach(combo => {
+                        reportRow.breakdowns[combo.key] = { registered: 0, voted: 0, turnout: 0 };
                     });
                 }
+                // Remove breakdown logging
+                // console.log(`Final breakdowns for ${reportRow.geoLabel}:`, JSON.stringify(reportRow.breakdowns, null, 2));
+            }
+        } else { // No reportDataPoints selected, ensure breakdowns is empty object
+             initialReportRows.forEach(reportRow => {
+                reportRow.breakdowns = {};
             });
-
-            const finalAggregations: Record<string, any> = {
-                grandTotalRegistered: grandTotalRegisteredOverall,
-                grandTotalVoted: grandTotalVotedOverall,
-                averageOverallTurnoutRate: grandTotalRegisteredOverall > 0 ? grandTotalVotedOverall / grandTotalRegisteredOverall : 0,
-            };
-
-            Object.entries(breakdownSums).forEach(([key, sums]) => {
-                finalAggregations[`${key}_totalRegistered`] = sums.sumRegistered;
-                finalAggregations[`${key}_totalVoted`] = sums.sumVoted;
-                finalAggregations[`${key}_averageTurnoutRate`] = sums.sumRegistered > 0 ? sums.sumVoted / sums.sumRegistered : 0;
-            });
-
-            Object.entries(censusSums).forEach(([key, sums]) => {
-                if (sums.count > 0) {
-                    // Always provide the average for numeric census fields
-                    finalAggregations[`avg_${key}`] = sums.sumValue / sums.count;
-
-                    // If the original key itself implies it's a sum (e.g., starts with "total", includes "pop", ends with "plus")
-                    // then also provide the grand total.
-                    const lowerKey = key.toLowerCase();
-                    if (lowerKey.startsWith('total') || lowerKey.includes('pop') || lowerKey.endsWith('plus')) {
-                        finalAggregations[`grandTotal_${key}`] = sums.sumValue;
-                    }
-                }
-            });
-
-            payload.report = {
-                rows: finalReportRows,
-                aggregations: finalAggregations
-            };
-            
-        } catch (e: any) {
-           console.error("Error executing query or processing report data:", e);
-           throw new Error(`Failed to generate report data: ${e.message}`);
         }
-    } else if (outputType === 'chart') {
-        // ... (existing chart logic - may need review if using these breakdowns)
-        console.warn("Chart generation logic for race/age/gender breakdowns may need similar review for data fetching strategy.");
-        // Ensure payload is returned for chart type as well, even if empty or with different structure
-        // For now, returning the potentially empty payload. Adjust if charts need specific empty states.
+        
+        // Moved Census Data integration to its own loop after all initial rows are processed
+        if (includeCensusData) {
+            // TODO: Improve performance for census data fetching
+            // Current implementation makes individual queries for each geographic unit's census tracts
+            // and then another query for the census data. This could be optimized by:
+            // 1. Fetching all relevant tract IDs in a single query
+            // 2. Using a single query with IN clause for all census data
+            // 3. Caching frequently accessed census data
+            // 4. Consider pre-aggregating census data at region levels
+            
+            for (const reportRow of initialReportRows) { // Iterate again specifically for census data
+                // Remove census logging
+                // console.log(`Fetching census data for geo unit ${reportRow.dbGeoUnitId} (${reportRow.geoLabel})`);
+                let censusQuerySpecificWhere = '';
+                const geoUnitIdStringForCensus = String(reportRow.dbGeoUnitId).replace(/'/g, "''");
+
+                // Determine the correct column for linking to ga_voter_registration_list based on how geo_unit_id was derived
+                let geoLinkColumnInVRL = consolidatedQueryGroupByClean; // Default to the cleaned group by column
+                if (geography.areaType === 'County' && geography.areaValue === 'ALL') {
+                    // In this case, geo_unit_id is county_name, so link vrl.county_name
+                    censusQuerySpecificWhere = `UPPER(vrl.${mainCountyNameColumn}) = UPPER('${geoUnitIdStringForCensus}')`;
+                } else {
+                    // For other cases, geo_unit_id was derived from consolidatedQueryGroupByClean
+                    // (e.g. congressional_district, residence_zipcode, county_precinct)
+                    censusQuerySpecificWhere = `CAST(vrl.${geoLinkColumnInVRL} AS TEXT) = '${geoUnitIdStringForCensus}'`;
+                }
+
+
+                const tractsQuery = `
+                    SELECT DISTINCT vrl.census_tract
+                    FROM ga_voter_registration_list vrl
+                    WHERE ${censusQuerySpecificWhere}
+                      AND vrl.census_tract IS NOT NULL
+                      AND TRIM(vrl.census_tract) <> '';
+                `;
+                // Remove census query logging
+                // console.log("Executing tracts query:", tractsQuery);
+                try {
+                    const tractResult = await sql.unsafe(tractsQuery);
+                    const tractRows: { census_tract: string }[] = Array.isArray(tractResult) ? tractResult : (tractResult && 'rows' in tractResult ? (tractResult as any).rows : []);
+                    const tractIds = tractRows.map(r => r.census_tract).filter(t => t);
+
+                    if (tractIds.length > 0) {
+                        const censusDataQuery = `
+                            SELECT
+                                AVG(median_household_income)::numeric AS "avgMedianHouseholdIncome",
+                                (AVG(pct_bachelors_degree_only) / 100.0)::numeric AS "avgPctBachelorsDegreeOnly",
+                                (AVG(pct_bachelors_degree_or_higher) / 100.0)::numeric AS "avgPctBachelorsOrHigher",
+                                (AVG(labor_force_participation_rate) / 100.0)::numeric AS "avgLaborForceParticipationRate",
+                                (AVG(unemployment_rate) / 100.0)::numeric AS "avgUnemploymentRate",
+                                (AVG(employment_rate) / 100.0)::numeric AS "avgEmploymentRate",
+                                SUM(education_total_pop_25_plus)::numeric AS "totalEducationPop25Plus",
+                                STRING_AGG(DISTINCT tract_id, ', ' ORDER BY tract_id) AS "distinctTractIdsInGeography",
+                                MAX(census_data_year) AS "censusDataSourceYear"
+                            FROM stg_processed_census_tract_data
+                            WHERE tract_id IN (${tractIds.map(id => `'${id.replace(/'/g, "''")}'`).join(',')});
+                        `;
+                        // Remove census data query logging
+                        // console.log("Executing census data aggregation query:", censusDataQuery);
+                        const censusResult = await sql.unsafe(censusDataQuery);
+                        const censusData = (Array.isArray(censusResult) ? censusResult[0] : (censusResult as any).rows?.[0]) || {};
+                        reportRow.censusData = censusData;
+                        // Remove census data logging
+                        // console.log(`Census data for ${reportRow.geoLabel}:`, censusData);
+                    } else {
+                        console.log(`No census tracts found for ${reportRow.geoLabel}`);
+                        reportRow.censusData = {};
+                    }
+                } catch (censusErr: any) {
+                    console.error(`Error fetching census data for ${reportRow.geoLabel}: ${censusErr.message}`, censusErr);
+                    reportRow.censusData = {}; // Ensure censusData key exists even on error
+                }
+            }
+        }
+
+        const finalReportRows = initialReportRows.map(row => {
+            const { dbGeoUnitId, ...rest } = row;
+            return rest;
+        });
+
+        // Calculate aggregations
+        let grandTotalRegisteredOverall = 0;
+        let grandTotalVotedOverall = 0;
+        const breakdownSums: Record<string, { sumRegistered: number; sumVoted: number }> = {};
+        const censusSums: Record<string, { sumValue: number; count: number }> = {};
+        const censusNonNumericKeys = ['distincttractidsingeography', 'censusdatasourcetyear']; // lowercase
+
+        initialReportRows.forEach(row => {
+            grandTotalRegisteredOverall += row.totalRegistered;
+            grandTotalVotedOverall += row.totalVoted;
+
+            Object.entries(row.breakdowns).forEach(([key, breakdown]) => {
+                if (!breakdownSums[key]) {
+                    breakdownSums[key] = { sumRegistered: 0, sumVoted: 0 };
+                }
+                breakdownSums[key].sumRegistered += breakdown.registered;
+                breakdownSums[key].sumVoted += breakdown.voted;
+            });
+
+            if (row.censusData) {
+                Object.entries(row.censusData).forEach(([key, value]) => {
+                    const lowerKey = key.toLowerCase();
+                    if (!censusNonNumericKeys.includes(lowerKey)) {
+                        const numValue = typeof value === 'string' ? parseFloat(value) : value as number;
+                        if (typeof numValue === 'number' && !isNaN(numValue)) {
+                            if (!censusSums[key]) {
+                                censusSums[key] = { sumValue: 0, count: 0 };
+                            }
+                            censusSums[key].sumValue += numValue;
+                            censusSums[key].count += 1;
+                        }
+                    }
+                });
+            }
+        });
+
+        const finalAggregations: Record<string, any> = {
+            grandTotalRegistered: grandTotalRegisteredOverall,
+            grandTotalVoted: grandTotalVotedOverall,
+            averageOverallTurnoutRate: grandTotalRegisteredOverall > 0 ? grandTotalVotedOverall / grandTotalRegisteredOverall : 0,
+        };
+
+        Object.entries(breakdownSums).forEach(([key, sums]) => {
+            finalAggregations[`${key}_totalRegistered`] = sums.sumRegistered;
+            finalAggregations[`${key}_totalVoted`] = sums.sumVoted;
+            finalAggregations[`${key}_averageTurnoutRate`] = sums.sumRegistered > 0 ? sums.sumVoted / sums.sumRegistered : 0;
+        });
+
+        Object.entries(censusSums).forEach(([key, sums]) => {
+            if (sums.count > 0) {
+                // Always provide the average for numeric census fields
+                finalAggregations[`avg_${key}`] = sums.sumValue / sums.count;
+
+                // If the original key itself implies it's a sum (e.g., starts with "total", includes "pop", ends with "plus")
+                // then also provide the grand total.
+                const lowerKey = key.toLowerCase();
+                if (lowerKey.startsWith('total') || lowerKey.includes('pop') || lowerKey.endsWith('plus')) {
+                    finalAggregations[`grandTotal_${key}`] = sums.sumValue;
+                }
+            }
+        });
+
+        payload.report = {
+            rows: finalReportRows,
+            aggregations: finalAggregations
+        };
+        
+    } catch (e: any) {
+       console.error("Error executing query or processing data:", e);
+       throw new Error(`Failed to generate data: ${e.message}`);
     }
+    
     return payload;
 } 

@@ -123,8 +123,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     
-    const outputType = activeTab === 'report' ? 'report' : 'chart';
-    console.log(`Generating ${outputType} with selections:`, selections);
+    console.log(`Generating report with selections:`, selections);
 
     // Construct the API geography object based on current selections
     let apiGeography: ApiGeographySelection | null = null;
@@ -188,7 +187,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       urlParams.set('chartDataPoint', selections.chartDataPoint);
     }
     urlParams.set('includeCensusData', String(selections.includeCensusData));
-    urlParams.set('outputType', outputType);
     
     // Update URL without navigation
     window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
@@ -200,7 +198,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         reportDataPoints: selections.reportDataPoints,
         chartDataPoint: selections.chartDataPoint,
         includeCensusData: selections.includeCensusData,
-        outputType: outputType,
       };
 
       const response = await fetch('/api/ga/voter/turnout-analysis', {
@@ -229,7 +226,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selections, activeTab, setIsLoading, setError, setApiData]);
+  }, [selections, setIsLoading, setError, setApiData]);
   
   useEffect(() => {
     const handleResize = () => {
