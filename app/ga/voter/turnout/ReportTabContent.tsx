@@ -105,6 +105,9 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
       return [{ headerName: 'Status', valueGetter: () => 'No data to display or generate an analysis.' }];
     }
 
+    // Find the first row that has censusData with keys, if any
+    const firstRowWithActualCensusData = rows.find(row => row.censusData && Object.keys(row.censusData).length > 0);
+
     const firstRow = rows[0];
     const dynamicColDefs: ColDef<ApiReportRow>[] = [];
 
@@ -240,8 +243,8 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
     }
 
     // Dynamically add census data columns
-    if (firstRow.censusData) {
-      Object.keys(firstRow.censusData).forEach(censusKey => {
+    if (firstRowWithActualCensusData && firstRowWithActualCensusData.censusData) {
+      Object.keys(firstRowWithActualCensusData.censusData).forEach(censusKey => {
         const header = censusKey.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
         const fieldName = censusKey.toLowerCase();
         
@@ -275,7 +278,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
             // Ensure proper percentage formatting for decimal values
             return formatPercent(params.value);
           };
-        } else if (typeof firstRow.censusData?.[censusKey] === 'number') {
+        } else if (typeof firstRowWithActualCensusData.censusData?.[censusKey] === 'number') {
           // For other numeric values
           colDef.valueFormatter = params => {
             if (params.value === null || params.value === undefined) return 'N/A';
@@ -330,8 +333,9 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
     }
 
     // Populate aggregated census data
-    if (rows.length > 0 && rows[0].censusData) {
-      const censusKeys = Object.keys(rows[0].censusData);
+    const firstRowWithCensusForAgg = rows.find(row => row.censusData && Object.keys(row.censusData).length > 0);
+    if (firstRowWithCensusForAgg && firstRowWithCensusForAgg.censusData) {
+      const censusKeys = Object.keys(firstRowWithCensusForAgg.censusData);
       censusKeys.forEach(censusKey => {
         if (censusKey === 'distinctTractIdsInGeography' || censusKey === 'censusDataSourceYear') {
           totalRow[`censusData.${censusKey}`] = null; // Explicitly set to null for non-aggregatable fields
@@ -482,9 +486,9 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
           Download CSV
         </Button>
       </CardHeader>
-      <CardContent className="flex-grow p-0">
+      <CardContent className="flex-grow p-0 h-full">
         {/* Use theme-adaptive styling from our CSS */}
-        <div className="ag-theme-quartz h-full w-full">
+        <div className="ag-theme-quartz" style={{ height: 'calc(100vh - 308px)' }}>
           <AgGridReact<ApiReportRow>
             ref={gridRef}
             rowData={rowData}
@@ -496,7 +500,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
             rowHeight={32}
             headerHeight={36}
             suppressMovableColumns={false}
-            className="h-full"
+            className=""
           />
         </div>
       </CardContent>

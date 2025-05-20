@@ -83,7 +83,8 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
         />
       </CardHeader>
       <CardContent>
-        <div ref={chartContainerRef} className="h-[500px]">
+        
+        <div ref={chartContainerRef} style={{ height: 'calc(100vh - 308px)' }} className="">
           {chartData.type === 'bar' ? (
             <TurnoutBarChart rows={chartData.rows} xAxisMax={chartData.xAxisMax} />
           ) : (

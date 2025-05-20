@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import {
   BarChart,
@@ -9,15 +11,29 @@ import {
   Legend,
   ResponsiveContainer,
   LabelList,
+  Cell,
 } from 'recharts';
 import { ApiChartRow } from '../page';
+// import { formatPercent } from '@/lib/utils/formatters'; // Removed faulty import
+
+// Helper to format percentages (consistent with ReportTabContent.tsx)
+const formatPercent = (value: number | null | undefined) => {
+  if (value === null || typeof value === 'undefined') return 'N/A';
+  const numValue = Number(value);
+  return isNaN(numValue) ? 'N/A' : numValue.toLocaleString(undefined, { 
+    style: 'percent', 
+    minimumFractionDigits: 1, 
+    maximumFractionDigits: 1 
+  });
+};
 
 interface TurnoutBarChartProps {
   rows: ApiChartRow[];
   xAxisMax: number;
 }
 
-// Custom tooltip component for bar chart
+// Custom tooltip component for bar chart - This seems unused now, Recharts Tooltip is used directly
+/*
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -33,8 +49,29 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null;
 };
+*/
+
+// Define a custom shape for the Bar to enforce minimum height
+const CustomBarShape = (props: any) => {
+  const { x, y, width, height, fill } = props;
+  const minHeight = 32;
+  const displayHeight = Math.max(height, minHeight);
+  // Adjust y position so the bar still grows upwards from the baseline
+  const displayY = y + height - displayHeight;
+
+  // Don't render if width or height is effectively zero or negative (before minHeight adjustment)
+  if (width <= 0 || height < 0) { // height can be 0 for 0% turnout
+    return null;
+  }
+
+  return <rect x={x} y={displayY} width={width} height={displayHeight} fill={fill} />;
+};
 
 export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax }) => {
+  if (!rows || rows.length === 0) {
+    return <div className="flex items-center justify-center h-full text-muted-foreground">No data for bar chart.</div>;
+  }
+
   // Sort rows by overall turnout rate ascending (lowest first as per requirements)
   const sortedRows = [...rows].sort((a, b) => 
     (a.overallTurnoutRate || 0) - (b.overallTurnoutRate || 0)
@@ -47,34 +84,55 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={chartData.length > 10 ? 800 : 500}>
+    <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={chartData}
-        layout="vertical" // This creates horizontal bars (counterintuitive but correct)
-        margin={{ top: 20, right: 50, left: 100, bottom: 5 }}
+        layout="vertical" // Horizontal bars
+        margin={{
+          top: 5,
+          right: 30,
+          left: 100, // Increased left margin for longer geoLabels
+          bottom: 5,
+        }}
       >
-        <CartesianGrid strokeDasharray="3 3" />
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
         <XAxis 
           type="number" 
           domain={[0, xAxisMax]} 
-          tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+          tickFormatter={(tick) => formatPercent(tick)} 
+          allowDecimals={false}
+          stroke="hsl(var(--muted-foreground))"
+          tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
         />
         <YAxis 
           dataKey="name" 
           type="category" 
-          width={90}
+          width={150} // Adjust width based on expected label length
+          interval={0} // Show all labels
+          stroke="hsl(var(--muted-foreground))"
+          tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
         />
-        <Tooltip content={<CustomTooltip />} />
-        <Legend />
+        <Tooltip 
+          formatter={(value: number) => [formatPercent(value), 'Overall Turnout']}
+          cursor={{ fill: 'hsla(var(--muted-foreground), 0.2)' }}
+          contentStyle={{ 
+            background: "hsl(var(--background))", 
+            borderColor: "hsl(var(--border))", 
+            color: "hsl(var(--foreground))" 
+          }}
+        />
         <Bar 
           dataKey="turnout" 
-          fill="#1e88e5" 
+          fill="hsl(var(--primary))" 
           name="Overall Turnout Rate"
+          barSize={30}
+          shape={<CustomBarShape />}
         >
           <LabelList 
             dataKey="turnout" 
             position="right" 
-            formatter={(value: number) => `${(value * 100).toFixed(1)}%`}
+            formatter={(value: number) => formatPercent(value)}
+            style={{ fill: 'hsl(var(--muted-foreground))', fontSize: '12px' }}
           />
         </Bar>
       </BarChart>

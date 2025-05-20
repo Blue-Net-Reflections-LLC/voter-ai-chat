@@ -69,7 +69,7 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
   const segmentColors = sortedRows[0]?.segments?.map(segment => segment.color) || [];
 
   return (
-    <ResponsiveContainer width="100%" height={chartData.length > 10 ? 800 : 500}>
+    <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={chartData}
         layout="vertical" // This creates horizontal bars (counterintuitive but correct)
