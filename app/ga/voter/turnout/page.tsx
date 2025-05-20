@@ -11,6 +11,7 @@ import { TurnoutControlsSidebar } from './TurnoutControlsSidebar';
 import { ReportTabContent } from './ReportTabContent';
 import { ChartTabContent } from './ChartTabContent';
 import { useLookupData, MultiSelectOption } from '@/app/ga/voter/list/hooks/useLookupData';
+import { SelectionsHeader } from './components/SelectionsHeader';
 
 // API request body structure (subset of TurnoutSelections)
 export interface ApiGeographySelection {
@@ -491,7 +492,22 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               <TabsTrigger value="report">Report</TabsTrigger>
               <TabsTrigger value="chart">Chart</TabsTrigger>
             </TabsList>
-            <div className="flex-1 mt-4 h-screen" style={{ height: 'calc(100vh - 224px)', overflowY: 'auto' }}>
+            
+            {/* Add the SelectionsHeader when we have applied selections */}
+            {(rawReportData || rawChartData) && (
+              <SelectionsHeader 
+                appliedSelections={appliedSelections}
+                countyOptions={counties}
+                districtOptions={
+                  appliedSelections.specificDistrictType === 'Congressional' ? congressionalDistricts :
+                  appliedSelections.specificDistrictType === 'StateSenate' ? stateSenateDistricts :
+                  appliedSelections.specificDistrictType === 'StateHouse' ? stateHouseDistricts : 
+                  []
+                }
+              />
+            )}
+            
+            <div className="flex-1 mt-1 h-screen" style={{ height: 'calc(100vh - 260px)', overflowY: 'auto' }}>
               <TabsContent value="report" className="">
                 <div className=''>
                   <ReportTabContent 
