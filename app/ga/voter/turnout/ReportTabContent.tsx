@@ -297,11 +297,18 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
   }, [rows]);
 
   const pinnedBottomRowData = useMemo(() => {
-    if (!reportAggregations) {
+    if (!reportAggregations || !rows || rows.length === 0) {
       return [];
     }
 
-    const { grandTotalRegistered, grandTotalVoted, averageOverallTurnoutRate } = reportAggregations;
+    const {
+      grandTotalRegistered,
+      grandTotalVoted,
+      averageOverallTurnoutRate,
+      breakdownSums,
+      breakdownRates
+    } = reportAggregations;
+
     const totalRow: any = {
       geoLabel: 'Grand Total', // Label for the first column
       totalRegistered: grandTotalRegistered ?? null,
@@ -309,8 +316,56 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
       overallTurnoutRate: averageOverallTurnoutRate ?? null,
     };
 
+    // Populate aggregated breakdown data
+    if (breakdownSums) {
+      for (const key in breakdownSums) {
+        totalRow[`breakdowns.${key}.registered`] = breakdownSums[key].totalRegistered;
+        totalRow[`breakdowns.${key}.voted`] = breakdownSums[key].totalVoted;
+      }
+    }
+    if (breakdownRates) {
+      for (const key in breakdownRates) {
+        totalRow[`breakdowns.${key}.turnout`] = breakdownRates[key];
+      }
+    }
+
+    // Populate aggregated census data
+    if (rows.length > 0 && rows[0].censusData) {
+      const censusKeys = Object.keys(rows[0].censusData);
+      censusKeys.forEach(censusKey => {
+        if (censusKey === 'distinctTractIdsInGeography' || censusKey === 'censusDataSourceYear') {
+          totalRow[`censusData.${censusKey}`] = null; // Explicitly set to null for non-aggregatable fields
+        } else {
+          let sum = 0;
+          let numericCount = 0;
+
+          for (const row of rows) {
+            const rawValue = row.censusData?.[censusKey];
+            const parsedValue = parseFloat(String(rawValue)); // Attempt to parse to float
+
+            if (!isNaN(parsedValue)) { // Check if parsing resulted in a valid number
+              sum += parsedValue;
+              numericCount++;
+            }
+          }
+
+          if (numericCount > 0) {
+            const lowerCensusKey = censusKey.toLowerCase();
+            if (lowerCensusKey.includes('pct') || lowerCensusKey.includes('rate') || lowerCensusKey.includes('percentage')) {
+              totalRow[`censusData.${censusKey}`] = sum / numericCount; // Average for percentages/rates
+            } else {
+              totalRow[`censusData.${censusKey}`] = sum; // Sum for other numeric data (income, counts)
+            }
+          } else {
+            // No numeric values found for this key across all rows (all were null, undefined, or non-numeric strings).
+            totalRow[`censusData.${censusKey}`] = null; // Formatter will show 'N/A'
+          }
+        }
+      });
+    }
+
     return [totalRow];
-  }, [reportAggregations]);
+  }, [reportAggregations, rows]);
 
   // Default ColDef, applies to all columns unless overridden
   const defaultColDef = useMemo<ColDef>(() => {
