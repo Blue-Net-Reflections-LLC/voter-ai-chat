@@ -37,8 +37,11 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
   if (isLoading) {
     console.log('[ChartTabContent RENDER]: isLoading');
     return (
-      <div className="flex items-center justify-center h-96">
-        <p>Loading chart data...</p>
+      <div className="flex flex-col items-center justify-center h-full text-center">
+        {/* <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /> */}
+        <div className="animate-pulse rounded-md bg-muted h-64 w-full mb-4"></div>
+        <p className="text-muted-foreground">Loading chart data...</p>
+        <p className="text-xs font-medium text-blue-600">This may take a moment, especially for &quot;All Counties&quot; or &quot;All Districts&quot; selections.</p>
       </div>
     );
   }
@@ -60,9 +63,11 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
   if (!chartData || !chartData.rows || chartData.rows.length === 0) {
     console.log('[ChartTabContent RENDER]: No chart data', chartData);
     return (
-      <div className="flex flex-col items-center justify-center h-96 text-center">
-        <p className="text-muted-foreground mb-2">No chart data to display. Please ensure a chart breakdown is selected and data is generated.</p>
-        <p className="text-xs font-medium text-blue-600">After making selections in the sidebar, click "Draw Chart" to generate your visualization.</p>
+      <div className="text-center py-10">
+        <p className="text-muted-foreground mb-2">No chart data available.</p>
+        <p className="text-xs font-medium text-blue-600">
+          Please select options in the sidebar and click &quot;Draw Chart&quot; to generate a visualization.
+        </p>
       </div>
     );
   }
@@ -84,7 +89,7 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
           <CardTitle>Voter Turnout Chart</CardTitle>
           <CardDescription>
             Visual representation of voter turnout ({chartData.type === 'bar' ? 'Overall Turnout' : 'Demographic Breakdown'})
-            <div className="mt-1 text-xs font-medium text-blue-600">Note: Click "Draw Chart" after changing selections to update the chart.</div>
+            <div className="mt-1 text-xs font-medium text-blue-600">Note: Click &#34;Draw Chart&#34; after changing selections to update the chart.</div>
           </CardDescription>
         </div>
         <ChartExporter 

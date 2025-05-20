@@ -126,7 +126,7 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <p className="text-muted-foreground mb-2">No demographic breakdown data available for the selected options.</p>
-        <p className="text-xs font-medium text-blue-600">Try selecting a different breakdown or click "Draw Chart" after making changes.</p>
+        <p className="text-xs font-medium text-blue-600">Try selecting a different breakdown or click &quot;Draw Chart&quot; after making changes.</p>
       </div>
     );
   }
