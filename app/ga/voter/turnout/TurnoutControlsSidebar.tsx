@@ -293,22 +293,24 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
             </Card>
           )}
 
-          {/* Census Data Inclusion Card */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Additional Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2 pt-1">
-                <Switch 
-                  id="include-census" 
-                  checked={selections.includeCensusData}
-                  onCheckedChange={(checked) => onSelectionsChange({ includeCensusData: checked })}
-                />
-                <Label htmlFor="include-census">Include Census Data</Label>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Census Data Inclusion Card - Only shown in Report tab */}
+          {activeTab === 'report' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Additional Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-2 pt-1">
+                  <Switch 
+                    id="include-census" 
+                    checked={selections.includeCensusData}
+                    onCheckedChange={(checked) => onSelectionsChange({ includeCensusData: checked })}
+                  />
+                  <Label htmlFor="include-census">Include Census Data</Label>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </ScrollArea>
       

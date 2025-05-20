@@ -61,7 +61,7 @@ export interface TurnoutAnalysisApiResponse {
 // Constants for chart data transformation
 const RACE_CHART_CATEGORIES = ['White', 'Black', 'Hispanic', 'Asian', 'Other'];
 const GENDER_CHART_CATEGORIES = ['M', 'F', 'O']; // Assuming 'O' is 'Other' from backend if present
-const AGE_RANGE_CHART_CATEGORIES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65-74', '75+'];
+const AGE_RANGE_CHART_CATEGORIES = ['18-23', '25-44', '45-64', '65-74', '75+'];
 
 const DEMOGRAPHIC_COLORS: Record<string, string[]> = {
   Race: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
