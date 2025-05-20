@@ -161,7 +161,7 @@ export default function VoterLayout({
                     "flex-grow overflow-y-auto",
                     showFilterPanel && filterPanelVisible ? "md:w-[calc(100%-280px)]" : "w-full"
                   )}
-                  style={{ height: 'calc(100dvh - 90px)' }}
+                  style={{ height: '' }}
                 >
                   {children}
                 </main>

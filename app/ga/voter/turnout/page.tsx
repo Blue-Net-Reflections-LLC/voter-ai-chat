@@ -1,0 +1,574 @@
+'use client';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PanelLeftOpen, PanelRightOpen } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+import { TurnoutControlsSidebar } from './TurnoutControlsSidebar';
+import { ReportTabContent } from './ReportTabContent';
+import { ChartTabContent } from './ChartTabContent';
+import { useLookupData, MultiSelectOption } from '@/app/ga/voter/list/hooks/useLookupData';
+import { SelectionsHeader } from './components/SelectionsHeader';
+
+// API request body structure (subset of TurnoutSelections)
+export interface ApiGeographySelection {
+  areaType: 'County' | 'District' | 'ZipCode';
+  areaValue: string; // Specific county FIPS, district number, or "ALL"
+  districtType?: 'Congressional' | 'StateSenate' | 'StateHouse'; // Only if areaType is 'District'
+  // Sub-area type for breaking down the selected County/District
+  // The backend will group by these within the primary areaValue
+  subAreaType?: 'Precinct' | 'Municipality' | 'ZipCode'; 
+  subAreaValue?: string;
+}
+
+// API response data types
+export interface ApiReportRow {
+  geoLabel: string;
+  totalRegistered: number;
+  totalVoted: number;
+  overallTurnoutRate: number;
+  breakdowns: Record<string, { registered: number; voted: number; turnout: number }>;
+  censusData?: Record<string, any>;
+}
+
+export interface ApiChartSegment {
+  label: string;
+  turnoutRate: number;
+  color: string;
+}
+
+export interface ApiChartRow {
+  geoLabel: string;
+  summedDemographicTurnoutRate?: number;
+  segments?: ApiChartSegment[];
+  overallTurnoutRate?: number;
+}
+
+export interface ApiChartData {
+  type: 'bar' | 'stackedRow';
+  rows: ApiChartRow[];
+  xAxisMax: number;
+}
+
+// Updated API response structure: flat array of rows at top level
+export interface TurnoutAnalysisApiResponse {
+  rows: ApiReportRow[];
+  metadata?: any;
+}
+
+// Constants for chart data transformation
+const RACE_CHART_CATEGORIES = ['White', 'Black', 'Hispanic', 'Asian', 'Other'];
+const GENDER_CHART_CATEGORIES = ['M', 'F', 'O']; // Assuming 'O' is 'Other' from backend if present
+const AGE_RANGE_CHART_CATEGORIES = ['18-23', '25-44', '45-64', '65-74', '75+'];
+
+const DEMOGRAPHIC_COLORS: Record<string, string[]> = {
+  Race: ['#8884d8', '#FF9F40', '#FFCE56', '#4BC0C0', '#9966FF'],  // Purple for White, Orange for Black
+  Gender: ['#8884d8', '#FF9F40', '#FFCE56'],  // Changed to match new color scheme
+  AgeRange: ['#8884d8', '#FF9F40', '#FFCE56', '#4BC0C0', '#9966FF', '#C9CBCF'],
+};
+
+const getCategoryDisplayName = (dimension: 'Race' | 'Gender' | 'AgeRange' | string, categoryValue: string): string => {
+  if (dimension === 'Race') {
+    return categoryValue; // Category value from RACE_CHART_CATEGORIES is now the display name
+  } else if (dimension === 'Gender') {
+    return categoryValue === 'M' ? 'Male' :
+           categoryValue === 'F' ? 'Female' :
+           categoryValue === 'O' ? 'Other' : categoryValue;
+  }
+  return categoryValue; // For AgeRange, the categoryValue itself is the display name
+};
+
+// Updated TurnoutSelections for the new granular geography controls
+export interface TurnoutSelections {
+  // New granular geography fields
+  primaryGeoType: 'County' | 'District' | null;
+  specificCounty: string | null; // County FIPS code or "ALL"
+  specificDistrictType: 'Congressional' | 'StateSenate' | 'StateHouse' | null;
+  specificDistrictNumber: string | null; // District number or "ALL"
+  secondaryBreakdown: 'Precinct' | 'Municipality' | 'ZipCode' | null; // Or "None" represented by null
+  
+  electionDate: string | null;
+  dataPoints: string[]; // Data points for both report and chart visualizations
+  includeCensusData: boolean;
+}
+
+const initialSelections: TurnoutSelections = {
+  primaryGeoType: 'County',
+  specificCounty: 'ALL',
+  specificDistrictType: null,
+  specificDistrictNumber: null,
+  secondaryBreakdown: null,
+  electionDate: '2024-11-05',
+  dataPoints: [], // Data points for both report and chart visualizations
+  includeCensusData: false,
+};
+
+const GeorgiaVoterTurnoutPage: React.FC = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selections, setSelections] = useState<TurnoutSelections>(initialSelections);
+  // New state to track the applied/rendered selections (only updated on button click)
+  const [appliedSelections, setAppliedSelections] = useState<TurnoutSelections>(initialSelections);
+  
+  // Add a ref to track if we already processed URL params
+  const initialParamsProcessedRef = useRef(false);
+
+  // const [apiData, setApiData] = useState<TurnoutAnalysisApiResponse | null>(null); // Removed: Replaced by tab-specific raw data
+  const [rawReportData, setRawReportData] = useState<ApiReportRow[] | null>(null);
+  const [rawChartData, setRawChartData] = useState<ApiReportRow[] | null>(null);
+
+  // const [isLoading, setIsLoading] = useState(false); // Replaced by tab-specific loading states
+  const [isReportLoading, setIsReportLoading] = useState(false);
+  const [isChartLoading, setIsChartLoading] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('report');
+  const [processedChartData, setProcessedChartData] = useState<ApiChartData | null>(null);
+  // const [reportTabData, setReportTabData] = useState<ApiReportRow[] | null>(null); // Renamed to rawReportData and handled differently
+  
+  // Move the useSearchParams hook here, at component level
+  const searchParams = useSearchParams();
+
+  // Determine data points for SelectionsHeader based on activeTab and appliedSelections
+  const headerDataPoints = activeTab === 'chart'
+    ? (appliedSelections.dataPoints.length > 0 ? [appliedSelections.dataPoints[0]] : [])
+    : appliedSelections.dataPoints;
+
+  // Integrate useLookupData
+  const {
+    counties,
+    congressionalDistricts,
+    stateSenateDistricts,
+    stateHouseDistricts,
+    isLoading: isLookupLoading,
+    error: lookupError,
+  } = useLookupData();
+
+  const handleSelectionsChange = useCallback((newSelectionValues: Partial<TurnoutSelections>) => {
+    // Just update the state without automatically triggering report generation
+    setSelections(prevSelections => ({ ...prevSelections, ...newSelectionValues }));
+  }, []);
+
+  const handleGenerateReport = useCallback(async () => {
+    // Update applied selections when Generate/Draw button is clicked
+    setAppliedSelections(selections);
+    
+    // This is now called only when the Generate/Draw button is clicked
+    // setIsLoading(true); // Replaced
+    if (activeTab === 'report') {
+      setIsReportLoading(true);
+    } else if (activeTab === 'chart') {
+      setIsChartLoading(true);
+    }
+    setError(null);
+    
+    console.log(`Generating report with selections:`, selections);
+
+    // Construct the API geography object based on current selections
+    let apiGeography: ApiGeographySelection | null = null;
+
+    if (selections.primaryGeoType === 'County') {
+      if (!selections.specificCounty) {
+        setError('Please select a specific county or "All Counties".');
+        // setIsLoading(false); // Replaced
+        if (activeTab === 'report') {
+          setIsReportLoading(false);
+        } else if (activeTab === 'chart') {
+          setIsChartLoading(false);
+        }
+        return;
+      }
+      apiGeography = {
+        areaType: 'County',
+        areaValue: selections.specificCounty,
+      };
+      if (selections.secondaryBreakdown && selections.specificCounty !== 'ALL') {
+        apiGeography.subAreaType = selections.secondaryBreakdown;
+        apiGeography.subAreaValue = "ALL";
+      }
+    } else if (selections.primaryGeoType === 'District') {
+      if (!selections.specificDistrictType || !selections.specificDistrictNumber) {
+        setError('Please select a district type and a specific district number or "All Districts".');
+        // setIsLoading(false); // Replaced
+        if (activeTab === 'report') {
+          setIsReportLoading(false);
+        } else if (activeTab === 'chart') {
+          setIsChartLoading(false);
+        }
+        return;
+      }
+      apiGeography = {
+        areaType: 'District',
+        areaValue: selections.specificDistrictNumber,
+        districtType: selections.specificDistrictType,
+      };
+      if (selections.secondaryBreakdown && selections.specificDistrictNumber !== 'ALL') {
+        apiGeography.subAreaType = selections.secondaryBreakdown;
+        apiGeography.subAreaValue = "ALL";
+      }
+    }
+
+    if (!apiGeography || !selections.electionDate) {
+      setError('Please select Primary Geography, Specific Area, and Election Date.');
+      // setIsLoading(false); // Replaced
+      if (activeTab === 'report') {
+        setIsReportLoading(false);
+      } else if (activeTab === 'chart') {
+        setIsChartLoading(false);
+      }
+      return;
+    }
+    
+    // Update URL parameters for bookmarking/sharing (without triggering navigation)
+    const urlParams = new URLSearchParams();
+    
+    // Set basic URL params
+    urlParams.set('areaType', apiGeography.areaType);
+    urlParams.set('areaValue', apiGeography.areaValue);
+    if (apiGeography.districtType) {
+      urlParams.set('districtType', apiGeography.districtType);
+    }
+    if (apiGeography.subAreaType) {
+      urlParams.set('subAreaType', apiGeography.subAreaType);
+    }
+    if (selections.electionDate) {
+      urlParams.set('electionDate', selections.electionDate);
+    }
+    if (selections.dataPoints.length > 0) {
+      urlParams.set('dataPoints', JSON.stringify(selections.dataPoints));
+    }
+    urlParams.set('includeCensusData', String(selections.includeCensusData));
+    
+    // Update URL without navigation
+    window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
+
+    try {
+      // Determine dataPoints and includeCensusData for the API request based on activeTab
+      let apiDataPoints: string[];
+      let apiIncludeCensusData: boolean;
+
+      if (activeTab === 'chart') {
+        apiDataPoints = selections.dataPoints.length > 0 ? [selections.dataPoints[0]] : [];
+        apiIncludeCensusData = false; // Charts do not use census data
+      } else { // 'report' tab
+        apiDataPoints = selections.dataPoints;
+        apiIncludeCensusData = selections.includeCensusData;
+      }
+
+      const requestBody = {
+        geography: apiGeography,
+        electionDate: selections.electionDate,
+        dataPoints: apiDataPoints, // Use the tab-aware apiDataPoints
+        includeCensusData: apiIncludeCensusData, // Use tab-aware census flag
+      };
+
+      const response = await fetch('/api/ga/voter/turnout-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const responseData: TurnoutAnalysisApiResponse = await response.json();
+      
+      // setApiData(data); // Update main data store - Removed
+
+      // Conditionally update tab-specific data if that tab is active
+      if (activeTab === 'report') {
+        // setReportTabData(data.rows); // - Removed
+        setRawReportData(responseData.rows);
+        // Ensure other tab's raw data is not touched
+      } else if (activeTab === 'chart') {
+        setRawChartData(responseData.rows);
+        // Ensure other tab's raw data is not touched
+      }
+      // processedChartData is updated via useEffect watching rawChartData and selections.dataPoints
+
+    } catch (err: any) {
+      console.error('API call failed:', err);
+      setError(err.message || 'Failed to fetch data.');
+      // setApiData(null); // - Removed
+      // setReportTabData(null); // Clear report-specific data on error - Combined below
+      // setProcessedChartData(null); // Clear chart-specific data on error - Combined below
+      setRawReportData(null);
+      setRawChartData(null);
+      setProcessedChartData(null); // This will be cleared by its own effect if rawChartData is null
+    } finally {
+      // setIsLoading(false); // Replaced
+      if (activeTab === 'report') {
+        setIsReportLoading(false);
+      } else if (activeTab === 'chart') {
+        setIsChartLoading(false);
+      }
+    }
+  }, [selections, /*setIsLoading,*/ activeTab, setError, setRawReportData, setRawChartData, setIsReportLoading, setIsChartLoading]); // Updated dependencies, removed setIsLoading
+  
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // After the useEffect for window resize, add URL parameter handling
+  // This will only generate a report if valid parameters are found in the URL
+  useEffect(() => {
+    // Only process URL params once to avoid infinite loops
+    if (initialParamsProcessedRef.current) return;
+    
+    // Only try to load from URL params if lookup data is available
+    if (!isLookupLoading && !lookupError) {
+      // Check if we have geography and election date parameters
+      const areaType = searchParams.get('areaType');
+      const areaValue = searchParams.get('areaValue');
+      const electionDate = searchParams.get('electionDate');
+      
+      if (areaType && areaValue && electionDate) {
+        // We have the minimum parameters to generate a report
+        const urlSelections: Partial<TurnoutSelections> = {
+          primaryGeoType: (areaType as 'County' | 'District' | null),
+          electionDate: electionDate
+        };
+        
+        // Set appropriate additional parameters
+        if (areaType === 'County') {
+          urlSelections.specificCounty = areaValue;
+          
+          // Handle sub-area breakdown if present
+          const subAreaType = searchParams.get('subAreaType');
+          if (subAreaType) {
+            urlSelections.secondaryBreakdown = (subAreaType as 'Precinct' | 'Municipality' | 'ZipCode' | null);
+          }
+        } else if (areaType === 'District') {
+          urlSelections.specificDistrictNumber = areaValue;
+          const districtType = searchParams.get('districtType');
+          if (districtType) {
+            urlSelections.specificDistrictType = (districtType as 'Congressional' | 'StateSenate' | 'StateHouse' | null);
+          }
+        }
+        
+        // Set data points if present
+        const dataPointsParam = searchParams.get('dataPoints');
+        if (dataPointsParam) {
+          try {
+            urlSelections.dataPoints = JSON.parse(dataPointsParam);
+          } catch (e) {
+            console.warn('Invalid dataPoints in URL params');
+          }
+        }
+        
+        // Set census data inclusion if present
+        const includeCensusData = searchParams.get('includeCensusData');
+        if (includeCensusData) {
+          urlSelections.includeCensusData = includeCensusData === 'true';
+        }
+        
+        // Update selections and appliedSelections
+        const newSelections = { ...initialSelections, ...urlSelections };
+        setSelections(newSelections);
+        setAppliedSelections(newSelections); // Also update appliedSelections
+        
+        // Mark as processed before triggering the report generation
+        initialParamsProcessedRef.current = true;
+        
+        // Generate the report directly, but after a timeout to ensure state updates
+        setTimeout(() => {
+          handleGenerateReport();
+        }, 0);
+      } else {
+        // No valid URL params, still mark as processed
+        initialParamsProcessedRef.current = true;
+      }
+    }
+  }, [isLookupLoading, lookupError, searchParams]); // Remove handleGenerateReport from deps
+
+  // New Effect: Adjust selections.dataPoints when activeTab changes
+  useEffect(() => {
+    if (activeTab === 'chart') {
+      setSelections(prevSelections => {
+        if (prevSelections.dataPoints.length > 1) {
+          // If more than one data point, keep only the first for charts
+          return { ...prevSelections, dataPoints: [prevSelections.dataPoints[0]] };
+        }
+        return prevSelections; // No change if 0 or 1 data point
+      });
+    }
+    // No specific adjustment needed when switching to 'report' tab from 'chart',
+    // as the report tab can handle 0 or 1 data point selected in chart tab.
+  }, [activeTab]); // Dependency: activeTab. setSelections is stable via useState.
+
+  // Effect to transform ApiReportRow[] to ApiChartData for the Chart Tab
+  useEffect(() => {
+    if (!rawChartData || !rawChartData.length) {
+      setProcessedChartData(null);
+      return;
+    }
+
+    // IMPORTANT CHANGE: Use appliedSelections instead of selections
+    // This ensures chart only updates when Generate/Draw button is clicked
+    const chartPoint = appliedSelections.dataPoints.length > 0 ? appliedSelections.dataPoints[0] : null;
+    let newChartData: ApiChartData | null = null;
+
+    if (chartPoint && (chartPoint === 'Race' || chartPoint === 'Gender' || chartPoint === 'AgeRange')) {
+      console.log(`[ChartData] Processing ${chartPoint} data point`);
+      const categories = chartPoint === 'Race' ? RACE_CHART_CATEGORIES :
+                        chartPoint === 'Gender' ? GENDER_CHART_CATEGORIES : AGE_RANGE_CHART_CATEGORIES;
+      const colors = DEMOGRAPHIC_COLORS[chartPoint] || [];
+
+      // Find all available breakdown keys for the selected chartPoint
+      const availableBreakdownKeys = new Set<string>();
+      rawChartData.forEach(reportRow => {
+        if (reportRow.breakdowns) {
+          Object.keys(reportRow.breakdowns).forEach(key => {
+            if (key.startsWith(`${chartPoint}:`)) {
+              availableBreakdownKeys.add(key.split(':')[1]); // Extract category value after ':'
+            }
+          });
+        }
+      });
+      
+      console.log(`[ChartData] Available ${chartPoint} categories:`, [...availableBreakdownKeys]);
+      console.log(`[ChartData] Configured ${chartPoint} categories:`, categories);
+      
+      newChartData = {
+        type: 'stackedRow',
+        rows: rawChartData.map(reportRow => { // Uses rawChartData
+          const segments: ApiChartSegment[] = [];
+          categories.forEach((catKey, index) => {
+            const breakdownKey = `${chartPoint}:${catKey}`; // e.g., Race:White, AgeRange:18-23
+            const breakdownData = reportRow.breakdowns?.[breakdownKey];
+            if (breakdownData) {
+              segments.push({
+                label: getCategoryDisplayName(chartPoint, catKey),
+                turnoutRate: breakdownData.turnout,
+                color: colors[index % colors.length],
+              });
+            } else {
+              console.log(`[ChartData] Missing data for ${breakdownKey} in ${reportRow.geoLabel}`);
+            }
+          });
+          return {
+            geoLabel: reportRow.geoLabel,
+            segments,
+            overallTurnoutRate: reportRow.overallTurnoutRate, // Useful for context
+          };
+        }),
+        xAxisMax: 1, // Max 100% turnout
+      };
+    } else {
+      // Default to bar chart of overall turnout
+      newChartData = {
+        type: 'bar',
+        rows: rawChartData.map(row => ({ // Uses rawChartData
+          geoLabel: row.geoLabel,
+          overallTurnoutRate: row.overallTurnoutRate,
+        })),
+        xAxisMax: 1, // Max 100% turnout
+      };
+    }
+    setProcessedChartData(newChartData);
+  }, [rawChartData, appliedSelections.dataPoints]); // Updated dependencies to use appliedSelections
+
+  // Display lookup loading/error states if necessary
+  if (isLookupLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading lookup data...</div>;
+  }
+  if (lookupError) {
+    return <div className="flex items-center justify-center h-screen text-destructive">Error loading lookup data: {lookupError}</div>;
+  }
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-background" style={{ height: '100%' }}>
+      <Sheet open={isSidebarOpen} onOpenChange={(open) => {
+        if (open !== isSidebarOpen) setIsSidebarOpen(open);
+      }}>
+        <SheetContent side="left" className="w-80 sm:w-96 p-0 flex flex-col border-r">
+          <TurnoutControlsSidebar 
+            selections={selections}
+            onSelectionsChange={handleSelectionsChange}
+            onGenerate={handleGenerateReport}
+            activeTab={activeTab}
+            countyOptions={counties}
+            congressionalDistrictOptions={congressionalDistricts}
+            stateSenateDistrictOptions={stateSenateDistricts}
+            stateHouseDistrictOptions={stateHouseDistricts}
+          />
+        </SheetContent>
+      </Sheet>
+      <main className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <header className="p-4 border-b flex items-center justify-between shrink-0 min-h-[69px]">
+          <div className="flex items-center">
+            <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-3">
+              {isSidebarOpen ? <PanelLeftOpen className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
+            </Button>
+            <div>
+              <h1 className="text-2xl font-semibold">Georgia Voter Turnout Analysis</h1>
+            </div>
+          </div>
+        </header>
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden pb-0 p-4">
+          <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2 shrink-0">
+              <TabsTrigger value="report">Report</TabsTrigger>
+              <TabsTrigger value="chart">Chart</TabsTrigger>
+            </TabsList>
+            
+            {/* Add the SelectionsHeader when we have applied selections */}
+            {(rawReportData || rawChartData) && (
+              <SelectionsHeader 
+                appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
+                countyOptions={counties}
+                districtOptions={
+                  appliedSelections.specificDistrictType === 'Congressional' ? congressionalDistricts :
+                  appliedSelections.specificDistrictType === 'StateSenate' ? stateSenateDistricts :
+                  appliedSelections.specificDistrictType === 'StateHouse' ? stateHouseDistricts : 
+                  []
+                }
+              />
+            )}
+            
+            <div className="flex-1 mt-1 h-screen" style={{ height: 'calc(100vh - 260px)' }}>
+              <TabsContent value="report" className="h-full">
+                <div className='h-full '>
+                  <ReportTabContent 
+                    rows={rawReportData || null} 
+                    isLoading={isReportLoading} // Use isReportLoading
+                    error={error}
+                  />
+                </div>
+              </TabsContent>
+              <TabsContent value="chart" className="">
+                <div className=''>
+                  <ChartTabContent 
+                    chartData={processedChartData}
+                    isLoading={isChartLoading} // Use isChartLoading
+                    error={error} 
+                  />
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+        {error && !isReportLoading && !isChartLoading && (
+          <div className="mt-4 p-4 border rounded bg-destructive/10 text-destructive text-center">
+            <p>Error: {error}</p>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default GeorgiaVoterTurnoutPage; 
