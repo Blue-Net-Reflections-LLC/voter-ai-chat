@@ -90,8 +90,7 @@ export interface TurnoutSelections {
   secondaryBreakdown: 'Precinct' | 'Municipality' | 'ZipCode' | null; // Or "None" represented by null
   
   electionDate: string | null;
-  dataPoints: string[]; // Renamed from reportDataPoints
-  chartDataPoint: string | null;
+  dataPoints: string[]; // Data points for both report and chart visualizations
   includeCensusData: boolean;
 }
 
@@ -102,8 +101,7 @@ const initialSelections: TurnoutSelections = {
   specificDistrictNumber: null,
   secondaryBreakdown: null,
   electionDate: '2020-11-03',
-  dataPoints: [], // Renamed from reportDataPoints
-  chartDataPoint: null,
+  dataPoints: [], // Data points for both report and chart visualizations
   includeCensusData: false,
 };
 
@@ -228,9 +226,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     if (selections.dataPoints.length > 0) {
       urlParams.set('dataPoints', JSON.stringify(selections.dataPoints));
     }
-    if (selections.chartDataPoint) {
-      urlParams.set('chartDataPoint', selections.chartDataPoint);
-    }
     urlParams.set('includeCensusData', String(selections.includeCensusData));
     
     // Update URL without navigation
@@ -240,8 +235,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       const requestBody = {
         geography: apiGeography,
         electionDate: selections.electionDate,
-        dataPoints: selections.dataPoints, // Renamed from reportDataPoints
-        chartDataPoint: selections.chartDataPoint,
+        dataPoints: selections.dataPoints,
         includeCensusData: selections.includeCensusData,
       };
 
@@ -269,7 +263,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         setRawChartData(responseData.rows);
         // Ensure other tab's raw data is not touched
       }
-      // processedChartData is updated via useEffect watching rawChartData and selections.chartDataPoint
+      // processedChartData is updated via useEffect watching rawChartData and selections.dataPoints
 
     } catch (err: any) {
       console.error('API call failed:', err);
@@ -350,12 +344,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           }
         }
         
-        // Set chart data point if present
-        const chartDataPoint = searchParams.get('chartDataPoint');
-        if (chartDataPoint) {
-          urlSelections.chartDataPoint = chartDataPoint;
-        }
-        
         // Set census data inclusion if present
         const includeCensusData = searchParams.get('includeCensusData');
         if (includeCensusData) {
@@ -381,12 +369,13 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
 
   // Effect to transform ApiReportRow[] to ApiChartData for the Chart Tab
   useEffect(() => {
-    if (!rawChartData || !rawChartData.length) { // Depends on rawChartData now
+    if (!rawChartData || !rawChartData.length) {
       setProcessedChartData(null);
       return;
     }
 
-    const chartPoint = selections.chartDataPoint;
+    // Use the first dataPoint (if available) for chart visualization
+    const chartPoint = selections.dataPoints.length > 0 ? selections.dataPoints[0] : null;
     let newChartData: ApiChartData | null = null;
 
     if (chartPoint && (chartPoint === 'Race' || chartPoint === 'Gender' || chartPoint === 'AgeRange')) {
@@ -429,7 +418,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       };
     }
     setProcessedChartData(newChartData);
-  }, [rawChartData, selections.chartDataPoint]); // Updated dependencies
+  }, [rawChartData, selections.dataPoints]); // Updated dependencies
 
   // Display lookup loading/error states if necessary
   if (isLookupLoading) {
