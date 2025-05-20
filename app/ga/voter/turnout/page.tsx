@@ -90,7 +90,7 @@ export interface TurnoutSelections {
   secondaryBreakdown: 'Precinct' | 'Municipality' | 'ZipCode' | null; // Or "None" represented by null
   
   electionDate: string | null;
-  reportDataPoints: string[];
+  dataPoints: string[]; // Renamed from reportDataPoints
   chartDataPoint: string | null;
   includeCensusData: boolean;
 }
@@ -102,7 +102,7 @@ const initialSelections: TurnoutSelections = {
   specificDistrictNumber: null,
   secondaryBreakdown: null,
   electionDate: '2020-11-03',
-  reportDataPoints: [],
+  dataPoints: [], // Renamed from reportDataPoints
   chartDataPoint: null,
   includeCensusData: false,
 };
@@ -225,8 +225,8 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     if (selections.electionDate) {
       urlParams.set('electionDate', selections.electionDate);
     }
-    if (selections.reportDataPoints.length > 0) {
-      urlParams.set('reportDataPoints', JSON.stringify(selections.reportDataPoints));
+    if (selections.dataPoints.length > 0) {
+      urlParams.set('dataPoints', JSON.stringify(selections.dataPoints));
     }
     if (selections.chartDataPoint) {
       urlParams.set('chartDataPoint', selections.chartDataPoint);
@@ -240,7 +240,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       const requestBody = {
         geography: apiGeography,
         electionDate: selections.electionDate,
-        reportDataPoints: selections.reportDataPoints,
+        dataPoints: selections.dataPoints, // Renamed from reportDataPoints
         chartDataPoint: selections.chartDataPoint,
         includeCensusData: selections.includeCensusData,
       };
@@ -340,13 +340,13 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           }
         }
         
-        // Set report data points if present
-        const reportDataPoints = searchParams.get('reportDataPoints');
-        if (reportDataPoints) {
+        // Set data points if present
+        const dataPointsParam = searchParams.get('dataPoints');
+        if (dataPointsParam) {
           try {
-            urlSelections.reportDataPoints = JSON.parse(reportDataPoints);
+            urlSelections.dataPoints = JSON.parse(dataPointsParam);
           } catch (e) {
-            console.warn('Invalid reportDataPoints in URL params');
+            console.warn('Invalid dataPoints in URL params');
           }
         }
         

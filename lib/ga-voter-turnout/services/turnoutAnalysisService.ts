@@ -27,7 +27,7 @@ export async function generateTurnoutAnalysisData(
 ): Promise<{ rows: ProcessedReportRow[] }> {
     console.log('Service: Generating turnout analysis data with params:', params);
 
-    const { geography, electionDate, reportDataPoints, includeCensusData } = params;
+    const { geography, electionDate, dataPoints, includeCensusData } = params;
     
     let groupByColumn = 'county_name'; // Default
     let groupLabel = 'County';
@@ -197,7 +197,7 @@ export async function generateTurnoutAnalysisData(
         });
         
         // Process demographic breakdowns if requested
-        if (reportDataPoints.length > 0) {
+        if (dataPoints.length > 0) {
             const electionYearForAgeCalc = new Date(electionDate).getFullYear();
             
             for (const reportRow of initialReportRows) {
@@ -212,8 +212,8 @@ export async function generateTurnoutAnalysisData(
                 const combinations: Array<{ key: string, sqlConditions: string[] }> = [];
 
                 // Single dimension breakdowns
-                if (reportDataPoints.length === 1) {
-                    const dim = reportDataPoints[0];
+                if (dataPoints.length === 1) {
+                    const dim = dataPoints[0];
                     const categories = dim === 'Race' 
                         ? require('../constants').RACE_CATEGORIES 
                         : dim === 'Gender' 
@@ -228,8 +228,8 @@ export async function generateTurnoutAnalysisData(
                     }
                 } 
                 // Two dimension breakdowns
-                else if (reportDataPoints.length === 2) {
-                    const [dim1, dim2] = reportDataPoints;
+                else if (dataPoints.length === 2) {
+                    const [dim1, dim2] = dataPoints;
                     const categories1 = dim1 === 'Race' 
                         ? require('../constants').RACE_CATEGORIES 
                         : dim1 === 'Gender' 
@@ -255,7 +255,7 @@ export async function generateTurnoutAnalysisData(
                     }
                 }
                 // Three dimension breakdowns - implemented similarly
-                else if (reportDataPoints.length === 3) {
+                else if (dataPoints.length === 3) {
                     // Similar to 2 dimensions but with 3 nested loops
                     // Omitted for brevity
                 }
@@ -334,7 +334,7 @@ export async function generateTurnoutAnalysisData(
                 }
             }
         } else {
-            // No reportDataPoints selected, ensure breakdowns is empty object
+            // No dataPoints selected, ensure breakdowns is empty object
             initialReportRows.forEach(reportRow => {
                 reportRow.breakdowns = {};
             });

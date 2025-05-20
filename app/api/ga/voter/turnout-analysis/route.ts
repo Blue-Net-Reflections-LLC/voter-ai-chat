@@ -12,7 +12,7 @@ interface TurnoutAnalysisRequestBody {
     subAreaValue?: string;
   };
   electionDate: string; // YYYY-MM-DD
-  reportDataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
+  dataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
   chartDataPoint?: 'Race' | 'Gender' | 'AgeRange' | null;
   includeCensusData: boolean;
 }
@@ -35,8 +35,8 @@ function isValidRequestBody(body: any): body is TurnoutAnalysisRequestBody {
   }
 
   if (typeof body.electionDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.electionDate)) return false;
-  if (!Array.isArray(body.reportDataPoints) || 
-      body.reportDataPoints.some((dp: any) => !['Race', 'Gender', 'AgeRange'].includes(dp))) return false;
+  if (!Array.isArray(body.dataPoints) || 
+      body.dataPoints.some((dp: any) => !['Race', 'Gender', 'AgeRange'].includes(dp))) return false;
   if (body.chartDataPoint !== undefined && body.chartDataPoint !== null && 
       !['Race', 'Gender', 'AgeRange'].includes(body.chartDataPoint)) return false;
   if (typeof body.includeCensusData !== 'boolean') return false;

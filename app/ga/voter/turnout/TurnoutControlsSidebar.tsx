@@ -77,17 +77,19 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
   };
 
   const handleReportDataPointChange = (pointId: string, checked: boolean) => {
-    const currentPoints = selections.reportDataPoints;
+    const currentPoints = selections.dataPoints || [];
     let newPoints = [...currentPoints];
     if (checked) {
-      if (!currentPoints.includes(pointId) && currentPoints.length < 3) {
-        newPoints.push(pointId);
+      if (newPoints.length < 3 || currentPoints.includes(pointId)) {
+         if (!currentPoints.includes(pointId)) {
+            newPoints.push(pointId);
+         }
       }
     } else {
       newPoints = currentPoints.filter(p => p !== pointId);
     }
-    if (newPoints.length <=3) {
-        onSelectionsChange({ reportDataPoints: newPoints });
+    if (newPoints.length <= 3) { 
+        onSelectionsChange({ dataPoints: newPoints });
     }
   };
 
@@ -107,6 +109,10 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
     if (selections.primaryGeoType === 'District' && (!selections.specificDistrictType || !selections.specificDistrictNumber)) return true;
     if (!selections.primaryGeoType) return true; // Must select a primary geo type
     return false;
+  };
+
+  const handleChartDataPointChange = (value: string) => {
+    onSelectionsChange({ chartDataPoint: value === 'overall' ? null : value });
   };
 
   return (
@@ -262,12 +268,12 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
                     {REPORT_DATA_POINTS.map(point => (
                       <div key={point.id} className="flex items-center space-x-2">
                         <Switch 
-                          id={`report-${point.id.toLowerCase()}`}
-                          checked={selections.reportDataPoints.includes(point.id)}
+                          id={`dp-${point.id}`}
+                          checked={(selections.dataPoints || []).includes(point.id)}
                           onCheckedChange={(checked) => handleReportDataPointChange(point.id, checked)}
-                          disabled={!selections.reportDataPoints.includes(point.id) && selections.reportDataPoints.length >= 3}
+                          disabled={(selections.dataPoints || []).length >= 3 && !(selections.dataPoints || []).includes(point.id)}
                         />
-                        <Label htmlFor={`report-${point.id.toLowerCase()}`}>{point.label}</Label>
+                        <Label htmlFor={`dp-${point.id}`}>{point.label}</Label>
                       </div>
                     ))}
                   </div>
@@ -286,7 +292,7 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
                   <Label htmlFor="chart-data-point">Data Point</Label>
                   <Select
                     value={selections.chartDataPoint || 'overall'}
-                    onValueChange={(value) => onSelectionsChange({ chartDataPoint: value === 'overall' ? null : value })}
+                    onValueChange={handleChartDataPointChange}
                   >
                     <SelectTrigger id="chart-data-point">
                       <SelectValue placeholder="Select data point..." />

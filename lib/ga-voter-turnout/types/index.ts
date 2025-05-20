@@ -19,7 +19,7 @@ export interface ValidatedTurnoutAnalysisParams {
         subAreaValue?: string;
     };
     electionDate: string; // YYYY-MM-DD
-    reportDataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
+    dataPoints: Array<'Race' | 'Gender' | 'AgeRange'>;
     chartDataPoint?: 'Race' | 'Gender' | 'AgeRange' | null;
     includeCensusData: boolean;
 }
