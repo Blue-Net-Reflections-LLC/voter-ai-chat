@@ -28,12 +28,12 @@ export interface EducationBracket {
 }
 
 export const EDUCATION_BRACKETS: EducationBracket[] = [
-  { min: 0, max: 20, label: 'Very Low (0-20%)', value: 'very_low_education' },
-  { min: 20, max: 35, label: 'Low (20-35%)', value: 'low_education' },
-  { min: 35, max: 50, label: 'Moderate (35-50%)', value: 'moderate_education' },
-  { min: 50, max: 65, label: 'High (50-65%)', value: 'high_education' },
-  { min: 65, max: 80, label: 'Very High (65-80%)', value: 'very_high_education' },
-  { min: 80, max: 100, label: 'Extremely High (80%+)', value: 'extremely_high_education' },
+  { min: 0, max: 20, label: 'Bachelor\'s Degree (0-20% of area)', value: 'very_low_education' },
+  { min: 20, max: 35, label: 'Bachelor\'s Degree (20-35% of area)', value: 'low_education' },
+  { min: 35, max: 50, label: 'Bachelor\'s Degree (35-50% of area)', value: 'moderate_education' },
+  { min: 50, max: 65, label: 'Bachelor\'s Degree (50-65% of area)', value: 'high_education' },
+  { min: 65, max: 80, label: 'Bachelor\'s Degree (65-80% of area)', value: 'very_high_education' },
+  { min: 80, max: 100, label: 'Bachelor\'s Degree (80%+ of area)', value: 'extremely_high_education' },
 ];
 
 // Unemployment rate brackets

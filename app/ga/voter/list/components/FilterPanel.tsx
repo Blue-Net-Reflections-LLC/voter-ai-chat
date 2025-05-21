@@ -928,7 +928,7 @@ export function FilterPanel() {
                 <Separator className="my-3" />
 
                 <MultiSelect
-                  label="Education Attainment"
+                  label="Bachelor's Degree Rates"
                   options={EDUCATION_LEVEL_OPTIONS}
                   value={ensureStringArray(filters.education)}
                   setValue={(value) => updateFilter('education', value)}

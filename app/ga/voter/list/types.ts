@@ -57,6 +57,7 @@ export interface FilterState {
   race: string[];
   income: string[];
   education: string[];
+  unemployment: string[];
   electionType: string[];
   electionYear: string[];
   electionDate: string[];
