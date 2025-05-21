@@ -74,19 +74,24 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
     }
   }, []);
 
-  // Handle tab visibility changes
+  // Handle tab visibility changes - optimize to prevent excessive renders
   useEffect(() => {
     if (isActive && gridApi) {
+      // Only resize when tab becomes active
       const resizeGrid = () => {
         // Reset column state
         gridApi.resetColumnState();
         
         // Apply the default sort
         applyDefaultSort(gridApi);
+
+        // Size columns to fit once
+        gridApi.sizeColumnsToFit();
       };
       
-      // Use timeout to ensure it runs after layout is complete
-      setTimeout(resizeGrid, 0);
+      // Single timer to prevent multiple operations
+      const timerId = setTimeout(resizeGrid, 50);
+      return () => clearTimeout(timerId);
     }
   }, [isActive, gridApi, applyDefaultSort]);
 

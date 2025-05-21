@@ -310,17 +310,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
   }, [selections, activeTab]);
   
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setIsSidebarOpen(false);
-      } 
-    };
-    window.addEventListener('resize', handleResize);
-    handleResize();
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
     if (initialParamsProcessedRef.current) return;
     
     if (!isLookupLoading && !lookupError) {
