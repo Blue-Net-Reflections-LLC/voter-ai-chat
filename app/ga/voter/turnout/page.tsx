@@ -4,12 +4,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PanelLeftOpen, PanelRightOpen, List, BarChart2 } from 'lucide-react';
+import { PanelLeftOpen, PanelRightOpen, List, BarChart2, FileDown, ImageDown } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { TurnoutControlsSidebar } from './TurnoutControlsSidebar';
-import { ReportTabContent } from './ReportTabContent';
-import { ChartTabContent } from './ChartTabContent';
+import { ReportTabContent, type ReportActions } from './ReportTabContent';
+import { ChartTabContent, type ChartTabActions } from './ChartTabContent';
 import { useLookupData, MultiSelectOption } from '@/app/ga/voter/list/hooks/useLookupData';
 import { SelectionsHeader } from './components/SelectionsHeader';
 
@@ -116,34 +116,23 @@ const TypedTabsContent = TabsContent as React.FC<ComponentPropsWithClassName<typ
 const GeorgiaVoterTurnoutPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selections, setSelections] = useState<TurnoutSelections>(initialSelections);
-  // New state to track the applied/rendered selections (only updated on button click)
   const [appliedSelections, setAppliedSelections] = useState<TurnoutSelections>(initialSelections);
-  
-  // Add a ref to track if we already processed URL params
   const initialParamsProcessedRef = useRef(false);
-
-  // const [apiData, setApiData] = useState<TurnoutAnalysisApiResponse | null>(null); // Removed: Replaced by tab-specific raw data
   const [rawReportData, setRawReportData] = useState<ApiReportRow[] | null>(null);
   const [rawChartData, setRawChartData] = useState<ApiReportRow[] | null>(null);
-
-  // const [isLoading, setIsLoading] = useState(false); // Replaced by tab-specific loading states
   const [isReportLoading, setIsReportLoading] = useState(false);
   const [isChartLoading, setIsChartLoading] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('report');
   const [processedChartData, setProcessedChartData] = useState<ApiChartData | null>(null);
-  // const [reportTabData, setReportTabData] = useState<ApiReportRow[] | null>(null); // Renamed to rawReportData and handled differently
-  
-  // Move the useSearchParams hook here, at component level
   const searchParams = useSearchParams();
+  const reportTabRef = useRef<ReportActions>(null);
+  const chartTabRef = useRef<ChartTabActions>(null);
 
-  // Determine data points for SelectionsHeader based on activeTab and appliedSelections
   const headerDataPoints = activeTab === 'chart'
     ? (appliedSelections.dataPoints.length > 0 ? [appliedSelections.dataPoints[0]] : [])
     : appliedSelections.dataPoints;
 
-  // Integrate useLookupData
   const {
     counties,
     congressionalDistricts,
@@ -154,16 +143,12 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
   } = useLookupData();
 
   const handleSelectionsChange = useCallback((newSelectionValues: Partial<TurnoutSelections>) => {
-    // Just update the state without automatically triggering report generation
     setSelections(prevSelections => ({ ...prevSelections, ...newSelectionValues }));
   }, []);
 
   const handleGenerateReport = useCallback(async () => {
-    // Update applied selections when Generate/Draw button is clicked
     setAppliedSelections(selections);
     
-    // This is now called only when the Generate/Draw button is clicked
-    // setIsLoading(true); // Replaced
     if (activeTab === 'report') {
       setIsReportLoading(true);
     } else if (activeTab === 'chart') {
@@ -173,13 +158,11 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     
     console.log(`Generating report with selections:`, selections);
 
-    // Construct the API geography object based on current selections
     let apiGeography: ApiGeographySelection | null = null;
 
     if (selections.primaryGeoType === 'County') {
       if (!selections.specificCounty) {
         setError('Please select a specific county or "All Counties".');
-        // setIsLoading(false); // Replaced
         if (activeTab === 'report') {
           setIsReportLoading(false);
         } else if (activeTab === 'chart') {
@@ -198,7 +181,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     } else if (selections.primaryGeoType === 'District') {
       if (!selections.specificDistrictType || !selections.specificDistrictNumber) {
         setError('Please select a district type and a specific district number or "All Districts".');
-        // setIsLoading(false); // Replaced
         if (activeTab === 'report') {
           setIsReportLoading(false);
         } else if (activeTab === 'chart') {
@@ -219,7 +201,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
 
     if (!apiGeography || !selections.electionDate) {
       setError('Please select Primary Geography, Specific Area, and Election Date.');
-      // setIsLoading(false); // Replaced
       if (activeTab === 'report') {
         setIsReportLoading(false);
       } else if (activeTab === 'chart') {
@@ -228,10 +209,8 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       return;
     }
     
-    // Update URL parameters for bookmarking/sharing (without triggering navigation)
     const urlParams = new URLSearchParams();
     
-    // Set basic URL params
     urlParams.set('areaType', apiGeography.areaType);
     urlParams.set('areaValue', apiGeography.areaValue);
     if (apiGeography.districtType) {
@@ -248,18 +227,16 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     }
     urlParams.set('includeCensusData', String(selections.includeCensusData));
     
-    // Update URL without navigation
     window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
 
     try {
-      // Determine dataPoints and includeCensusData for the API request based on activeTab
       let apiDataPoints: string[];
       let apiIncludeCensusData: boolean;
 
       if (activeTab === 'chart') {
         apiDataPoints = selections.dataPoints.length > 0 ? [selections.dataPoints[0]] : [];
-        apiIncludeCensusData = false; // Charts do not use census data
-      } else { // 'report' tab
+        apiIncludeCensusData = false;
+      } else {
         apiDataPoints = selections.dataPoints;
         apiIncludeCensusData = selections.includeCensusData;
       }
@@ -267,8 +244,8 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       const requestBody = {
         geography: apiGeography,
         electionDate: selections.electionDate,
-        dataPoints: apiDataPoints, // Use the tab-aware apiDataPoints
-        includeCensusData: apiIncludeCensusData, // Use tab-aware census flag
+        dataPoints: apiDataPoints,
+        includeCensusData: apiIncludeCensusData,
       };
 
       const response = await fetch('/api/ga/voter/turnout-analysis', {
@@ -284,37 +261,26 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
 
       const responseData: TurnoutAnalysisApiResponse = await response.json();
       
-      // setApiData(data); // Update main data store - Removed
-
-      // Conditionally update tab-specific data if that tab is active
       if (activeTab === 'report') {
-        // setReportTabData(data.rows); // - Removed
         setRawReportData(responseData.rows);
-        // Ensure other tab's raw data is not touched
       } else if (activeTab === 'chart') {
         setRawChartData(responseData.rows);
-        // Ensure other tab's raw data is not touched
       }
-      // processedChartData is updated via useEffect watching rawChartData and selections.dataPoints
 
     } catch (err: any) {
       console.error('API call failed:', err);
       setError(err.message || 'Failed to fetch data.');
-      // setApiData(null); // - Removed
-      // setReportTabData(null); // Clear report-specific data on error - Combined below
-      // setProcessedChartData(null); // Clear chart-specific data on error - Combined below
       setRawReportData(null);
       setRawChartData(null);
-      setProcessedChartData(null); // This will be cleared by its own effect if rawChartData is null
+      setProcessedChartData(null);
     } finally {
-      // setIsLoading(false); // Replaced
       if (activeTab === 'report') {
         setIsReportLoading(false);
       } else if (activeTab === 'chart') {
         setIsChartLoading(false);
       }
     }
-  }, [selections, /*setIsLoading,*/ activeTab, setError, setRawReportData, setRawChartData, setIsReportLoading, setIsChartLoading]); // Updated dependencies, removed setIsLoading
+  }, [selections, activeTab, setError, setRawReportData, setRawChartData, setIsReportLoading, setIsChartLoading]);
   
   useEffect(() => {
     const handleResize = () => {
@@ -329,31 +295,23 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // After the useEffect for window resize, add URL parameter handling
-  // This will only generate a report if valid parameters are found in the URL
   useEffect(() => {
-    // Only process URL params once to avoid infinite loops
     if (initialParamsProcessedRef.current) return;
     
-    // Only try to load from URL params if lookup data is available
     if (!isLookupLoading && !lookupError) {
-      // Check if we have geography and election date parameters
       const areaType = searchParams.get('areaType');
       const areaValue = searchParams.get('areaValue');
       const electionDate = searchParams.get('electionDate');
       
       if (areaType && areaValue && electionDate) {
-        // We have the minimum parameters to generate a report
         const urlSelections: Partial<TurnoutSelections> = {
           primaryGeoType: (areaType as 'County' | 'District' | null),
           electionDate: electionDate
         };
         
-        // Set appropriate additional parameters
         if (areaType === 'County') {
           urlSelections.specificCounty = areaValue;
           
-          // Handle sub-area breakdown if present
           const subAreaType = searchParams.get('subAreaType');
           if (subAreaType) {
             urlSelections.secondaryBreakdown = (subAreaType as 'Precinct' | 'Municipality' | 'ZipCode' | null);
@@ -366,7 +324,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           }
         }
         
-        // Set data points if present
         const dataPointsParam = searchParams.get('dataPoints');
         if (dataPointsParam) {
           try {
@@ -376,55 +333,43 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           }
         }
         
-        // Set census data inclusion if present
         const includeCensusData = searchParams.get('includeCensusData');
         if (includeCensusData) {
           urlSelections.includeCensusData = includeCensusData === 'true';
         }
         
-        // Update selections and appliedSelections
         const newSelections = { ...initialSelections, ...urlSelections };
         setSelections(newSelections);
-        setAppliedSelections(newSelections); // Also update appliedSelections
+        setAppliedSelections(newSelections);
         
-        // Mark as processed before triggering the report generation
         initialParamsProcessedRef.current = true;
         
-        // Generate the report directly, but after a timeout to ensure state updates
         setTimeout(() => {
           handleGenerateReport();
         }, 0);
       } else {
-        // No valid URL params, still mark as processed
         initialParamsProcessedRef.current = true;
       }
     }
-  }, [isLookupLoading, lookupError, searchParams]); // Remove handleGenerateReport from deps
+  }, [isLookupLoading, lookupError, searchParams]);
 
-  // New Effect: Adjust selections.dataPoints when activeTab changes
   useEffect(() => {
     if (activeTab === 'chart') {
       setSelections(prevSelections => {
         if (prevSelections.dataPoints.length > 1) {
-          // If more than one data point, keep only the first for charts
           return { ...prevSelections, dataPoints: [prevSelections.dataPoints[0]] };
         }
-        return prevSelections; // No change if 0 or 1 data point
+        return prevSelections;
       });
     }
-    // No specific adjustment needed when switching to 'report' tab from 'chart',
-    // as the report tab can handle 0 or 1 data point selected in chart tab.
-  }, [activeTab]); // Dependency: activeTab. setSelections is stable via useState.
+  }, [activeTab]);
 
-  // Effect to transform ApiReportRow[] to ApiChartData for the Chart Tab
   useEffect(() => {
     if (!rawChartData || !rawChartData.length) {
       setProcessedChartData(null);
       return;
     }
 
-    // IMPORTANT CHANGE: Use appliedSelections instead of selections
-    // This ensures chart only updates when Generate/Draw button is clicked
     const chartPoint = appliedSelections.dataPoints.length > 0 ? appliedSelections.dataPoints[0] : null;
     let newChartData: ApiChartData | null = null;
 
@@ -434,13 +379,12 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
                         chartPoint === 'Gender' ? GENDER_CHART_CATEGORIES : AGE_RANGE_CHART_CATEGORIES;
       const colors = DEMOGRAPHIC_COLORS[chartPoint] || [];
 
-      // Find all available breakdown keys for the selected chartPoint
       const availableBreakdownKeys = new Set<string>();
       rawChartData.forEach(reportRow => {
         if (reportRow.breakdowns) {
           Object.keys(reportRow.breakdowns).forEach(key => {
             if (key.startsWith(`${chartPoint}:`)) {
-              availableBreakdownKeys.add(key.split(':')[1]); // Extract category value after ':'
+              availableBreakdownKeys.add(key.split(':')[1]);
             }
           });
         }
@@ -451,10 +395,10 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       
       newChartData = {
         type: 'stackedRow',
-        rows: rawChartData.map(reportRow => { // Uses rawChartData
+        rows: rawChartData.map(reportRow => {
           const segments: ApiChartSegment[] = [];
           categories.forEach((catKey, index) => {
-            const breakdownKey = `${chartPoint}:${catKey}`; // e.g., Race:White, AgeRange:18-23
+            const breakdownKey = `${chartPoint}:${catKey}`;
             const breakdownData = reportRow.breakdowns?.[breakdownKey];
             if (breakdownData) {
               segments.push({
@@ -469,26 +413,24 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           return {
             geoLabel: reportRow.geoLabel,
             segments,
-            overallTurnoutRate: reportRow.overallTurnoutRate, // Useful for context
+            overallTurnoutRate: reportRow.overallTurnoutRate,
           };
         }),
-        xAxisMax: 1, // Max 100% turnout
+        xAxisMax: 1,
       };
     } else {
-      // Default to bar chart of overall turnout
       newChartData = {
         type: 'bar',
-        rows: rawChartData.map(row => ({ // Uses rawChartData
+        rows: rawChartData.map(row => ({
           geoLabel: row.geoLabel,
           overallTurnoutRate: row.overallTurnoutRate,
         })),
-        xAxisMax: 1, // Max 100% turnout
+        xAxisMax: 1,
       };
     }
     setProcessedChartData(newChartData);
-  }, [rawChartData, appliedSelections.dataPoints]); // Updated dependencies to use appliedSelections
+  }, [rawChartData, appliedSelections.dataPoints]);
 
-  // Display lookup loading/error states if necessary
   if (isLookupLoading) {
     return <div className="flex items-center justify-center h-screen">Loading lookup data...</div>;
   }
@@ -514,82 +456,118 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           />
         </SheetContent>
       </Sheet>
-      {/* Tabs component now wraps the main content area including its header */}
-      <TypedTabs defaultValue={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
-        <main className="flex flex-col flex-1 min-h-0">
-          <header className="p-4 border-b flex items-center justify-between shrink-0 min-h-[69px] sticky top-0 bg-background z-10 gap-4">
-            <div className="flex items-center">
-              <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-3">
-                {isSidebarOpen ? <PanelLeftOpen className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
+      <TypedTabs defaultValue={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <header className="flex items-center h-12 px-2 py-1 border-b bg-background z-10 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="p-1 h-8 w-8"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            {isSidebarOpen ? <PanelLeftOpen className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+          </Button>
+
+          <div className="w-px h-6 bg-border mx-2"></div>
+
+          <div className="mr-2">
+            <SelectionsHeader 
+              appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
+              countyOptions={counties}
+              districtOptions={
+                appliedSelections.specificDistrictType === 'Congressional' ? congressionalDistricts :
+                appliedSelections.specificDistrictType === 'StateSenate' ? stateSenateDistricts :
+                appliedSelections.specificDistrictType === 'StateHouse' ? stateHouseDistricts : 
+                []
+              }
+            />
+          </div>
+
+          <div className="w-px h-6 bg-border mx-2"></div>
+
+          {/* Context-aware Download Buttons */}
+          {activeTab === 'report' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3"
+              onClick={() => reportTabRef.current?.exportCsv()}
+              disabled={isReportLoading || !rawReportData || rawReportData.length === 0}
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Download CSV
+            </Button>
+          )}
+          {activeTab === 'chart' && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => chartTabRef.current?.exportChartSVG()}
+                disabled={isChartLoading || !processedChartData || processedChartData.rows.length === 0}
+              >
+                <ImageDown className="h-4 w-4 mr-2" />
+                Save SVG
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => chartTabRef.current?.exportChartPNG()}
+                disabled={isChartLoading || !processedChartData || processedChartData.rows.length === 0}
+              >
+                <ImageDown className="h-4 w-4 mr-2" />
+                Save PNG
               </Button>
             </div>
-            
-            {/* SelectionsHeader moved into the main header, takes available space */}
-            <div className="flex-1 min-w-0"> {/* Added min-w-0 for better flex handling of long text */} 
-              {(rawReportData || rawChartData) && (
-                <SelectionsHeader 
-                  appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
-                  countyOptions={counties}
-                  districtOptions={
-                    appliedSelections.specificDistrictType === 'Congressional' ? congressionalDistricts :
-                    appliedSelections.specificDistrictType === 'StateSenate' ? stateSenateDistricts :
-                    appliedSelections.specificDistrictType === 'StateHouse' ? stateHouseDistricts : 
-                    []
-                  }
-                />
-              )}
-            </div>
+          )}
 
-            <TypedTabsList className="flex gap-1">
-              <TypedTabsTrigger value="report" className="p-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-                <List className="h-5 w-5" />
-                <span className="sr-only">Report</span>
+          <div className="flex-1 mx-2"></div>
+
+          <div className="w-px h-6 bg-border mr-2"></div>
+
+          <div className="flex items-center gap-1">
+            <TypedTabsList className="h-9">
+              <TypedTabsTrigger value="report" className="px-3 py-1.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <div className="inline-flex items-center gap-2">
+                  <List className="h-4 w-4" />
+                  <span>Report</span>
+                </div>
               </TypedTabsTrigger>
-              <TypedTabsTrigger value="chart" className="p-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-                <BarChart2 className="h-5 w-5" />
-                <span className="sr-only">Chart</span>
+              <TypedTabsTrigger value="chart" className="px-3 py-1.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <div className="inline-flex items-center gap-2">
+                  <BarChart2 className="h-4 w-4" />
+                  <span>Chart</span>
+                </div>
               </TypedTabsTrigger>
             </TypedTabsList>
-          </header>
-          {/* Main content area for tab contents, SelectionsHeader, and error messages */}
+          </div>
+        </header>
+        <main className="flex flex-col flex-1 min-h-0">
           <div className="flex flex-col flex-1 min-h-0 p-4 overflow-y-auto">
-            
-            {/* {(rawReportData || rawChartData) && (
-              <SelectionsHeader 
-                appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
-                countyOptions={counties}
-                districtOptions={
-                  appliedSelections.specificDistrictType === 'Congressional' ? congressionalDistricts :
-                  appliedSelections.specificDistrictType === 'StateSenate' ? stateSenateDistricts :
-                  appliedSelections.specificDistrictType === 'StateHouse' ? stateHouseDistricts : 
-                  []
-                }
-              />
-            )} */}
-            
-            {/* Container for TabsContent, takes remaining flex space */}
-            <div className="flex-1 h-full"> {/* Removed mt-4 */}
+            <div className="flex-1 h-full">
               <TypedTabsContent value="report" className="h-full">
                 <div className='h-full'>
                   <ReportTabContent 
+                    ref={reportTabRef}
                     rows={rawReportData || null} 
                     isLoading={isReportLoading}
                     error={error}
                   />
                 </div>
               </TypedTabsContent>
-              <TypedTabsContent value="chart" className="h-full"> {/* Applied h-full */}
+              <TypedTabsContent value="chart" className="h-full">
                 <div className='h-full'>
-                  <ChartTabContent 
+                  <ChartTabContent
+                    ref={chartTabRef}
                     chartData={processedChartData}
                     isLoading={isChartLoading}
-                    error={error} 
+                    error={error}
                   />
                 </div>
               </TypedTabsContent>
             </div>
             
-            {/* Global error message area, part of the scrollable content */}
             {error && !isReportLoading && !isChartLoading && (
               <div className="mt-4 p-4 border rounded bg-destructive/10 text-destructive text-center shrink-0">
                 <p>Error: {error}</p>

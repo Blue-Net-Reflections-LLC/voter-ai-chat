@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useRef, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useMemo, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import { AgGridReact } from 'ag-grid-react';
@@ -14,6 +14,11 @@ import './ag-grid-custom.css';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+// Interface for exposed imperative actions
+export interface ReportActions {
+  exportCsv: () => void;
+}
 
 interface ReportTabContentProps {
   rows: ApiReportRow[] | null;
@@ -52,9 +57,7 @@ const formatCurrency = (value: number | null | undefined) => {
   });
 };
 
-
-export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoading, error }) => {
-  // Add a ref to the AG Grid component
+export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>(({ rows, isLoading, error }, ref) => {
   const gridRef = useRef<AgGridReact>(null);
 
   // Calculate aggregations for the report - replacing backend aggregations that were removed
@@ -382,28 +385,20 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
     };
   }, []);
 
-  // Add an export function for CSV
   const handleExportCSV = useCallback(() => {
     if (gridRef.current && gridRef.current.api) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const fileName = `voter_turnout_report_${timestamp}.csv`;
       
-      // Use the AG Grid export API
       gridRef.current.api.exportDataAsCsv({
         fileName,
         processCellCallback: (params) => {
-          // Format values for export
           if (params.value === null || params.value === undefined) {
             return '';
           }
-          
-          // Format numbers and percentages appropriately
           const colDef = params.column.getColDef();
-          
-          // Type-safe check for valueFormatter as function
           const valueFormatter = colDef.valueFormatter;
           if (valueFormatter && typeof valueFormatter === 'function') {
-            // Apply the formatter function directly
             const formattedValue = valueFormatter({
               value: params.value,
               data: params.node?.data,
@@ -413,20 +408,21 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
               node: params.node ?? null,
               context: params.context
             });
-            
-            // Clean up formatted values for CSV (remove currency symbols, etc)
             if (typeof formattedValue === 'string') {
               return formattedValue.replace(/[$,%]/g, '');
             }
             return formattedValue;
           }
-          
-          // Return the raw value for other cases
           return params.value;
         }
       });
     }
   }, []);
+
+  // Expose the exportCsv action via ref
+  useImperativeHandle(ref, () => ({
+    exportCsv: handleExportCSV
+  }));
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-full">Loading report data...</div>;
@@ -454,18 +450,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
     <Card className="h-full flex flex-col shadow-none border-0 p-0 m-0">
       <CardContent className="flex-1 p-0 ag-theme-quartz" style={{ height: '100%', width: '100%' }}>
         <div className="h-full w-full flex flex-col">
-          <div className="flex justify-end p-2 border-b">
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={handleExportCSV}
-              disabled={!rows || rows.length === 0 || isLoading}
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              Download CSV
-            </Button>
-          </div>
-          <div className="flex-grow">
+          <div className="flex-grow h-full w-full">
             <AgGridReact<ApiReportRow>
               ref={gridRef}
               rowData={rowData}
@@ -484,4 +469,6 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
       </CardContent>
     </Card>
   );
-}; 
+});
+
+ReportTabContent.displayName = 'ReportTabContent'; 

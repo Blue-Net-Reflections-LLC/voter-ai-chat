@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { TurnoutBarChart } from './components/TurnoutBarChart';
 import { TurnoutStackedRowChart } from './components/TurnoutStackedRowChart';
-import { ChartExporter } from './components/ChartExporter';
+import { ChartExporter, type ChartExporterActions } from './components/ChartExporter';
 
 // Define props interface accurately based on page.tsx state
 interface ApiChartData {
@@ -28,9 +28,22 @@ interface ChartTabContentProps {
   error: string | null;
 }
 
-export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isLoading, error }) => {
+// Actions exposed by ChartTabContent
+export interface ChartTabActions {
+  exportChartSVG: () => void;
+  exportChartPNG: () => Promise<void>;
+}
+
+export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>(({ chartData, isLoading, error }, ref) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartExporterRef = useRef<ChartExporterActions>(null); // Ref for ChartExporter
   
+  // Expose chart export functions - MOVED TO TOP LEVEL
+  useImperativeHandle(ref, () => ({
+    exportChartSVG: () => chartExporterRef.current?.exportToSVG(),
+    exportChartPNG: async () => chartExporterRef.current?.exportToPNG(),
+  }));
+
   // Diagnostic log
   console.log('[ChartTabContent PROPS]', { chartData, isLoading, error });
 
@@ -86,15 +99,18 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
     <Card className="h-full flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
         <div>
-          <CardTitle>Voter Turnout Chart</CardTitle>
-          <CardDescription>
-            Visual representation of voter turnout ({chartData.type === 'bar' ? 'Overall Turnout' : 'Demographic Breakdown'})
+          {/* Static text removed as per user request */}
+          {/* <CardTitle>Voter Turnout Chart</CardTitle> */}
+          {/* <CardDescription>
+            Visual representation of voter turnout ({chartData?.type === 'bar' ? 'Overall Turnout' : 'Demographic Breakdown'})
             <div className="mt-1 text-xs font-medium text-blue-600">Note: Click &#34;Draw Chart&#34; after changing selections to update the chart.</div>
-          </CardDescription>
+          </CardDescription> */}
         </div>
+        {/* ChartExporter is now invisible but its functions are exposed via ref */}
         <ChartExporter 
+          ref={chartExporterRef} // Pass the ref
           chartRef={chartContainerRef} 
-          chartType={chartData.type} 
+          chartType={chartData?.type || 'chart'} // Provide a fallback for chartType
           disabled={isLoading || !chartData || chartData.rows.length === 0}
         />
       </CardHeader>
@@ -110,4 +126,6 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
       </CardContent>
     </Card>
   );
-}; 
+});
+
+ChartTabContent.displayName = 'ChartTabContent'; // Added for better debugging ; 
