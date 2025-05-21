@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Loader2 } from 'lucide-react';
 import { 
     ELECTION_DATES, 
     REPORT_DATA_POINTS, 
@@ -26,6 +27,7 @@ interface TurnoutControlsSidebarProps {
   onSelectionsChange: (newSelections: Partial<TurnoutSelections>) => void;
   onGenerate: () => void;
   activeTab: string;
+  isGenerating?: boolean; // New prop to indicate if a request is in progress
   // Lookup data props
   countyOptions: MultiSelectOption[];
   congressionalDistrictOptions: MultiSelectOption[];
@@ -38,6 +40,7 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
   onSelectionsChange, 
   onGenerate, 
   activeTab,
+  isGenerating = false,
   countyOptions,
   congressionalDistrictOptions,
   stateSenateDistrictOptions,
@@ -89,6 +92,7 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
   };
   
   const isGenerateDisabled = () => {
+    if (isGenerating) return true; // Disable while generating
     if (!selections.electionDate) return true;
     if (selections.primaryGeoType === 'County' && !selections.specificCounty) return true;
     if (selections.primaryGeoType === 'District' && (!selections.specificDistrictType || !selections.specificDistrictNumber)) return true;
@@ -318,9 +322,16 @@ export const TurnoutControlsSidebar: React.FC<TurnoutControlsSidebarProps> = ({
         <Button 
           onClick={onGenerate} 
           className="w-full"
-          disabled={isGenerateDisabled()} // Updated disabled logic
+          disabled={isGenerateDisabled()}
         >
-          {activeTab === 'report' ? 'Generate Report' : 'Draw Chart'}
+          {isGenerating ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {activeTab === 'report' ? 'Generating...' : 'Drawing...'}
+            </>
+          ) : (
+            activeTab === 'report' ? 'Generate Report' : 'Draw Chart'
+          )}
         </Button>
       </div>
     </div>

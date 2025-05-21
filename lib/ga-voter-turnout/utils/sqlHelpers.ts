@@ -152,7 +152,8 @@ export function getDemographicConditionSQL(
         const sqlRaceCategory = require('../constants').GA_SQL_RACE_CATEGORIES_MAP[category];
         return sqlRaceCategory ? `UPPER(vrl.race) = '${sqlRaceCategory.replace(/'/g, "''")}'` : '1=0';
     } else if (dimension === 'Gender') {
-        return `LOWER(vrl.gender) = LOWER('${category.replace(/'/g, "''")}')`;
+        // For gender, use exact UPPER case matching with database values (MALE, FEMALE, UNKNOWN, X)
+        return `UPPER(vrl.gender) = UPPER('${category.replace(/'/g, "''")}')`;
     } else if (dimension === 'AgeRange') {
         const ageRangeDef = require('../constants').AGE_RANGE_CATEGORIES_DEF[category];
         if (!ageRangeDef) return '1=0';

@@ -29,7 +29,7 @@ export const AGE_RANGE_OPTIONS = [
   { value: '75+', label: '75+' },
 ];
 
-export const GENDER_OPTIONS = ["Male", "Female", "Other"]
+export const GENDER_OPTIONS = ["MALE", "FEMALE", "UNKNOWN", "X"]
   .map(gender => ({ value: gender, label: gender }));
 
 export const RACE_OPTIONS = ["White", "Black", "Hispanic", "Asian", "Other"]

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import type { TurnoutSelections } from '../page';
 import { CalendarIcon, MapPinIcon, BarChartIcon } from 'lucide-react';
 
@@ -20,12 +19,14 @@ interface SelectionsHeaderProps {
   appliedSelections: TurnoutSelections;
   countyOptions?: Array<{ value: string; label: string }>;
   districtOptions?: Array<{ value: string; label: string }>;
+  layout?: 'inline' | 'stacked';
 }
 
 export const SelectionsHeader: React.FC<SelectionsHeaderProps> = ({ 
   appliedSelections,
   countyOptions = [],
-  districtOptions = []
+  districtOptions = [],
+  layout = 'inline'
 }) => {
   if (!appliedSelections) return null;
 
@@ -78,38 +79,32 @@ export const SelectionsHeader: React.FC<SelectionsHeaderProps> = ({
     return appliedSelections.dataPoints.join(', ');
   };
 
+  const isStacked = layout === 'stacked';
+
   return (
-    <Card className="mb-4 bg-muted/30">
-      <CardContent className="py-3 px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <div className="flex items-center">
-            <MapPinIcon className="h-4 w-4 mr-2" />
-            <div>
-              <span className="text-xs text-muted-foreground mr-1">Geography:</span>
-              <span className="font-medium text-sm">{formatGeography()}</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center">
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            <div>
-              <span className="text-xs text-muted-foreground mr-1">Election:</span>
-              <span className="font-medium text-sm">{appliedSelections.electionDate || 'None'}</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center">
-            <BarChartIcon className="h-4 w-4 mr-2" />
-            <div>
-              <span className="text-xs text-muted-foreground mr-1">Data:</span>
-              <span className="font-medium text-sm">{formatDataPoints()}</span>
-              {appliedSelections.includeCensusData && (
-                <span className="ml-1 text-xs bg-primary/20 text-primary px-1 py-0.5 rounded">+Census</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className={`text-xs flex items-center gap-x-5 gap-y-1 py-1 px-2 bg-muted/20 rounded ${isStacked ? 'flex-col items-start gap-y-2' : 'flex-nowrap overflow-hidden'}`}>
+      <div className={`flex items-center ${isStacked ? '' : 'min-w-0'}`}>
+        <MapPinIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground flex-shrink-0" />
+        <span className={`text-muted-foreground mr-1 ${isStacked ? '' : 'hidden lg:inline'}`}>Geography:</span>
+        <span className={`font-medium ${isStacked ? '' : 'truncate'}`}>{formatGeography()}</span>
+      </div>
+      
+      <div className={`flex items-center ${isStacked ? '' : 'min-w-0'}`}>
+        <CalendarIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground flex-shrink-0" />
+        <span className={`text-muted-foreground mr-1 ${isStacked ? '' : 'hidden lg:inline'}`}>Election:</span>
+        <span className={`font-medium ${isStacked ? '' : 'truncate'}`}>{appliedSelections.electionDate || 'None'}</span>
+      </div>
+      
+      <div className={`flex items-center ${isStacked ? '' : 'min-w-0'}`}>
+        <BarChartIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground flex-shrink-0" />
+        <span className={`text-muted-foreground mr-1 ${isStacked ? '' : 'hidden lg:inline'}`}>Data:</span>
+        <span className={`font-medium ${isStacked ? '' : 'truncate'}`}>{formatDataPoints()}</span>
+        {appliedSelections.includeCensusData && (
+          <span className={`ml-1.5 text-xs bg-primary/20 text-primary-foreground px-1 py-0.5 rounded-sm ${isStacked ? '' : 'truncate'}`}>
+            +Census
+          </span>
+        )}
+      </div>
+    </div>
   );
 }; 
