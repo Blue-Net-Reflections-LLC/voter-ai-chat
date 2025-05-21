@@ -367,7 +367,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         initialParamsProcessedRef.current = true;
       }
     }
-  }, [isLookupLoading, lookupError, searchParams]);
+  }, [isLookupLoading, lookupError, searchParams, handleGenerateReport]);
 
   useEffect(() => {
     if (activeTab === 'chart') {
@@ -472,10 +472,10 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="p-1 h-8 w-8"
+            className="p-1 size-8"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
-            {isSidebarOpen ? <PanelLeftOpen className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+            {isSidebarOpen ? <PanelLeftOpen className="size-4" /> : <PanelRightOpen className="size-4" />}
           </Button>
 
           {/* Vertical separator after sidebar toggle button */}
@@ -485,7 +485,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="mr-2 sm:hidden">
-                <SlidersHorizontal className="h-5 w-5" />
+                <SlidersHorizontal className="size-5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80">
@@ -531,12 +531,12 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               onClick={() => reportTabRef.current?.exportCsv()}
               disabled={isReportLoading || !rawReportData || rawReportData.length === 0}
             >
-              <FileDown className="h-4 w-4 mr-2" />
+              <FileDown className="size-4 mr-2" />
               Download CSV
             </Button>
           )}
           {activeTab === 'chart' && (
-            <div className="flex items-center gap-2 hidden lg:flex">
+            <div className="items-center gap-2 hidden lg:flex">
               <Button
                 variant="outline"
                 size="sm"
@@ -544,7 +544,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
                 onClick={() => chartTabRef.current?.exportChartSVG()}
                 disabled={isChartLoading || !processedChartData || processedChartData.rows.length === 0}
               >
-                <ImageDown className="h-4 w-4 mr-2" />
+                <ImageDown className="size-4 mr-2" />
                 Save SVG
               </Button>
               <Button
@@ -554,7 +554,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
                 onClick={() => chartTabRef.current?.exportChartPNG()}
                 disabled={isChartLoading || !processedChartData || processedChartData.rows.length === 0}
               >
-                <ImageDown className="h-4 w-4 mr-2" />
+                <ImageDown className="size-4 mr-2" />
                 Save PNG
               </Button>
             </div>
@@ -567,13 +567,13 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             <TypedTabsList className="h-9">
               <TypedTabsTrigger value="report" className="px-3 py-1.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <div className="inline-flex items-center gap-2">
-                  <List className="h-4 w-4" />
+                  <List className="size-4" />
                   <span className="hidden sm:inline">Report</span>
                 </div>
               </TypedTabsTrigger>
               <TypedTabsTrigger value="chart" className="px-3 py-1.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <div className="inline-flex items-center gap-2">
-                  <BarChart2 className="h-4 w-4" />
+                  <BarChart2 className="size-4" />
                   <span className="hidden sm:inline">Chart</span>
                 </div>
               </TypedTabsTrigger>
