@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   BarChart,
   Bar,
@@ -55,12 +55,14 @@ const CustomLegend = ({ segmentLabels, segmentColors }: { segmentLabels: string[
 };
 
 export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ rows, xAxisMax }) => {
-  // Log to show we're using the colors from the segments
-  useEffect(() => {
-    if (rows?.[0]?.segments) {
-      console.log('Stacked chart using colors:', rows[0].segments.map(s => `${s.label}: ${s.color}`));
-    }
-  }, [rows]);
+  // Early exit if no data
+  if (!rows || rows.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">No chart data available.</p>
+      </div>
+    );
+  }
 
   // Sort rows by summed demographic turnout rate ascending (lowest first as per requirements)
   // Use summedDemographicTurnoutRate if available, otherwise calculate from segments
@@ -73,6 +75,23 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
     
     return sumA - sumB;
   });
+
+  // Find the first row with segments
+  const firstRowWithSegments = sortedRows.find(row => row.segments && row.segments.length > 0);
+  
+  // If no row has segments, show message
+  if (!firstRowWithSegments) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center">
+        <p className="text-muted-foreground mb-2">No demographic breakdown data available for the selected options.</p>
+        <p className="text-xs font-medium text-blue-600">Try selecting a different breakdown or click &quot;Draw Chart&quot; after making changes.</p>
+      </div>
+    );
+  }
+
+  // Extract segment labels and colors from the first row with segments
+  const segmentLabels = firstRowWithSegments.segments?.map(segment => segment.label) || [];
+  const segmentColors = firstRowWithSegments.segments?.map(segment => segment.color) || [];
 
   // Process data for the stacked bar chart
   const chartData = sortedRows.map(row => {
@@ -90,57 +109,23 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
 
     return dataPoint;
   });
-
-  // Extract segment labels to create bars for each demographic
-  const segmentLabels = sortedRows[0]?.segments?.map(segment => segment.label) || [];
-  const segmentColors = sortedRows[0]?.segments?.map(segment => segment.color) || [];
-
-  // If no segments in the first row, check other rows to find segments
-  let foundSegments = segmentLabels.length > 0;
-  if (!foundSegments) {
-    // Look through all rows to find one with segments
-    for (let i = 1; i < sortedRows.length; i++) {
-      // Fix typescript errors by adding proper null checks
-      const currentRow = sortedRows[i];
-      if (currentRow && currentRow.segments && currentRow.segments.length > 0) {
-        // Now that we've confirmed segments exists and isn't empty, it's safe to use
-        const rowSegments = currentRow.segments;
-        if (rowSegments) {
-          const rowSegmentLabels = rowSegments.map(segment => segment.label);
-          const rowSegmentColors = rowSegments.map(segment => segment.color);
-          
-          if (rowSegmentLabels.length > 0) {
-            // We found a row with segments, use these instead
-            segmentLabels.push(...rowSegmentLabels);
-            segmentColors.push(...rowSegmentColors);
-            foundSegments = true;
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // Still no segments found, show error message or fallback
-  if (!foundSegments || segmentLabels.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center">
-        <p className="text-muted-foreground mb-2">No demographic breakdown data available for the selected options.</p>
-        <p className="text-xs font-medium text-blue-600">Try selecting a different breakdown or click &quot;Draw Chart&quot; after making changes.</p>
-      </div>
-    );
-  }
+  
+  // Calculate dynamic margins based on screen width
+  const useSmallScreen = typeof window !== 'undefined' && window.innerWidth < 640;
+  const margins = useSmallScreen 
+    ? { top: 20, right: 20, left: 20, bottom: 5 } // Reduced left margin on mobile
+    : { top: 20, right: 50, left: 100, bottom: 5 }; // Desktop margins
 
   return (
     <div className="flex flex-col h-full">
       {/* Add custom legend at the top */}
       <CustomLegend segmentLabels={segmentLabels} segmentColors={segmentColors} />
       
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={300}>
         <BarChart
           data={chartData}
           layout="vertical" // This creates horizontal bars (counterintuitive but correct)
-          margin={{ top: 20, right: 50, left: 100, bottom: 5 }}
+          margin={margins}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="hsla(var(--muted-foreground), 0.2)" />
           <XAxis 
@@ -149,14 +134,15 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
             tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
             stroke="hsl(var(--muted-foreground))"
             tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: useSmallScreen ? 9 : 10 }}
           />
           <YAxis 
             dataKey="name" 
             type="category" 
-            width={150}
+            width={useSmallScreen ? 100 : 150}
             stroke="hsl(var(--muted-foreground))"
             tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
-            tick={{ fontSize: 10 }}
+            tick={{ fontSize: useSmallScreen ? 8 : 10 }}
           />
           <Tooltip 
             content={<CustomTooltip />}
@@ -177,8 +163,9 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
               <LabelList 
                 dataKey={label} 
                 position="inside" 
-                formatter={(value: number) => value > 0.05 ? `${(value * 100).toFixed(0)}%` : ''}
+                formatter={(value: number) => value > (useSmallScreen ? 0.07 : 0.05) ? `${(value * 100).toFixed(0)}%` : ''}
                 fill="#ffffff"
+                fontSize={useSmallScreen ? 9 : 11}
               />
             </Bar>
           ))}

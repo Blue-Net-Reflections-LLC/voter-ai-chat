@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { TurnoutBarChart } from './components/TurnoutBarChart';
 import { TurnoutStackedRowChart } from './components/TurnoutStackedRowChart';
-import { ChartExporter } from './components/ChartExporter';
+import { ChartExporter, type ChartExporterActions } from './components/ChartExporter';
+import { Loader2 } from 'lucide-react';
 
 // Define props interface accurately based on page.tsx state
 interface ApiChartData {
@@ -28,26 +29,59 @@ interface ChartTabContentProps {
   error: string | null;
 }
 
-export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isLoading, error }) => {
+// Actions exposed by ChartTabContent
+export interface ChartTabActions {
+  exportChartSVG: () => void;
+  exportChartPNG: () => Promise<void>;
+}
+
+export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>(({ chartData, isLoading, error }, ref) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartExporterRef = useRef<ChartExporterActions>(null); // Ref for ChartExporter
+  const [isMobile, setIsMobile] = useState(false);
   
-  // Diagnostic log
-  console.log('[ChartTabContent PROPS]', { chartData, isLoading, error });
+  // Detect mobile view
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    // Check on mount
+    checkMobile();
+    
+    // Setup resize listener with debounce
+    let timeoutId: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(checkMobile, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+  
+  // Expose chart export functions
+  useImperativeHandle(ref, () => ({
+    exportChartSVG: () => chartExporterRef.current?.exportToSVG(),
+    exportChartPNG: async () => chartExporterRef.current?.exportToPNG(),
+  }));
 
   if (isLoading) {
-    console.log('[ChartTabContent RENDER]: isLoading');
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
-        {/* <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /> */}
-        <div className="animate-pulse rounded-md bg-muted h-64 w-full mb-4"></div>
-        <p className="text-muted-foreground">Loading chart data...</p>
-        <p className="text-xs font-medium text-blue-600">This may take a moment, especially for &quot;All Counties&quot; or &quot;All Districts&quot; selections.</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground font-medium">Processing chart data...</p>
+        <p className="text-xs text-muted-foreground mt-2">
+          This may take a moment for larger datasets.
+        </p>
       </div>
     );
   }
 
   if (error) {
-    console.log('[ChartTabContent RENDER]: error', error);
     return (
       <Card className="border-destructive/50">
         <CardHeader>
@@ -61,7 +95,6 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
   }
 
   if (!chartData || !chartData.rows || chartData.rows.length === 0) {
-    console.log('[ChartTabContent RENDER]: No chart data', chartData);
     return (
       <div className="text-center py-10">
         <p className="text-muted-foreground mb-2">No chart data available.</p>
@@ -71,12 +104,10 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
       </div>
     );
   }
-  
-  console.log('[ChartTabContent RENDER]: Rendering chart', chartData);
 
   // Calculate dynamic chart height
-  const MINIMUM_CHART_HEIGHT = 400; // Minimum height in pixels
-  const PIXELS_PER_BAR = 40; // Updated: 24px bar + 16px spacing
+  const MINIMUM_CHART_HEIGHT = isMobile ? 300 : 400; // Smaller minimum height on mobile
+  const PIXELS_PER_BAR = isMobile ? 32 : 40; // Smaller per-bar height on mobile
   let chartHeight = MINIMUM_CHART_HEIGHT;
   if (chartData && chartData.rows && chartData.rows.length > 0) {
     chartHeight = Math.max(MINIMUM_CHART_HEIGHT, chartData.rows.length * PIXELS_PER_BAR);
@@ -84,23 +115,27 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
+      <CardHeader className="flex flex-row items-center justify-between pb-1 shrink-0">
         <div>
-          <CardTitle>Voter Turnout Chart</CardTitle>
-          <CardDescription>
-            Visual representation of voter turnout ({chartData.type === 'bar' ? 'Overall Turnout' : 'Demographic Breakdown'})
-            <div className="mt-1 text-xs font-medium text-blue-600">Note: Click &#34;Draw Chart&#34; after changing selections to update the chart.</div>
-          </CardDescription>
+          {/* Static text removed as per user request */}
         </div>
+        {/* ChartExporter is now invisible but its functions are exposed via ref */}
         <ChartExporter 
+          ref={chartExporterRef} // Pass the ref
           chartRef={chartContainerRef} 
-          chartType={chartData.type} 
-          disabled={isLoading || !chartData || chartData.rows.length === 0}
+          chartType={chartData?.type || 'chart'} // Provide a fallback for chartType
         />
       </CardHeader>
-      <CardContent className="flex-grow overflow-y-auto">
+      <CardContent className="flex-grow overflow-y-auto p-0">
         {/* The direct child div of CardContent will handle scrolling if needed */}
-        <div ref={chartContainerRef} style={{ height: `${chartHeight}px`, minHeight: `${MINIMUM_CHART_HEIGHT}px` }}>
+        <div 
+          ref={chartContainerRef} 
+          className="w-full px-0.5"
+          style={{ 
+            height: `${chartHeight}px`, 
+            minHeight: `${MINIMUM_CHART_HEIGHT}px`
+          }}
+        >
           {chartData.type === 'bar' ? (
             <TurnoutBarChart rows={chartData.rows} xAxisMax={chartData.xAxisMax} />
           ) : (
@@ -110,4 +145,6 @@ export const ChartTabContent: React.FC<ChartTabContentProps> = ({ chartData, isL
       </CardContent>
     </Card>
   );
-}; 
+});
+
+ChartTabContent.displayName = 'ChartTabContent'; 

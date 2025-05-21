@@ -87,6 +87,9 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
   if (!rows || rows.length === 0) {
     return <div className="flex items-center justify-center h-full text-muted-foreground">No data for bar chart.</div>;
   }
+  
+  // Check if we're on small screen
+  const useSmallScreen = typeof window !== 'undefined' && window.innerWidth < 640;
 
   // Sort rows by overall turnout rate ascending (lowest first as per requirements)
   const sortedRows = [...rows].sort((a, b) => 
@@ -98,22 +101,27 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
     name: row.geoLabel,
     turnout: row.overallTurnoutRate || 0,
   }));
+  
+  // Calculate responsive margins and sizes
+  const margins = useSmallScreen 
+    ? { top: 5, right: 65, left: 20, bottom: 5 } 
+    : { top: 5, right: 30, left: 100, bottom: 5 };
+    
+  const barSize = useSmallScreen ? 20 : 24;
+  const yAxisWidth = useSmallScreen ? 100 : 150;
+  const fontSize = useSmallScreen ? 8 : 10;
+  const labelFontSize = useSmallScreen ? 10 : 12;
 
   return (
     <div className="flex flex-col h-full">
       {/* Add custom legend at the top */}
       <CustomLegend />
       
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={300}>
         <BarChart
           data={chartData}
           layout="vertical" // Horizontal bars
-          margin={{
-            top: 5,
-            right: 30,
-            left: 100, // Increased left margin for longer geoLabels
-            bottom: 5,
-          }}
+          margin={margins}
         >
           {/* Remove CartesianGrid and replace with explicit ReferenceLines */}
           {/* These reference lines will appear as vertical lines in a vertical layout */}
@@ -129,15 +137,16 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
             stroke="hsl(var(--muted-foreground))"
             tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
             ticks={[0, 0.25, 0.5, 0.75, 1]} // Keep explicit ticks
+            tick={{ fontSize: fontSize }}
           />
           <YAxis 
             dataKey="name" 
             type="category" 
-            width={150} // Adjust width based on expected label length
+            width={yAxisWidth} // Adjust width based on expected label length and screen size
             interval={0} // Show all labels
             stroke="hsl(var(--muted-foreground))"
             tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
-            tick={{ fontSize: 10 }}
+            tick={{ fontSize: fontSize }}
           />
           <Tooltip 
             formatter={(value: number) => [formatPercent(value), 'Overall Turnout']}
@@ -166,14 +175,14 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
             dataKey="turnout" 
             fill="#4BC0C0" 
             name="Overall Turnout Rate"
-            barSize={24}
+            barSize={barSize}
             shape={<CustomBarShape />}
           >
             <LabelList 
               dataKey="turnout" 
               position="right" 
               formatter={(value: number) => formatPercent(value)}
-              style={{ fill: 'hsl(var(--muted-foreground))', fontSize: '12px' }}
+              style={{ fill: 'hsl(var(--muted-foreground))', fontSize: `${labelFontSize}px` }}
             />
           </Bar>
         </BarChart>

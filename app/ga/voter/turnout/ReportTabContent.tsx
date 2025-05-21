@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useRef, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useMemo, useRef, useCallback, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
 import { AgGridReact } from 'ag-grid-react';
@@ -15,10 +15,16 @@ import './ag-grid-custom.css';
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
+// Interface for exposed imperative actions
+export interface ReportActions {
+  exportCsv: () => void;
+}
+
 interface ReportTabContentProps {
   rows: ApiReportRow[] | null;
   isLoading: boolean;
   error: string | null;
+  isActive?: boolean; // Add prop to detect when tab is active
 }
 
 // Helper to format percentages
@@ -52,10 +58,42 @@ const formatCurrency = (value: number | null | undefined) => {
   });
 };
 
-
-export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoading, error }) => {
-  // Add a ref to the AG Grid component
+export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>(({ rows, isLoading, error, isActive = false }, ref) => {
   const gridRef = useRef<AgGridReact>(null);
+  const [gridApi, setGridApi] = useState<any>(null);
+
+  // Function to apply the default sort
+  const applyDefaultSort = useCallback((api: any) => {
+    if (api) {
+      api.applyColumnState({
+        state: [
+          { colId: 'overallTurnoutRate', sort: 'asc', sortIndex: 0 }
+        ],
+        defaultState: { sort: null }
+      });
+    }
+  }, []);
+
+  // Handle tab visibility changes - optimize to prevent excessive renders
+  useEffect(() => {
+    if (isActive && gridApi) {
+      // Only resize when tab becomes active
+      const resizeGrid = () => {
+        // Reset column state
+        gridApi.resetColumnState();
+        
+        // Apply the default sort
+        applyDefaultSort(gridApi);
+
+        // Size columns to fit once
+        gridApi.sizeColumnsToFit();
+      };
+      
+      // Single timer to prevent multiple operations
+      const timerId = setTimeout(resizeGrid, 50);
+      return () => clearTimeout(timerId);
+    }
+  }, [isActive, gridApi, applyDefaultSort]);
 
   // Calculate aggregations for the report - replacing backend aggregations that were removed
   const reportAggregations = useMemo(() => {
@@ -117,14 +155,14 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
         headerName: 'Geo Unit', 
         valueGetter: (params) => params.data?.geoLabel,
         sortable: true, 
-        filter: true, 
+        filter: true,
         flex: 2 
       },
       { 
         headerName: 'Total Registered', 
         valueGetter: (params) => params.data?.totalRegistered,
         sortable: true, 
-        filter: 'agNumberColumnFilter', 
+        filter: false,
         valueFormatter: params => {
           if (params.value === null || params.value === undefined) return 'N/A';
           return formatNumber(params.value);
@@ -136,7 +174,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
         headerName: 'Total Voted', 
         valueGetter: (params) => params.data?.totalVoted,
         sortable: true, 
-        filter: 'agNumberColumnFilter', 
+        filter: false,
         valueFormatter: params => {
           if (params.value === null || params.value === undefined) return 'N/A';
           return formatNumber(params.value);
@@ -148,13 +186,14 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
         headerName: 'Overall Turnout', 
         valueGetter: (params) => params.data?.overallTurnoutRate,
         sortable: true, 
-        filter: 'agNumberColumnFilter', 
+        filter: false,
         valueFormatter: params => {
           if (params.value === null || params.value === undefined) return 'N/A';
           return formatPercent(params.value);
         }, 
         type: 'numericColumn', 
-        flex: 1 
+        flex: 1,
+        colId: 'overallTurnoutRate'
       }
     );
 
@@ -195,7 +234,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
             return params.data?.[`breakdowns.${key}.registered` as keyof typeof params.data];
           },
           sortable: true, 
-          filter: 'agNumberColumnFilter', 
+          filter: false,
           valueFormatter: params => {
             if (params.value === null || params.value === undefined) return 'N/A';
             return formatNumber(params.value);
@@ -213,7 +252,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
             return params.data?.[`breakdowns.${key}.voted` as keyof typeof params.data];
           },
           sortable: true, 
-          filter: 'agNumberColumnFilter', 
+          filter: false,
           valueFormatter: params => {
             if (params.value === null || params.value === undefined) return 'N/A';
             return formatNumber(params.value);
@@ -231,7 +270,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
             return params.data?.[`breakdowns.${key}.turnout` as keyof typeof params.data];
           },
           sortable: true, 
-          filter: 'agNumberColumnFilter', 
+          filter: false,
           valueFormatter: params => {
             if (params.value === null || params.value === undefined) return 'N/A';
             return formatPercent(params.value);
@@ -259,7 +298,7 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
             return params.data?.[`censusData.${censusKey}` as keyof typeof params.data];
           },
           sortable: true,
-          filter: 'agNumberColumnFilter',
+          filter: false,
           type: 'numericColumn',
           flex: 1
         };
@@ -375,35 +414,27 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
   const defaultColDef = useMemo<ColDef>(() => {
     return {
       sortable: true,
-      filter: true,
+      filter: false,
       resizable: true,
       flex: 1, // Distribute space equally by default
       minWidth: 100, // Minimum width for columns
     };
   }, []);
 
-  // Add an export function for CSV
   const handleExportCSV = useCallback(() => {
     if (gridRef.current && gridRef.current.api) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const fileName = `voter_turnout_report_${timestamp}.csv`;
       
-      // Use the AG Grid export API
       gridRef.current.api.exportDataAsCsv({
         fileName,
         processCellCallback: (params) => {
-          // Format values for export
           if (params.value === null || params.value === undefined) {
             return '';
           }
-          
-          // Format numbers and percentages appropriately
           const colDef = params.column.getColDef();
-          
-          // Type-safe check for valueFormatter as function
           const valueFormatter = colDef.valueFormatter;
           if (valueFormatter && typeof valueFormatter === 'function') {
-            // Apply the formatter function directly
             const formattedValue = valueFormatter({
               value: params.value,
               data: params.node?.data,
@@ -413,97 +444,80 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
               node: params.node ?? null,
               context: params.context
             });
-            
-            // Clean up formatted values for CSV (remove currency symbols, etc)
             if (typeof formattedValue === 'string') {
               return formattedValue.replace(/[$,%]/g, '');
             }
             return formattedValue;
           }
-          
-          // Return the raw value for other cases
           return params.value;
         }
       });
     }
   }, []);
 
+  // Expose the exportCsv action via ref
+  useImperativeHandle(ref, () => ({
+    exportCsv: handleExportCSV
+  }));
+
+  // Store API reference when grid is ready
+  const onGridReady = useCallback((params: any) => {
+    setGridApi(params.api);
+    
+    // Apply the default sort when grid is first ready
+    applyDefaultSort(params.api);
+  }, [applyDefaultSort]);
+
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p>Loading report data...</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-full">Loading report data...</div>;
   }
 
-  if (error) {
+  // If there are no rows and not loading, and no error handled above, show a specific message
+  if (!rows && !isLoading && !error) {
     return (
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="text-destructive">Error Loading Report</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>{error}</p>
+      <Card className="h-full flex flex-col items-center justify-center">
+        <CardContent className="text-center">
+          <p className="text-lg font-semibold">No Data Available</p>
+          <p className="text-muted-foreground">Please make your selections and generate a report.</p>
         </CardContent>
       </Card>
     );
   }
-
-  // We will keep the explicit "No report data to display" for when rows is null.
+  
+  // Ensure rows is not null before proceeding to render the grid
   if (!rows) {
-     return (
-      <div className="flex flex-col items-center justify-center h-64 p-6 text-center">
-        <p className="text-muted-foreground mb-4">No report data to display. Please generate an analysis.</p>
-        <div className="max-w-lg text-sm text-muted-foreground">
-          <p className="mb-2">To generate a turnout report:</p>
-          <ol className="list-decimal list-inside space-y-2 text-left">
-            <li>Use the sidebar controls on the left (click the menu icon if hidden)</li>
-            <li>Select a <strong>Primary Geography</strong> (County or District)</li>
-            <li>Choose a specific area or &quot;All&quot; from the dropdown</li>
-            <li>Select an <strong>Election Date</strong> from the available options</li>
-            <li>Add <strong>Data Points</strong> to include in your analysis</li>
-            <li>Click the <strong>Generate</strong> button at the bottom of the sidebar</li>
-          </ol>
-        </div>
-      </div>
-    );
+    // This case should ideally be covered by the above, but as a fallback:
+    return <div className="flex items-center justify-center h-full">Report data is unavailable.</div>;
   }
-
+  
   return (
-    <Card className="flex flex-col h-full border-none rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
-        <div>
-          <CardTitle>Voter Turnout Report</CardTitle>
-          <CardDescription>Detailed breakdown of voter turnout based on your selections.</CardDescription>
-        </div>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleExportCSV}
-          disabled={isLoading || !rows || rows.length === 0}
-        >
-          <FileDown className="mr-2 h-4 w-4" />
-          Download CSV
-        </Button>
-      </CardHeader>
-      <CardContent className="flex-grow p-0 h-full">
-        {/* Use theme-adaptive styling from our CSS */}
-        <div className="ag-theme-quartz" style={{ height: 'calc(100% - 8px)' }}>
-          <AgGridReact<ApiReportRow>
-            ref={gridRef}
-            rowData={rowData}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            domLayout='normal'
-            pinnedBottomRowData={pinnedBottomRowData}
-            suppressAggFuncInHeader={true}
-            rowHeight={32}
-            headerHeight={36}
-            suppressMovableColumns={false}
-            className=""
-          />
+    <Card className="h-full flex flex-col shadow-none border-0 p-0 m-0">
+      <CardContent className="flex-1 p-0 ag-theme-quartz" style={{ height: '100%', width: '100%' }}>
+        <div className="h-full w-full flex flex-col">
+          <div className="flex-grow h-full w-full">
+            <AgGridReact<ApiReportRow>
+              ref={gridRef}
+              rowData={rowData}
+              columnDefs={columnDefs}
+              defaultColDef={defaultColDef}
+              domLayout='normal'
+              pinnedBottomRowData={pinnedBottomRowData}
+              suppressAggFuncInHeader={true}
+              rowHeight={32}
+              headerHeight={36}
+              suppressMovableColumns={false}
+              onGridReady={onGridReady}
+              onFirstDataRendered={(params) => {
+                // Also do initial sizing after first render
+                params.api.sizeColumnsToFit();
+              }}
+              className=""
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
   );
-}; 
+});
+
+ReportTabContent.displayName = 'ReportTabContent'; 
