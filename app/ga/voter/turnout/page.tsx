@@ -287,9 +287,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setIsSidebarOpen(false);
-      } else {
-        setIsSidebarOpen(true);
-      }
+      } 
     };
     window.addEventListener('resize', handleResize);
     handleResize();
