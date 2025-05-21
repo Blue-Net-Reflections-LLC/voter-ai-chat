@@ -62,12 +62,12 @@ export interface TurnoutAnalysisApiResponse {
 
 // Constants for chart data transformation
 const RACE_CHART_CATEGORIES = ['White', 'Black', 'Hispanic', 'Asian', 'Other'];
-const GENDER_CHART_CATEGORIES = ['M', 'F', 'O']; // Assuming 'O' is 'Other' from backend if present
+const GENDER_CHART_CATEGORIES = ['MALE', 'FEMALE', 'UNKNOWN', 'X']; // Exact values from database
 const AGE_RANGE_CHART_CATEGORIES = ['18-23', '25-44', '45-64', '65-74', '75+'];
 
 const DEMOGRAPHIC_COLORS: Record<string, string[]> = {
   Race: ['#8884d8', '#FF9F40', '#FFCE56', '#4BC0C0', '#9966FF'],  // Purple for White, Orange for Black
-  Gender: ['#8884d8', '#FF9F40', '#FFCE56'],  // Changed to match new color scheme
+  Gender: ['#8884d8', '#FF9F40', '#FFCE56', '#4BC0C0'],  // Four colors for MALE, FEMALE, UNKNOWN, X
   AgeRange: ['#8884d8', '#FF9F40', '#FFCE56', '#4BC0C0', '#9966FF', '#C9CBCF'],
 };
 
@@ -75,9 +75,11 @@ const getCategoryDisplayName = (dimension: 'Race' | 'Gender' | 'AgeRange' | stri
   if (dimension === 'Race') {
     return categoryValue; // Category value from RACE_CHART_CATEGORIES is now the display name
   } else if (dimension === 'Gender') {
-    return categoryValue === 'M' ? 'Male' :
-           categoryValue === 'F' ? 'Female' :
-           categoryValue === 'O' ? 'Other' : categoryValue;
+    // Display gender categories using title case for better readability
+    return categoryValue === 'MALE' ? 'Male' : 
+           categoryValue === 'FEMALE' ? 'Female' : 
+           categoryValue === 'UNKNOWN' ? 'Unknown' :
+           categoryValue === 'X' ? 'Non-Binary' : categoryValue;
   }
   return categoryValue; // For AgeRange, the categoryValue itself is the display name
 };

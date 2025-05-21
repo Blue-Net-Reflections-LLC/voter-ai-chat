@@ -126,11 +126,11 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
           chartType={chartData?.type || 'chart'} // Provide a fallback for chartType
         />
       </CardHeader>
-      <CardContent className="flex-grow overflow-y-auto p-0 sm:p-6">
+      <CardContent className="flex-grow overflow-y-auto p-0">
         {/* The direct child div of CardContent will handle scrolling if needed */}
         <div 
           ref={chartContainerRef} 
-          className="w-full"
+          className="w-full px-0.5"
           style={{ 
             height: `${chartHeight}px`, 
             minHeight: `${MINIMUM_CHART_HEIGHT}px`

@@ -113,7 +113,7 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
   // Calculate dynamic margins based on screen width
   const useSmallScreen = typeof window !== 'undefined' && window.innerWidth < 640;
   const margins = useSmallScreen 
-    ? { top: 20, right: 20, left: 70, bottom: 5 } // Mobile margins
+    ? { top: 20, right: 20, left: 20, bottom: 5 } // Reduced left margin on mobile
     : { top: 20, right: 50, left: 100, bottom: 5 }; // Desktop margins
 
   return (
@@ -139,7 +139,7 @@ export const TurnoutStackedRowChart: React.FC<TurnoutStackedRowChartProps> = ({ 
           <YAxis 
             dataKey="name" 
             type="category" 
-            width={useSmallScreen ? 60 : 150}
+            width={useSmallScreen ? 100 : 150}
             stroke="hsl(var(--muted-foreground))"
             tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
             tick={{ fontSize: useSmallScreen ? 8 : 10 }}

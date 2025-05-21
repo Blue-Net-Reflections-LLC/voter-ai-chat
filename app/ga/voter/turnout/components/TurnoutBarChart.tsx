@@ -104,11 +104,11 @@ export const TurnoutBarChart: React.FC<TurnoutBarChartProps> = ({ rows, xAxisMax
   
   // Calculate responsive margins and sizes
   const margins = useSmallScreen 
-    ? { top: 5, right: 65, left: 70, bottom: 5 } 
+    ? { top: 5, right: 65, left: 20, bottom: 5 } 
     : { top: 5, right: 30, left: 100, bottom: 5 };
     
   const barSize = useSmallScreen ? 20 : 24;
-  const yAxisWidth = useSmallScreen ? 60 : 150;
+  const yAxisWidth = useSmallScreen ? 100 : 150;
   const fontSize = useSmallScreen ? 8 : 10;
   const labelFontSize = useSmallScreen ? 10 : 12;
 
