@@ -129,6 +129,10 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
   const searchParams = useSearchParams();
   const reportTabRef = useRef<ReportActions>(null);
   const chartTabRef = useRef<ChartTabActions>(null);
+  
+  // Track active requests to allow cancellation
+  const activeReportRequest = useRef<AbortController | null>(null);
+  const activeChartRequest = useRef<AbortController | null>(null);
 
   const headerDataPoints = activeTab === 'chart'
     ? (appliedSelections.dataPoints.length > 0 ? [appliedSelections.dataPoints[0]] : [])
@@ -149,6 +153,17 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
 
   const handleGenerateReport = useCallback(async () => {
     setAppliedSelections(selections);
+    
+    // Cancel any existing request of the same type
+    if (activeTab === 'report' && activeReportRequest.current) {
+      console.log('Cancelling previous report request');
+      activeReportRequest.current.abort();
+      activeReportRequest.current = null;
+    } else if (activeTab === 'chart' && activeChartRequest.current) {
+      console.log('Cancelling previous chart request');
+      activeChartRequest.current.abort();
+      activeChartRequest.current = null;
+    }
     
     if (activeTab === 'report') {
       setIsReportLoading(true);
@@ -240,10 +255,21 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         includeCensusData: apiIncludeCensusData,
       };
 
+      // Create a new abort controller for this request
+      const controller = new AbortController();
+      
+      // Store the controller in the appropriate ref based on tab
+      if (activeTab === 'report') {
+        activeReportRequest.current = controller;
+      } else if (activeTab === 'chart') {
+        activeChartRequest.current = controller;
+      }
+
       const response = await fetch('/api/ga/voter/turnout-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -260,17 +286,26 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch data.');
-      
-      if (activeTab === 'report') {
-        setRawReportData(null);
-      } else if (activeTab === 'chart') {
-        setRawChartData(null);
-        setProcessedChartData(null);
+      // Don't show errors for aborted requests (user cancelled)
+      if (err.name !== 'AbortError') {
+        setError(err.message || 'Failed to fetch data.');
+        
+        if (activeTab === 'report') {
+          setRawReportData(null);
+        } else if (activeTab === 'chart') {
+          setRawChartData(null);
+          setProcessedChartData(null);
+        }
       }
     } finally {
-      setIsReportLoading(false);
-      setIsChartLoading(false);
+      // Clear the controller ref
+      if (activeTab === 'report') {
+        activeReportRequest.current = null;
+        setIsReportLoading(false);
+      } else if (activeTab === 'chart') {
+        activeChartRequest.current = null;
+        setIsChartLoading(false);
+      }
     }
   }, [selections, activeTab]);
   
@@ -433,6 +468,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             onSelectionsChange={handleSelectionsChange}
             onGenerate={handleGenerateReport}
             activeTab={activeTab}
+            isGenerating={activeTab === 'report' ? isReportLoading : isChartLoading}
             countyOptions={counties}
             congressionalDistrictOptions={congressionalDistricts}
             stateSenateDistrictOptions={stateSenateDistricts}
