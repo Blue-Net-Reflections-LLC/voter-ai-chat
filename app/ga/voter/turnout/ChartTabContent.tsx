@@ -111,7 +111,6 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
           ref={chartExporterRef} // Pass the ref
           chartRef={chartContainerRef} 
           chartType={chartData?.type || 'chart'} // Provide a fallback for chartType
-          disabled={isLoading || !chartData || chartData.rows.length === 0}
         />
       </CardHeader>
       <CardContent className="flex-grow overflow-y-auto">
