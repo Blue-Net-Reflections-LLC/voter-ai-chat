@@ -23,6 +23,7 @@ const initialFilterState: FilterState = {
   race: [],
   income: [],
   education: [],
+  unemployment: [],
   electionType: [],
   electionYear: [],
   electionDate: [],

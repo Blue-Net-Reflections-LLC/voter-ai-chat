@@ -35,18 +35,26 @@ export const GENDER_OPTIONS = ["MALE", "FEMALE", "UNKNOWN", "X"]
 export const RACE_OPTIONS = ["White", "Black", "Hispanic", "Asian", "Other"]
   .map(race => ({ value: race, label: race }));
 
-export const INCOME_LEVEL_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-];
+// Import the new census brackets
+import { INCOME_BRACKETS, EDUCATION_BRACKETS, UNEMPLOYMENT_BRACKETS } from '@/lib/census/constants';
 
-export const EDUCATION_LEVEL_OPTIONS = [
-  { value: 'high_school', label: 'High School' },
-  { value: 'some_college', label: 'Some College' },
-  { value: 'bachelors', label: "Bachelor's" },
-  { value: 'graduate', label: 'Graduate' },
-];
+// Use the INCOME_BRACKETS to create select options
+export const INCOME_LEVEL_OPTIONS = INCOME_BRACKETS.map(bracket => ({
+  value: bracket.value,
+  label: bracket.label
+}));
+
+// Use the EDUCATION_BRACKETS to create select options
+export const EDUCATION_LEVEL_OPTIONS = EDUCATION_BRACKETS.map(bracket => ({
+  value: bracket.value,
+  label: bracket.label
+}));
+
+// Create the unemployment rate options
+export const UNEMPLOYMENT_RATE_OPTIONS = UNEMPLOYMENT_BRACKETS.map(bracket => ({
+  value: bracket.value,
+  label: bracket.label
+}));
 
 // Define the hard-coded election type options
 export const ELECTION_TYPE_OPTIONS = [

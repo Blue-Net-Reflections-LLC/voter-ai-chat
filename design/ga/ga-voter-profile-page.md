@@ -324,13 +324,31 @@ To optimize response time, the backend API should fetch external data (Represent
         - [X] Update `FILTER_TO_URL_PARAM_MAP` in `@app/ga/voter/VoterFilterProvider.tsx` with URL parameters (e.g., `countyPrecinct`, `municipalPrecinct`).
         - [X] Update `buildQueryParams` and URL parsing logic in `@app/ga/voter/VoterFilterProvider.tsx` to handle these new array parameters.
         - [X] Update `buildVoterListWhereClause` function (`lib/voter/build-where-clause.ts`) to add `county_precinct = ANY($...)` and `municipal_precinct = ANY($...)` conditions based on selected **codes**. (Inclusive OR logic).
-string, description: string }`.
     - **Frontend (UI):**
         - [ ] Update the Filter Panel UI component (`app/ga/voter/list/components/FilterPanel.tsx`) to include two new multi-select components below "County":
             - "County Precinct": Fetches options from the new lookup API (`type=county`). Displays options as "Description (Code)" (e.g., "Bells Ferry 02 (BF02)"). Stores selected **codes** in context state (`countyPrecincts`).
             - "Municipal Precinct": Fetches options from the new lookup API (`type=municipal`). Displays options as "Description (Code)". Stores selected **codes** in context state (`municipalPrecincts`). *(Note: May be removed later based on data utility)*.
     - **Data Point Summary:**
         - [x] Add `county_precinct`, `county_precinct_description`, `municipal_precinct`, `municipal_precinct_description` to the Data Point Summary table in `design/ga/ga-voter-profile-page.md`.
+
+### CR-004: Add Census Data Filters to the Filter Panel
+
+- **Date:** [Insert Date]
+- **Request:** Add a new "Census Data" filter group to the Filter Panel with filters for Income Brackets, Education Attainment, and Unemployment Rate. These filters will allow users to filter voters based on census tract-level data.
+- **Implementation Details:**
+    - Created a new constants file (`lib/census/constants.ts`) that defines bracketed ranges for:
+        - Income Brackets (e.g., "Under $25,000", "$25,000 - $50,000", etc.)
+        - Education Attainment (e.g., "Low Bachelor's Degree Rate (0-15%)", etc.)
+        - Unemployment Rate (e.g., "Very Low Unemployment (0-3%)", etc.)
+    - Added a new "Census Data" accordion section to the Filter Panel with three multi-select filters:
+        - Income Brackets: Allows selecting one or more income ranges
+        - Education Attainment: Allows selecting one or more education level ranges
+        - Unemployment Rate: Allows selecting one or more unemployment rate ranges
+    - Added census filter support to `buildVoterListWhereClause` in `lib/voter/build-where-clause.ts`, using subqueries that select voters whose census tract matches the selected criteria
+    - Included new filter badge display for active census filters
+    - Updated the filter count system to track census filters separately
+    - The implementation uses `stg_processed_census_tract_data` as the source for tract-level statistics
+    - The filter works by finding census tracts that match the criteria, then selecting voters who live in those tracts
 
  
  
