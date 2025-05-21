@@ -232,8 +232,8 @@ export function FilterPanel() {
   const scrollableContainerRef = useRef<HTMLDivElement>(null);
 
   // Track which accordion items are open
-  const [openItems, setOpenItems] = useState<string[]>(["participation-score", "geographic-filters", "voter-info", "census-data"]);
-  const previousOpenItems = useRef<string[]>(["participation-score", "geographic-filters", "voter-info", "census-data"]);
+  const [openItems, setOpenItems] = useState<string[]>(["participation-score"]);
+  const previousOpenItems = useRef<string[]>(["participation-score"]);
 
   const handleAccordionChange = (values: string[]) => { setOpenItems(values); };
 
@@ -544,7 +544,7 @@ export function FilterPanel() {
         <Accordion
           type="multiple"
           className="w-full space-y-1"
-          defaultValue={["participation-score", "geographic-filters", "voter-info", "census-data"]}
+          defaultValue={["participation-score"]}
           onValueChange={handleAccordionChange}
         >
           {/* Participation Section - Renamed Header and Input Label, Moved Filter In */}
