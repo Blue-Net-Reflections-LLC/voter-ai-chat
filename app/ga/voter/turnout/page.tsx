@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PanelLeftOpen, PanelRightOpen, List, BarChart2, FileDown, ImageDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { PanelLeftOpen, PanelRightOpen, List, BarChart2, FileDown, ImageDown, SlidersHorizontal } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { TurnoutControlsSidebar } from './TurnoutControlsSidebar';
@@ -470,8 +471,30 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           {/* Vertical separator after sidebar toggle button */}
           <div className="w-px h-6 bg-border mx-2 hidden sm:block"></div>
 
-          {/* SelectionsHeader Wrapper - Hidden on mobile */}
-          <div className="mr-2 hidden sm:flex"> 
+          {/* Mobile Selections Popover - Visible only on xs screens */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="mr-2 sm:hidden">
+                <SlidersHorizontal className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <SelectionsHeader 
+                appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
+                countyOptions={counties}
+                districtOptions={
+                  appliedSelections.specificDistrictType === 'Congressional' ? congressionalDistricts :
+                  appliedSelections.specificDistrictType === 'StateSenate' ? stateSenateDistricts :
+                  appliedSelections.specificDistrictType === 'StateHouse' ? stateHouseDistricts : 
+                  []
+                }
+                layout="stacked"
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* SelectionsHeader Wrapper - Hidden on xs, visible sm and up */}
+          <div className="mr-2 hidden sm:flex">
             <SelectionsHeader 
               appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
               countyOptions={counties}
@@ -483,18 +506,18 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               }
             />
           </div>
-          {/* Vertical separator after SelectionsHeader - Hidden on mobile */}
+          {/* Vertical separator after SelectionsHeader - Hidden on xs, visible sm and up */}
           <div className="w-px h-6 bg-border mx-2 hidden sm:block"></div>
 
           {/* Spacer is now before Download Buttons */}
           <div className="flex-1 mx-2"></div> 
 
-          {/* Context-aware Download Buttons - Hidden on mobile */}
+          {/* Context-aware Download Buttons - Hidden up to lg breakpoint */}
           {activeTab === 'report' && (
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 hidden sm:inline-flex" // Added hidden sm:inline-flex
+              className="h-8 px-3 hidden lg:inline-flex"
               onClick={() => reportTabRef.current?.exportCsv()}
               disabled={isReportLoading || !rawReportData || rawReportData.length === 0}
             >
@@ -503,7 +526,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             </Button>
           )}
           {activeTab === 'chart' && (
-            <div className="flex items-center gap-2 hidden sm:flex"> {/* Added hidden sm:flex */}
+            <div className="flex items-center gap-2 hidden lg:flex">
               <Button
                 variant="outline"
                 size="sm"
@@ -527,8 +550,8 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             </div>
           )}
 
-          {/* Vertical separator after Download Buttons - Hidden on mobile */}
-          <div className="w-px h-6 bg-border mx-2 hidden sm:block"></div>
+          {/* Vertical separator after Download Buttons - Hidden up to lg breakpoint */}
+          <div className="w-px h-6 bg-border mx-2 hidden lg:block"></div>
 
           <div className="flex items-center gap-1"> {/* Tabs Wrapper */}
             <TypedTabsList className="h-9">
