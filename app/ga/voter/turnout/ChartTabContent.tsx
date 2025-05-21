@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { TurnoutBarChart } from './components/TurnoutBarChart';
 import { TurnoutStackedRowChart } from './components/TurnoutStackedRowChart';
@@ -38,6 +38,30 @@ export interface ChartTabActions {
 export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>(({ chartData, isLoading, error }, ref) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartExporterRef = useRef<ChartExporterActions>(null); // Ref for ChartExporter
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detect mobile view
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    // Check on mount
+    checkMobile();
+    
+    // Setup resize listener with debounce
+    let timeoutId: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(checkMobile, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
   
   // Expose chart export functions
   useImperativeHandle(ref, () => ({
@@ -82,8 +106,8 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
   }
 
   // Calculate dynamic chart height
-  const MINIMUM_CHART_HEIGHT = 400; // Minimum height in pixels
-  const PIXELS_PER_BAR = 40; // Updated: 24px bar + 16px spacing
+  const MINIMUM_CHART_HEIGHT = isMobile ? 300 : 400; // Smaller minimum height on mobile
+  const PIXELS_PER_BAR = isMobile ? 32 : 40; // Smaller per-bar height on mobile
   let chartHeight = MINIMUM_CHART_HEIGHT;
   if (chartData && chartData.rows && chartData.rows.length > 0) {
     chartHeight = Math.max(MINIMUM_CHART_HEIGHT, chartData.rows.length * PIXELS_PER_BAR);
@@ -91,7 +115,7 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
+      <CardHeader className="flex flex-row items-center justify-between pb-1 shrink-0">
         <div>
           {/* Static text removed as per user request */}
         </div>
@@ -102,9 +126,16 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
           chartType={chartData?.type || 'chart'} // Provide a fallback for chartType
         />
       </CardHeader>
-      <CardContent className="flex-grow overflow-y-auto">
+      <CardContent className="flex-grow overflow-y-auto p-0 sm:p-6">
         {/* The direct child div of CardContent will handle scrolling if needed */}
-        <div ref={chartContainerRef} style={{ height: `${chartHeight}px`, minHeight: `${MINIMUM_CHART_HEIGHT}px` }}>
+        <div 
+          ref={chartContainerRef} 
+          className="w-full"
+          style={{ 
+            height: `${chartHeight}px`, 
+            minHeight: `${MINIMUM_CHART_HEIGHT}px`
+          }}
+        >
           {chartData.type === 'bar' ? (
             <TurnoutBarChart rows={chartData.rows} xAxisMax={chartData.xAxisMax} />
           ) : (
