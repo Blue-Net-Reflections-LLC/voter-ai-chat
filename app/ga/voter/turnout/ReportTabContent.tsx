@@ -429,79 +429,57 @@ export const ReportTabContent: React.FC<ReportTabContentProps> = ({ rows, isLoad
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p>Loading report data...</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-full">Loading report data...</div>;
   }
 
-  if (error) {
+  // If there are no rows and not loading, and no error handled above, show a specific message
+  if (!rows && !isLoading && !error) {
     return (
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="text-destructive">Error Loading Report</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>{error}</p>
+      <Card className="h-full flex flex-col items-center justify-center">
+        <CardContent className="text-center">
+          <p className="text-lg font-semibold">No Data Available</p>
+          <p className="text-muted-foreground">Please make your selections and generate a report.</p>
         </CardContent>
       </Card>
     );
   }
-
-  // We will keep the explicit "No report data to display" for when rows is null.
+  
+  // Ensure rows is not null before proceeding to render the grid
   if (!rows) {
-     return (
-      <div className="flex flex-col items-center justify-center h-64 p-6 text-center">
-        <p className="text-muted-foreground mb-4">No report data to display. Please generate an analysis.</p>
-        <div className="max-w-lg text-sm text-muted-foreground">
-          <p className="mb-2">To generate a turnout report:</p>
-          <ol className="list-decimal list-inside space-y-2 text-left">
-            <li>Use the sidebar controls on the left (click the menu icon if hidden)</li>
-            <li>Select a <strong>Primary Geography</strong> (County or District)</li>
-            <li>Choose a specific area or &quot;All&quot; from the dropdown</li>
-            <li>Select an <strong>Election Date</strong> from the available options</li>
-            <li>Add <strong>Data Points</strong> to include in your analysis</li>
-            <li>Click the <strong>Generate</strong> button at the bottom of the sidebar</li>
-          </ol>
-        </div>
-      </div>
-    );
+    // This case should ideally be covered by the above, but as a fallback:
+    return <div className="flex items-center justify-center h-full">Report data is unavailable.</div>;
   }
-
+  
   return (
-    <Card className="flex flex-col h-full border-none rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
-        <div>
-          <CardTitle>Voter Turnout Report</CardTitle>
-          <CardDescription>Detailed breakdown of voter turnout based on your selections.</CardDescription>
-        </div>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleExportCSV}
-          disabled={isLoading || !rows || rows.length === 0}
-        >
-          <FileDown className="mr-2 h-4 w-4" />
-          Download CSV
-        </Button>
-      </CardHeader>
-      <CardContent className="flex-grow p-0 h-full">
-        {/* Use theme-adaptive styling from our CSS */}
-        <div className="ag-theme-quartz" style={{ height: 'calc(100% - 8px)' }}>
-          <AgGridReact<ApiReportRow>
-            ref={gridRef}
-            rowData={rowData}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            domLayout='normal'
-            pinnedBottomRowData={pinnedBottomRowData}
-            suppressAggFuncInHeader={true}
-            rowHeight={32}
-            headerHeight={36}
-            suppressMovableColumns={false}
-            className=""
-          />
+    <Card className="h-full flex flex-col shadow-none border-0 p-0 m-0">
+      <CardContent className="flex-1 p-0 ag-theme-quartz" style={{ height: '100%', width: '100%' }}>
+        <div className="h-full w-full flex flex-col">
+          <div className="flex justify-end p-2 border-b">
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              disabled={!rows || rows.length === 0 || isLoading}
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Download CSV
+            </Button>
+          </div>
+          <div className="flex-grow">
+            <AgGridReact<ApiReportRow>
+              ref={gridRef}
+              rowData={rowData}
+              columnDefs={columnDefs}
+              defaultColDef={defaultColDef}
+              domLayout='normal'
+              pinnedBottomRowData={pinnedBottomRowData}
+              suppressAggFuncInHeader={true}
+              rowHeight={32}
+              headerHeight={36}
+              suppressMovableColumns={false}
+              className=""
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

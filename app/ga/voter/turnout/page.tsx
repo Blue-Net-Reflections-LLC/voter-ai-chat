@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PanelLeftOpen, PanelRightOpen } from 'lucide-react';
+import { PanelLeftOpen, PanelRightOpen, List, BarChart2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { TurnoutControlsSidebar } from './TurnoutControlsSidebar';
@@ -105,6 +105,13 @@ const initialSelections: TurnoutSelections = {
   dataPoints: [], // Data points for both report and chart visualizations
   includeCensusData: false,
 };
+
+type ComponentPropsWithClassName<T extends React.ElementType> = React.ComponentProps<T> & { className?: string };
+
+const TypedTabs = Tabs as React.FC<ComponentPropsWithClassName<typeof Tabs>>;
+const TypedTabsList = TabsList as React.FC<ComponentPropsWithClassName<typeof TabsList>>;
+const TypedTabsTrigger = TabsTrigger as React.FC<ComponentPropsWithClassName<typeof TabsTrigger>>;
+const TypedTabsContent = TabsContent as React.FC<ComponentPropsWithClassName<typeof TabsContent>>;
 
 const GeorgiaVoterTurnoutPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -507,26 +514,47 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
           />
         </SheetContent>
       </Sheet>
-      <main className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <header className="p-4 border-b flex items-center justify-between shrink-0 min-h-[69px]">
-          <div className="flex items-center">
-            <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-3">
-              {isSidebarOpen ? <PanelLeftOpen className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
-            </Button>
-            <div>
-              <h1 className="text-2xl font-semibold">Georgia Voter Turnout Analysis</h1>
+      {/* Tabs component now wraps the main content area including its header */}
+      <TypedTabs defaultValue={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
+        <main className="flex flex-col flex-1 min-h-0">
+          <header className="p-4 border-b flex items-center justify-between shrink-0 min-h-[69px] sticky top-0 bg-background z-10 gap-4">
+            <div className="flex items-center">
+              <Button variant="outline" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mr-3">
+                {isSidebarOpen ? <PanelLeftOpen className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
+              </Button>
             </div>
-          </div>
-        </header>
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden pb-0 p-4">
-          <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 shrink-0">
-              <TabsTrigger value="report">Report</TabsTrigger>
-              <TabsTrigger value="chart">Chart</TabsTrigger>
-            </TabsList>
             
-            {/* Add the SelectionsHeader when we have applied selections */}
-            {(rawReportData || rawChartData) && (
+            {/* SelectionsHeader moved into the main header, takes available space */}
+            <div className="flex-1 min-w-0"> {/* Added min-w-0 for better flex handling of long text */} 
+              {(rawReportData || rawChartData) && (
+                <SelectionsHeader 
+                  appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
+                  countyOptions={counties}
+                  districtOptions={
+                    appliedSelections.specificDistrictType === 'Congressional' ? congressionalDistricts :
+                    appliedSelections.specificDistrictType === 'StateSenate' ? stateSenateDistricts :
+                    appliedSelections.specificDistrictType === 'StateHouse' ? stateHouseDistricts : 
+                    []
+                  }
+                />
+              )}
+            </div>
+
+            <TypedTabsList className="flex gap-1">
+              <TypedTabsTrigger value="report" className="p-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+                <List className="h-5 w-5" />
+                <span className="sr-only">Report</span>
+              </TypedTabsTrigger>
+              <TypedTabsTrigger value="chart" className="p-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+                <BarChart2 className="h-5 w-5" />
+                <span className="sr-only">Chart</span>
+              </TypedTabsTrigger>
+            </TypedTabsList>
+          </header>
+          {/* Main content area for tab contents, SelectionsHeader, and error messages */}
+          <div className="flex flex-col flex-1 min-h-0 p-4 overflow-y-auto">
+            
+            {/* {(rawReportData || rawChartData) && (
               <SelectionsHeader 
                 appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
                 countyOptions={counties}
@@ -537,36 +565,39 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
                   []
                 }
               />
-            )}
+            )} */}
             
-            <div className="flex-1 mt-1 h-screen" style={{ height: 'calc(100vh - 260px)' }}>
-              <TabsContent value="report" className="h-full">
-                <div className='h-full '>
+            {/* Container for TabsContent, takes remaining flex space */}
+            <div className="flex-1 h-full"> {/* Removed mt-4 */}
+              <TypedTabsContent value="report" className="h-full">
+                <div className='h-full'>
                   <ReportTabContent 
                     rows={rawReportData || null} 
-                    isLoading={isReportLoading} // Use isReportLoading
+                    isLoading={isReportLoading}
                     error={error}
                   />
                 </div>
-              </TabsContent>
-              <TabsContent value="chart" className="">
-                <div className=''>
+              </TypedTabsContent>
+              <TypedTabsContent value="chart" className="h-full"> {/* Applied h-full */}
+                <div className='h-full'>
                   <ChartTabContent 
                     chartData={processedChartData}
-                    isLoading={isChartLoading} // Use isChartLoading
+                    isLoading={isChartLoading}
                     error={error} 
                   />
                 </div>
-              </TabsContent>
+              </TypedTabsContent>
             </div>
-          </Tabs>
-        </div>
-        {error && !isReportLoading && !isChartLoading && (
-          <div className="mt-4 p-4 border rounded bg-destructive/10 text-destructive text-center">
-            <p>Error: {error}</p>
+            
+            {/* Global error message area, part of the scrollable content */}
+            {error && !isReportLoading && !isChartLoading && (
+              <div className="mt-4 p-4 border rounded bg-destructive/10 text-destructive text-center shrink-0">
+                <p>Error: {error}</p>
+              </div>
+            )}
           </div>
-        )}
-      </main>
+        </main>
+      </TypedTabs>
     </div>
   );
 };
