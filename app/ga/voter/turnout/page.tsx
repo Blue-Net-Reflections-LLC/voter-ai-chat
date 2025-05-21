@@ -240,21 +240,11 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         includeCensusData: apiIncludeCensusData,
       };
 
-      const controller = new AbortController();
-      const signal = controller.signal;
-      
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-      }, 30000); // 30-second timeout for large requests
-
       const response = await fetch('/api/ga/voter/turnout-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
-        signal
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -270,12 +260,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      // Check if this is an abort error (timeout)
-      if (err.name === 'AbortError') {
-        setError('The request took too long to complete. Please try again with fewer data points or a smaller area selection.');
-      } else {
-        setError(err.message || 'Failed to fetch data.');
-      }
+      setError(err.message || 'Failed to fetch data.');
       
       if (activeTab === 'report') {
         setRawReportData(null);

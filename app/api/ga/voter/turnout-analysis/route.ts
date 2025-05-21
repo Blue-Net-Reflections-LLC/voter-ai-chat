@@ -16,6 +16,9 @@ interface TurnoutAnalysisRequestBody {
   includeCensusData: boolean;
 }
 
+// Extend the timeout for this route to 180 seconds (3 minutes)
+export const maxDuration = 180;
+
 // Basic validation for the request body (can be expanded)
 function isValidRequestBody(body: any): body is TurnoutAnalysisRequestBody {
   if (!body || typeof body !== 'object') return false;
