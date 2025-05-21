@@ -467,9 +467,11 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             {isSidebarOpen ? <PanelLeftOpen className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
           </Button>
 
-          <div className="w-px h-6 bg-border mx-2"></div>
+          {/* Vertical separator after sidebar toggle button */}
+          <div className="w-px h-6 bg-border mx-2 hidden sm:block"></div>
 
-          <div className="mr-2">
+          {/* SelectionsHeader Wrapper - Hidden on mobile */}
+          <div className="mr-2 hidden sm:flex"> 
             <SelectionsHeader 
               appliedSelections={{ ...appliedSelections, dataPoints: headerDataPoints }}
               countyOptions={counties}
@@ -481,15 +483,18 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
               }
             />
           </div>
+          {/* Vertical separator after SelectionsHeader - Hidden on mobile */}
+          <div className="w-px h-6 bg-border mx-2 hidden sm:block"></div>
 
-          <div className="w-px h-6 bg-border mx-2"></div>
+          {/* Spacer is now before Download Buttons */}
+          <div className="flex-1 mx-2"></div> 
 
-          {/* Context-aware Download Buttons */}
+          {/* Context-aware Download Buttons - Hidden on mobile */}
           {activeTab === 'report' && (
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3"
+              className="h-8 px-3 hidden sm:inline-flex" // Added hidden sm:inline-flex
               onClick={() => reportTabRef.current?.exportCsv()}
               disabled={isReportLoading || !rawReportData || rawReportData.length === 0}
             >
@@ -498,7 +503,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             </Button>
           )}
           {activeTab === 'chart' && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 hidden sm:flex"> {/* Added hidden sm:flex */}
               <Button
                 variant="outline"
                 size="sm"
@@ -522,22 +527,21 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
             </div>
           )}
 
-          <div className="flex-1 mx-2"></div>
+          {/* Vertical separator after Download Buttons - Hidden on mobile */}
+          <div className="w-px h-6 bg-border mx-2 hidden sm:block"></div>
 
-          <div className="w-px h-6 bg-border mr-2"></div>
-
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1"> {/* Tabs Wrapper */}
             <TypedTabsList className="h-9">
               <TypedTabsTrigger value="report" className="px-3 py-1.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <div className="inline-flex items-center gap-2">
                   <List className="h-4 w-4" />
-                  <span>Report</span>
+                  <span className="hidden sm:inline">Report</span>
                 </div>
               </TypedTabsTrigger>
               <TypedTabsTrigger value="chart" className="px-3 py-1.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <div className="inline-flex items-center gap-2">
                   <BarChart2 className="h-4 w-4" />
-                  <span>Chart</span>
+                  <span className="hidden sm:inline">Chart</span>
                 </div>
               </TypedTabsTrigger>
             </TypedTabsList>

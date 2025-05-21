@@ -78,25 +78,25 @@ export const SelectionsHeader: React.FC<SelectionsHeaderProps> = ({
   };
 
   return (
-    <div className="text-xs flex flex-wrap items-center gap-x-5 gap-y-1 py-1 px-2 bg-muted/20 rounded">
-      <div className="flex items-center">
+    <div className="text-xs flex flex-nowrap items-center gap-x-5 gap-y-1 py-1 px-2 bg-muted/20 rounded overflow-hidden">
+      <div className="flex items-center min-w-0">
         <MapPinIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground flex-shrink-0" />
-        <span className="text-muted-foreground mr-1">Geography:</span>
-        <span className="font-medium">{formatGeography()}</span>
+        <span className="text-muted-foreground hidden sm:inline sm:mr-1">Geography:</span>
+        <span className="font-medium truncate">{formatGeography()}</span>
       </div>
       
-      <div className="flex items-center">
+      <div className="flex items-center min-w-0">
         <CalendarIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground flex-shrink-0" />
-        <span className="text-muted-foreground mr-1">Election:</span>
-        <span className="font-medium">{appliedSelections.electionDate || 'None'}</span>
+        <span className="text-muted-foreground hidden sm:inline sm:mr-1">Election:</span>
+        <span className="font-medium truncate">{appliedSelections.electionDate || 'None'}</span>
       </div>
       
-      <div className="flex items-center">
+      <div className="flex items-center min-w-0">
         <BarChartIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground flex-shrink-0" />
-        <span className="text-muted-foreground mr-1">Data:</span>
-        <span className="font-medium">{formatDataPoints()}</span>
+        <span className="text-muted-foreground hidden sm:inline sm:mr-1">Data:</span>
+        <span className="font-medium truncate">{formatDataPoints()}</span>
         {appliedSelections.includeCensusData && (
-          <span className="ml-1.5 text-xs bg-primary/20 text-primary-foreground px-1 py-0.5 rounded-sm">
+          <span className="ml-1.5 text-xs bg-primary/20 text-primary-foreground px-1 py-0.5 rounded-sm truncate">
             +Census
           </span>
         )}
