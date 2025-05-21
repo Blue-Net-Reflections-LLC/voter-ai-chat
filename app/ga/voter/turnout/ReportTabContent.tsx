@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useMemo, useRef, useCallback, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
@@ -24,6 +24,7 @@ interface ReportTabContentProps {
   rows: ApiReportRow[] | null;
   isLoading: boolean;
   error: string | null;
+  isActive?: boolean; // Add prop to detect when tab is active
 }
 
 // Helper to format percentages
@@ -57,8 +58,37 @@ const formatCurrency = (value: number | null | undefined) => {
   });
 };
 
-export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>(({ rows, isLoading, error }, ref) => {
+export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>(({ rows, isLoading, error, isActive = false }, ref) => {
   const gridRef = useRef<AgGridReact>(null);
+  const [gridApi, setGridApi] = useState<any>(null);
+
+  // Function to apply the default sort
+  const applyDefaultSort = useCallback((api: any) => {
+    if (api) {
+      api.applyColumnState({
+        state: [
+          { colId: 'overallTurnoutRate', sort: 'asc', sortIndex: 0 }
+        ],
+        defaultState: { sort: null }
+      });
+    }
+  }, []);
+
+  // Handle tab visibility changes
+  useEffect(() => {
+    if (isActive && gridApi) {
+      const resizeGrid = () => {
+        // Reset column state
+        gridApi.resetColumnState();
+        
+        // Apply the default sort
+        applyDefaultSort(gridApi);
+      };
+      
+      // Use timeout to ensure it runs after layout is complete
+      setTimeout(resizeGrid, 0);
+    }
+  }, [isActive, gridApi, applyDefaultSort]);
 
   // Calculate aggregations for the report - replacing backend aggregations that were removed
   const reportAggregations = useMemo(() => {
@@ -157,7 +187,8 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
           return formatPercent(params.value);
         }, 
         type: 'numericColumn', 
-        flex: 1 
+        flex: 1,
+        colId: 'overallTurnoutRate'
       }
     );
 
@@ -424,17 +455,13 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
     exportCsv: handleExportCSV
   }));
 
-  // Add onGridReady to apply initial sort
+  // Store API reference when grid is ready
   const onGridReady = useCallback((params: any) => {
-    if (params.api) {
-      params.api.applyColumnState({
-        state: [
-          { colId: 'overallTurnoutRate', sort: 'asc' }
-        ],
-        defaultState: { sort: null }
-      });
-    }
-  }, []);
+    setGridApi(params.api);
+    
+    // Apply the default sort when grid is first ready
+    applyDefaultSort(params.api);
+  }, [applyDefaultSort]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-full">Loading report data...</div>;
@@ -474,8 +501,12 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
               rowHeight={32}
               headerHeight={36}
               suppressMovableColumns={false}
-              className=""
               onGridReady={onGridReady}
+              onFirstDataRendered={(params) => {
+                // Also do initial sizing after first render
+                params.api.sizeColumnsToFit();
+              }}
+              className=""
             />
           </div>
         </div>

@@ -152,23 +152,20 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     
     if (activeTab === 'report') {
       setIsReportLoading(true);
+      setRawChartData(null); // Clear other tab's data
     } else if (activeTab === 'chart') {
       setIsChartLoading(true);
+      setRawReportData(null); // Clear other tab's data
     }
     setError(null);
-    
-    console.log(`Generating report with selections:`, selections);
 
     let apiGeography: ApiGeographySelection | null = null;
 
     if (selections.primaryGeoType === 'County') {
       if (!selections.specificCounty) {
         setError('Please select a specific county or "All Counties".');
-        if (activeTab === 'report') {
-          setIsReportLoading(false);
-        } else if (activeTab === 'chart') {
-          setIsChartLoading(false);
-        }
+        setIsReportLoading(false);
+        setIsChartLoading(false);
         return;
       }
       apiGeography = {
@@ -182,11 +179,8 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     } else if (selections.primaryGeoType === 'District') {
       if (!selections.specificDistrictType || !selections.specificDistrictNumber) {
         setError('Please select a district type and a specific district number or "All Districts".');
-        if (activeTab === 'report') {
-          setIsReportLoading(false);
-        } else if (activeTab === 'chart') {
-          setIsChartLoading(false);
-        }
+        setIsReportLoading(false);
+        setIsChartLoading(false);
         return;
       }
       apiGeography = {
@@ -202,11 +196,8 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
 
     if (!apiGeography || !selections.electionDate) {
       setError('Please select Primary Geography, Specific Area, and Election Date.');
-      if (activeTab === 'report') {
-        setIsReportLoading(false);
-      } else if (activeTab === 'chart') {
-        setIsChartLoading(false);
-      }
+      setIsReportLoading(false);
+      setIsChartLoading(false);
       return;
     }
     
@@ -249,11 +240,21 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         includeCensusData: apiIncludeCensusData,
       };
 
+      const controller = new AbortController();
+      const signal = controller.signal;
+      
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 30000); // 30-second timeout for large requests
+
       const response = await fetch('/api/ga/voter/turnout-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
+        signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -269,19 +270,24 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      console.error('API call failed:', err);
-      setError(err.message || 'Failed to fetch data.');
-      setRawReportData(null);
-      setRawChartData(null);
-      setProcessedChartData(null);
-    } finally {
-      if (activeTab === 'report') {
-        setIsReportLoading(false);
-      } else if (activeTab === 'chart') {
-        setIsChartLoading(false);
+      // Check if this is an abort error (timeout)
+      if (err.name === 'AbortError') {
+        setError('The request took too long to complete. Please try again with fewer data points or a smaller area selection.');
+      } else {
+        setError(err.message || 'Failed to fetch data.');
       }
+      
+      if (activeTab === 'report') {
+        setRawReportData(null);
+      } else if (activeTab === 'chart') {
+        setRawChartData(null);
+        setProcessedChartData(null);
+      }
+    } finally {
+      setIsReportLoading(false);
+      setIsChartLoading(false);
     }
-  }, [selections, activeTab, setError, setRawReportData, setRawChartData, setIsReportLoading, setIsChartLoading]);
+  }, [selections, activeTab]);
   
   useEffect(() => {
     const handleResize = () => {
@@ -373,7 +379,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     let newChartData: ApiChartData | null = null;
 
     if (chartPoint && (chartPoint === 'Race' || chartPoint === 'Gender' || chartPoint === 'AgeRange')) {
-      console.log(`[ChartData] Processing ${chartPoint} data point`);
       const categories = chartPoint === 'Race' ? RACE_CHART_CATEGORIES :
                         chartPoint === 'Gender' ? GENDER_CHART_CATEGORIES : AGE_RANGE_CHART_CATEGORIES;
       const colors = DEMOGRAPHIC_COLORS[chartPoint] || [];
@@ -389,9 +394,6 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         }
       });
       
-      console.log(`[ChartData] Available ${chartPoint} categories:`, [...availableBreakdownKeys]);
-      console.log(`[ChartData] Configured ${chartPoint} categories:`, categories);
-      
       newChartData = {
         type: 'stackedRow',
         rows: rawChartData.map(reportRow => {
@@ -405,9 +407,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
                 turnoutRate: breakdownData.turnout,
                 color: colors[index % colors.length],
               });
-            } else {
-              console.log(`[ChartData] Missing data for ${breakdownKey} in ${reportRow.geoLabel}`);
-            }
+            } 
           });
           return {
             geoLabel: reportRow.geoLabel,
@@ -578,6 +578,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
                     rows={rawReportData || null} 
                     isLoading={isReportLoading}
                     error={error}
+                    isActive={activeTab === 'report'}
                   />
                 </div>
               </TypedTabsContent>

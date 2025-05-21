@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { TurnoutBarChart } from './components/TurnoutBarChart';
 import { TurnoutStackedRowChart } from './components/TurnoutStackedRowChart';
 import { ChartExporter, type ChartExporterActions } from './components/ChartExporter';
+import { Loader2 } from 'lucide-react';
 
 // Define props interface accurately based on page.tsx state
 interface ApiChartData {
@@ -38,29 +39,25 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartExporterRef = useRef<ChartExporterActions>(null); // Ref for ChartExporter
   
-  // Expose chart export functions - MOVED TO TOP LEVEL
+  // Expose chart export functions
   useImperativeHandle(ref, () => ({
     exportChartSVG: () => chartExporterRef.current?.exportToSVG(),
     exportChartPNG: async () => chartExporterRef.current?.exportToPNG(),
   }));
 
-  // Diagnostic log
-  console.log('[ChartTabContent PROPS]', { chartData, isLoading, error });
-
   if (isLoading) {
-    console.log('[ChartTabContent RENDER]: isLoading');
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
-        {/* <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" /> */}
-        <div className="animate-pulse rounded-md bg-muted h-64 w-full mb-4"></div>
-        <p className="text-muted-foreground">Loading chart data...</p>
-        <p className="text-xs font-medium text-blue-600">This may take a moment, especially for &quot;All Counties&quot; or &quot;All Districts&quot; selections.</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground font-medium">Processing chart data...</p>
+        <p className="text-xs text-muted-foreground mt-2">
+          This may take a moment for larger datasets.
+        </p>
       </div>
     );
   }
 
   if (error) {
-    console.log('[ChartTabContent RENDER]: error', error);
     return (
       <Card className="border-destructive/50">
         <CardHeader>
@@ -74,7 +71,6 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
   }
 
   if (!chartData || !chartData.rows || chartData.rows.length === 0) {
-    console.log('[ChartTabContent RENDER]: No chart data', chartData);
     return (
       <div className="text-center py-10">
         <p className="text-muted-foreground mb-2">No chart data available.</p>
@@ -84,8 +80,6 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
       </div>
     );
   }
-  
-  console.log('[ChartTabContent RENDER]: Rendering chart', chartData);
 
   // Calculate dynamic chart height
   const MINIMUM_CHART_HEIGHT = 400; // Minimum height in pixels
@@ -100,11 +94,6 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
       <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
         <div>
           {/* Static text removed as per user request */}
-          {/* <CardTitle>Voter Turnout Chart</CardTitle> */}
-          {/* <CardDescription>
-            Visual representation of voter turnout ({chartData?.type === 'bar' ? 'Overall Turnout' : 'Demographic Breakdown'})
-            <div className="mt-1 text-xs font-medium text-blue-600">Note: Click &#34;Draw Chart&#34; after changing selections to update the chart.</div>
-          </CardDescription> */}
         </div>
         {/* ChartExporter is now invisible but its functions are exposed via ref */}
         <ChartExporter 
@@ -127,4 +116,4 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
   );
 });
 
-ChartTabContent.displayName = 'ChartTabContent'; // Added for better debugging ; 
+ChartTabContent.displayName = 'ChartTabContent'; 
