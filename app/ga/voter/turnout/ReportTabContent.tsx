@@ -120,14 +120,14 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
         headerName: 'Geo Unit', 
         valueGetter: (params) => params.data?.geoLabel,
         sortable: true, 
-        filter: true, 
+        filter: true,
         flex: 2 
       },
       { 
         headerName: 'Total Registered', 
         valueGetter: (params) => params.data?.totalRegistered,
         sortable: true, 
-        filter: 'agNumberColumnFilter', 
+        filter: false,
         valueFormatter: params => {
           if (params.value === null || params.value === undefined) return 'N/A';
           return formatNumber(params.value);
@@ -139,7 +139,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
         headerName: 'Total Voted', 
         valueGetter: (params) => params.data?.totalVoted,
         sortable: true, 
-        filter: 'agNumberColumnFilter', 
+        filter: false,
         valueFormatter: params => {
           if (params.value === null || params.value === undefined) return 'N/A';
           return formatNumber(params.value);
@@ -151,7 +151,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
         headerName: 'Overall Turnout', 
         valueGetter: (params) => params.data?.overallTurnoutRate,
         sortable: true, 
-        filter: 'agNumberColumnFilter', 
+        filter: false,
         valueFormatter: params => {
           if (params.value === null || params.value === undefined) return 'N/A';
           return formatPercent(params.value);
@@ -198,7 +198,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
             return params.data?.[`breakdowns.${key}.registered` as keyof typeof params.data];
           },
           sortable: true, 
-          filter: 'agNumberColumnFilter', 
+          filter: false,
           valueFormatter: params => {
             if (params.value === null || params.value === undefined) return 'N/A';
             return formatNumber(params.value);
@@ -216,7 +216,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
             return params.data?.[`breakdowns.${key}.voted` as keyof typeof params.data];
           },
           sortable: true, 
-          filter: 'agNumberColumnFilter', 
+          filter: false,
           valueFormatter: params => {
             if (params.value === null || params.value === undefined) return 'N/A';
             return formatNumber(params.value);
@@ -234,7 +234,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
             return params.data?.[`breakdowns.${key}.turnout` as keyof typeof params.data];
           },
           sortable: true, 
-          filter: 'agNumberColumnFilter', 
+          filter: false,
           valueFormatter: params => {
             if (params.value === null || params.value === undefined) return 'N/A';
             return formatPercent(params.value);
@@ -262,7 +262,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
             return params.data?.[`censusData.${censusKey}` as keyof typeof params.data];
           },
           sortable: true,
-          filter: 'agNumberColumnFilter',
+          filter: false,
           type: 'numericColumn',
           flex: 1
         };
@@ -378,7 +378,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
   const defaultColDef = useMemo<ColDef>(() => {
     return {
       sortable: true,
-      filter: true,
+      filter: false,
       resizable: true,
       flex: 1, // Distribute space equally by default
       minWidth: 100, // Minimum width for columns
@@ -424,6 +424,18 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
     exportCsv: handleExportCSV
   }));
 
+  // Add onGridReady to apply initial sort
+  const onGridReady = useCallback((params: any) => {
+    if (params.api) {
+      params.api.applyColumnState({
+        state: [
+          { colId: 'overallTurnoutRate', sort: 'asc' }
+        ],
+        defaultState: { sort: null }
+      });
+    }
+  }, []);
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-full">Loading report data...</div>;
   }
@@ -463,6 +475,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
               headerHeight={36}
               suppressMovableColumns={false}
               className=""
+              onGridReady={onGridReady}
             />
           </div>
         </div>
