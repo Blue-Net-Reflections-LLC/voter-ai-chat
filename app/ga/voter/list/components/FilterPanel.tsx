@@ -178,18 +178,18 @@ export function FilterPanel() {
   const getCountiesFilterCount = () => {
     let count = 0;
     if (Array.isArray(filters.county) && filters.county.length > 0) count++;
-    // County precincts and municipal precincts will be added here in the next step
+    // Include precinct filters in counties count
+    if (Array.isArray(filters.countyPrecincts) && filters.countyPrecincts.length > 0) count++;
+    if (Array.isArray(filters.municipalPrecincts) && filters.municipalPrecincts.length > 0) count++;
     return count;
   };
 
   const getGeographicFilterCount = () => {
     let count = 0;
-    // County is now handled in getCountiesFilterCount
+    // County and precinct filters are now handled in getCountiesFilterCount
     if (Array.isArray(filters.congressionalDistricts) && filters.congressionalDistricts.length > 0) count++;
     if (Array.isArray(filters.stateSenateDistricts) && filters.stateSenateDistricts.length > 0) count++;
     if (Array.isArray(filters.stateHouseDistricts) && filters.stateHouseDistricts.length > 0) count++;
-    if (Array.isArray(filters.countyPrecincts) && filters.countyPrecincts.length > 0) count++;
-    if (Array.isArray(filters.municipalPrecincts) && filters.municipalPrecincts.length > 0) count++;
     if (Array.isArray(filters.redistrictingType) && filters.redistrictingType.length > 0) count++;
     return count;
   };
@@ -433,7 +433,7 @@ export function FilterPanel() {
         id: `countyPrecinct-${value}`,
         label: `County Precinct: ${value}`, // Adjust label if needed
         onRemove: () => updateFilter('countyPrecincts', ensureStringArray(filters.countyPrecincts).filter(v => v !== value)),
-        sectionKey: 'geographic'
+        sectionKey: 'counties'
       });
     });
     ensureStringArray(filters.municipalPrecincts).forEach((value) => {
@@ -441,7 +441,7 @@ export function FilterPanel() {
         id: `municipalPrecinct-${value}`,
         label: `Municipal Precinct: ${value}`, // Adjust label if needed
         onRemove: () => updateFilter('municipalPrecincts', ensureStringArray(filters.municipalPrecincts).filter(v => v !== value)),
-        sectionKey: 'geographic'
+        sectionKey: 'counties'
       });
     });
 
@@ -639,7 +639,6 @@ export function FilterPanel() {
               )}
             </AccordionTrigger>
             <AccordionContent className="pt-1 pl-2 space-y-3">
-              {/* County Filter moved from Geographic section */}
               <div className="space-y-2">
                 <CountyMultiSelect
                   value={ensureStringArray(filters.county)}
@@ -648,6 +647,12 @@ export function FilterPanel() {
                   compact={true}
                 />
               </div>
+              <div>
+                <Separator className="my-3 mt-5" />
+              </div>
+
+              {/* Precinct Filters moved from Geographic section */}
+              <PrecinctFilters />
             </AccordionContent>
           </AccordionItem>
 
@@ -665,12 +670,6 @@ export function FilterPanel() {
               )}
             </AccordionTrigger>
             <AccordionContent className="pt-1 pl-2 space-y-3">
-              {/* Add Precinct Filters component */}
-              <PrecinctFilters />
-              <div>
-                <Separator className="my-3 mt-5" />
-              </div>
-
               {/* Congressional District Filter */}
               <div className="space-y-2">
                 <DistrictMultiSelect
