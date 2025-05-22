@@ -27,6 +27,7 @@ const initialFilterState: FilterState = {
   electionType: [],
   electionYear: [],
   electionDate: [],
+  electionParticipation: 'turnedOut',
   ballotStyle: [],
   eventParty: [],
   voterEventMethod: '',
