@@ -149,6 +149,11 @@ async function fetchMunicipalPrecincts(countyCode?: string | null): Promise<Prec
 
 export async function GET(req: NextRequest) {
   try {
+    // Clear cache for testing
+    for (const key in lookupCache) {
+      delete lookupCache[key];
+    }
+    
     const url = new URL(req.url);
     console.log("[/api/ga/voter/list/lookup] Received request:", url.search);
     
@@ -202,7 +207,7 @@ export async function GET(req: NextRequest) {
     }
 
     // --- Handle Regular Field/Category Lookups (Existing Logic) ---
-    const results: Record<string, string[]> = {};
+    const results: Record<string, any[]> = {};
     let fieldsToFetch = [...LOOKUP_FIELDS];
     
     if (requestedField) {
@@ -219,6 +224,7 @@ export async function GET(req: NextRequest) {
     const queries = fieldsToFetch.map(async (fieldInfo) => {
       const sourceTable = 'GA_VOTER_REGISTRATION_LIST';
       let queryString: string;
+      
       if (fieldInfo.name === 'election_date') {
         // Extract distinct event dates from JSONB and order reverse chronologic
         queryString = `
@@ -226,6 +232,15 @@ export async function GET(req: NextRequest) {
           FROM ${sourceTable}
           WHERE voting_events IS NOT NULL
           ORDER BY election_date DESC
+          LIMIT ${fieldInfo.limit}
+        `;
+      } else if (fieldInfo.name === 'county_code') {
+        // Special handling for county_code to fetch both code and name
+        queryString = `
+          SELECT DISTINCT county_code, county_name
+          FROM ${sourceTable}
+          WHERE county_code IS NOT NULL AND TRIM(county_code) != ''
+          ORDER BY county_code
           LIMIT ${fieldInfo.limit}
         `;
       } else {
@@ -241,13 +256,21 @@ export async function GET(req: NextRequest) {
       try {
         const fieldResult = await sql.unsafe(queryString);
         
-        // Extract values and clean them
-        results[fieldInfo.name] = Array.from(new Set(
-          fieldResult
-            .map(row => row[fieldInfo.name])
-            .filter(Boolean)
-            .map(val => String(val).trim().toUpperCase())
-        ));
+        if (fieldInfo.name === 'county_code') {
+          // Format county data as objects with code and name
+          results[fieldInfo.name] = fieldResult.map(row => ({
+            code: String(row.county_code).trim().toUpperCase(),
+            name: String(row.county_name).trim().toUpperCase()
+          }));
+        } else {
+          // For other fields, keep the existing logic
+          results[fieldInfo.name] = Array.from(new Set(
+            fieldResult
+              .map(row => row[fieldInfo.name])
+              .filter(Boolean)
+              .map(val => String(val).trim().toUpperCase())
+          ));
+        }
       } catch (error) {
         console.error(`Error fetching field ${fieldInfo.name}:`, error);
         results[fieldInfo.name] = [];

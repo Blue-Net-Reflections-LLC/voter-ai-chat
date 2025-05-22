@@ -14,7 +14,7 @@ export type LookupField = {
   name: string;
   displayName: string;
   category: string;
-  values: string[];
+  values: any[]; // Changed from string[] to any[] to support objects
   count: number;
 };
 
@@ -188,15 +188,35 @@ export function useLookupData() {
   }, []);
 
   // Helper function to get values for a specific field
-  const getValuesForField = (fieldName: string): string[] => {
+  const getValuesForField = (fieldName: string): any[] => {
     if (!lookupData) return [];
     const field = lookupData.fields.find(f => f.name === fieldName);
-    return field?.values.map(toTitleCase) || [];
+    
+    if (!field) return [];
+    
+    // Check if values are objects (for county_code)
+    if (field.values.length > 0 && typeof field.values[0] === 'object') {
+      return field.values;
+    }
+    
+    // For string values, apply title case as before
+    return field.values.map(toTitleCase);
   };
 
   // Helper function to get options for a specific field
   const getOptionsForField = (fieldName: string): MultiSelectOption[] => {
-    return toOptions(getValuesForField(fieldName));
+    const values = getValuesForField(fieldName);
+    
+    // Handle county_code specially
+    if (fieldName === 'county_code' && values.length > 0 && typeof values[0] === 'object') {
+      return values.map(county => ({
+        value: county.code,
+        label: `${county.name} (${county.code})`
+      }));
+    }
+    
+    // For regular string values
+    return toOptions(values);
   };
 
   // Cached values for commonly used fields using the standard getOptionsForField
