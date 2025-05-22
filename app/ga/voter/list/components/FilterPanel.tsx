@@ -114,6 +114,21 @@ export function FilterPanel() {
     statusReasons
   } = useLookupData();
 
+  // State to track selected counties for precincts
+  const [selectedCountiesForPrecincts, setSelectedCountiesForPrecincts] = useState<string[]>(
+    Array.isArray(filters.county) ? filters.county : []
+  );
+
+  // Update selectedCountiesForPrecincts when filters.county changes
+  useEffect(() => {
+    setSelectedCountiesForPrecincts(Array.isArray(filters.county) ? filters.county : []);
+  }, [filters.county]);
+
+  // Handler for county selection changes
+  const handleCountySelectionChange = (selectedCounties: string[]) => {
+    setSelectedCountiesForPrecincts(selectedCounties);
+  };
+
   // Helper function to ensure filter values are always string arrays
   const ensureStringArray = (value: string | boolean | string[] | undefined): string[] => {
     if (!value) return [];
@@ -645,6 +660,7 @@ export function FilterPanel() {
                   setValue={(value) => updateFilter('county', value)}
                   isLoading={isLoading}
                   compact={true}
+                  onSelectionChange={handleCountySelectionChange}
                 />
               </div>
               <div>
@@ -652,7 +668,9 @@ export function FilterPanel() {
               </div>
 
               {/* Precinct Filters moved from Geographic section */}
-              <PrecinctFilters />
+              <PrecinctFilters
+                selectedCounties={selectedCountiesForPrecincts}
+              />
             </AccordionContent>
           </AccordionItem>
 
