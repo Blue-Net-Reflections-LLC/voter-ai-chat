@@ -90,6 +90,7 @@ const CATEGORIES: Record<string, { displayName: string; fields: string[] }> = {
 interface PrecinctValue {
   code: string;
   description: string | null;
+  formatted_label: string;
   meta?: Record<string, any> | null;
 }
 
@@ -98,6 +99,8 @@ async function fetchCountyPrecincts(countyCode?: string | null): Promise<Precinc
     SELECT DISTINCT
       v.county_precinct AS code,
       rd.lookup_value AS description,
+      v.county_name,
+      v.county_code,
       rd.lookup_meta AS meta
     FROM ga_voter_registration_list v
     LEFT JOIN reference_data rd ON rd.lookup_key = v.county_precinct
@@ -109,13 +112,14 @@ async function fetchCountyPrecincts(countyCode?: string | null): Promise<Precinc
   if (countyCode) {
     query += ` AND v.county_code = '${countyCode}'`;
   }
-  query += ` ORDER BY description, code;`;
+  query += ` ORDER BY v.county_name, description, code;`;
 
   try {
     const result = await sql.unsafe(query);
     return result.map((row: any) => ({ 
         code: row.code, 
-        description: row.description || row.code, 
+        description: row.description || row.code,
+        formatted_label: `${row.county_name} (${row.county_code}): ${row.description || row.code} (${row.code})`,
         meta: row.meta || null
     }));
   } catch (error) {
@@ -128,7 +132,9 @@ async function fetchMunicipalPrecincts(countyCode?: string | null): Promise<Prec
   let query = `
     SELECT DISTINCT
       municipal_precinct AS code,
-      municipal_precinct_description AS description
+      municipal_precinct_description AS description,
+      county_name,
+      county_code
     FROM ga_voter_registration_list
     WHERE municipal_precinct IS NOT NULL AND TRIM(municipal_precinct) != ''
       AND municipal_precinct_description IS NOT NULL AND TRIM(municipal_precinct_description) != ''
@@ -136,14 +142,50 @@ async function fetchMunicipalPrecincts(countyCode?: string | null): Promise<Prec
   if (countyCode) {
     query += ` AND county_code = '${countyCode}'`;
   }
-  query += ` ORDER BY description, code;`;
+  query += ` ORDER BY county_name, description, code;`;
 
   try {
     const result = await sql.unsafe(query);
-    return result.map((row: any) => ({ code: row.code, description: row.description }));
+    return result.map((row: any) => ({ 
+      code: row.code, 
+      description: row.description,
+      formatted_label: `${row.county_name} (${row.county_code}): ${row.description} (${row.code})`
+    }));
   } catch (error) {
     console.error("Error fetching municipal precincts:", error);
     return [];
+  }
+}
+
+// Add a function to fetch county name from county code
+async function fetchCountyName(countyCode: string): Promise<{ code: string, name: string }> {
+  if (!countyCode) {
+    return { code: '', name: '' };
+  }
+  
+  try {
+    const query = `
+      SELECT DISTINCT
+        county_code as code,
+        county_name as name
+      FROM ga_voter_registration_list
+      WHERE county_code = '${countyCode}'
+      LIMIT 1
+    `;
+    
+    const result = await sql.unsafe(query);
+    
+    if (result.length > 0) {
+      return { 
+        code: result[0].code,
+        name: result[0].name
+      };
+    }
+    
+    return { code: countyCode, name: countyCode };
+  } catch (error) {
+    console.error("Error fetching county name:", error);
+    return { code: countyCode, name: countyCode };
   }
 }
 
@@ -204,6 +246,17 @@ export async function GET(req: NextRequest) {
       lookupCache[cacheKey] = metadata;
       console.log(`[/api/ga/voter/list/lookup] Stored precinct result in cache for key: ${cacheKey}`);
       return NextResponse.json(metadata);
+    }
+
+    // --- Handle County Name Lookup ---
+    if (requestedCategory === 'countyName') {
+      if (!countyCodeParam) {
+        return NextResponse.json({ error: "County code is required for countyName lookup" }, { status: 400 });
+      }
+      
+      const countyData = await fetchCountyName(countyCodeParam);
+      lookupCache[cacheKey] = countyData;
+      return NextResponse.json(countyData);
     }
 
     // --- Handle Regular Field/Category Lookups (Existing Logic) ---

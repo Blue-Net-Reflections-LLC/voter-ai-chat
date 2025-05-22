@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 interface PrecinctLookupData {
   code: string;
   description: string | null;
+  formatted_label: string;
   meta?: {
     facility_name?: string | null;
     facility_address?: string | null;
@@ -19,6 +20,7 @@ interface PrecinctLookupData {
 interface PrecinctOption {
   value: string;
   label: string;
+  formatted_label: string;
   facilityName: string | null;
   facilityAddress: string | null;
 }
@@ -29,6 +31,14 @@ const globalPrecinctCache: Record<string, {
   municipal: PrecinctOption[] 
 }> = {};
 
+// Global label lookup map
+const globalPrecinctLabelMap: Record<string, string> = {};
+
+// Function to get a formatted label for a precinct code
+export function getPrecinctLabel(precinctCode: string): string {
+  return globalPrecinctLabelMap[precinctCode] || precinctCode;
+}
+
 // Function to fetch precinct data from API
 async function fetchPrecinctData(countyCode: string): Promise<{ county: PrecinctOption[], municipal: PrecinctOption[] }> {
   try {
@@ -37,6 +47,17 @@ async function fetchPrecinctData(countyCode: string): Promise<{ county: Precinct
     // Return empty arrays if no county is selected
     if (!countyCode) {
       return { county: [], municipal: [] };
+    }
+    
+    // First, get the county name
+    const countyNameResponse = await fetch(`/api/ga/voter/list/lookup?category=countyName&countyCode=${countyCode}`);
+    let countyName = countyCode; // Default to code if we can't get the name
+    
+    if (countyNameResponse.ok) {
+      const countyNameData = await countyNameResponse.json();
+      if (countyNameData?.name) {
+        countyName = countyNameData.name;
+      }
     }
     
     const [countyRes, municipalRes] = await Promise.all([
@@ -87,11 +108,11 @@ async function fetchPrecinctData(countyCode: string): Promise<{ county: Precinct
         .map(item => {
           if (!item) return null; // Skip null/undefined items
           
-          // Format the label in the new format: "DESCRIPTION (CODE)"
-          // Store facility info in separate properties for display in the UI
+          // Use the formatted_label directly from the API
           return { 
             value: item.code, 
-            label: `${item.description || 'N/A'} (${item.code})`,
+            label: item.formatted_label, // Use the pre-formatted label
+            formatted_label: item.formatted_label,
             facilityName: item.meta?.facility_name || null,
             facilityAddress: item.meta?.facility_address || null
           };
@@ -116,9 +137,13 @@ async function fetchPrecinctData(countyCode: string): Promise<{ county: Precinct
 
 interface PrecinctFiltersProps {
   selectedCounties?: string[];
+  onOptionsUpdate?: (countyOptions: PrecinctOption[], municipalOptions: PrecinctOption[]) => void;
 }
 
-export function PrecinctFilters({ selectedCounties = [] }: PrecinctFiltersProps) {
+export function PrecinctFilters({ 
+  selectedCounties = [], 
+  onOptionsUpdate 
+}: PrecinctFiltersProps) {
   const { filters, updateFilter } = useVoterFilterContext();
 
   // State for precinct data
@@ -163,10 +188,20 @@ export function PrecinctFilters({ selectedCounties = [] }: PrecinctFiltersProps)
             allMunicipalPrecincts.push(...data.municipal);
           }
         }
+
+        // Update the global label map
+        [...allCountyPrecincts, ...allMunicipalPrecincts].forEach(option => {
+          globalPrecinctLabelMap[option.value] = option.label;
+        });
         
         // Update component state with combined precincts from all counties
         setCountyPrecinctOptions(allCountyPrecincts);
         setMunicipalPrecinctOptions(allMunicipalPrecincts);
+        
+        // Notify parent component about new options
+        if (onOptionsUpdate) {
+          onOptionsUpdate(allCountyPrecincts, allMunicipalPrecincts);
+        }
       } catch (err) {
         console.error(`Error fetching precincts:`, err);
         setError(err instanceof Error ? err.message : 'Error loading precincts');
@@ -176,7 +211,7 @@ export function PrecinctFilters({ selectedCounties = [] }: PrecinctFiltersProps)
     }
     
     fetchPrecincts();
-  }, [selectedCounties]);
+  }, [selectedCounties, onOptionsUpdate]);
 
   // Format function for displaying precincts
   const formatPrecinctLabel = (code: string): string => {

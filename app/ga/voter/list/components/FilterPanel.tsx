@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 import { SCORE_RANGES } from '@/lib/participation-score/constants';
-import { PrecinctFilters } from './PrecinctFilters';
+import { PrecinctFilters, getPrecinctLabel } from './PrecinctFilters';
 import {
   Accordion,
   AccordionContent,
@@ -120,6 +120,10 @@ export function FilterPanel() {
     Array.isArray(filters.county) ? filters.county : []
   );
 
+  // State to track precinct options for badge display
+  const [countyPrecinctOptions, setCountyPrecinctOptions] = useState<any[]>([]);
+  const [municipalPrecinctOptions, setMunicipalPrecinctOptions] = useState<any[]>([]);
+
   // Update selectedCountiesForPrecincts when filters.county changes
   useEffect(() => {
     setSelectedCountiesForPrecincts(Array.isArray(filters.county) ? filters.county : []);
@@ -128,6 +132,12 @@ export function FilterPanel() {
   // Handler for county selection changes
   const handleCountySelectionChange = (selectedCounties: string[]) => {
     setSelectedCountiesForPrecincts(selectedCounties);
+  };
+
+  // Handler for precinct option updates
+  const handlePrecinctOptionsUpdate = (countyOptions: any[], municipalOptions: any[]) => {
+    setCountyPrecinctOptions(countyOptions);
+    setMunicipalPrecinctOptions(municipalOptions);
   };
 
   // Helper function to ensure filter values are always string arrays
@@ -451,15 +461,16 @@ export function FilterPanel() {
     ensureStringArray(filters.countyPrecincts).forEach((value) => {
       activeBadges.push({
         id: `countyPrecinct-${value}`,
-        label: `County Precinct: ${value}`, // Adjust label if needed
+        label: `County Precinct: ${getPrecinctLabel(value)}`,
         onRemove: () => updateFilter('countyPrecincts', ensureStringArray(filters.countyPrecincts).filter(v => v !== value)),
         sectionKey: 'counties'
       });
     });
+    
     ensureStringArray(filters.municipalPrecincts).forEach((value) => {
       activeBadges.push({
         id: `municipalPrecinct-${value}`,
-        label: `Municipal Precinct: ${value}`, // Adjust label if needed
+        label: `Municipal Precinct: ${getPrecinctLabel(value)}`,
         onRemove: () => updateFilter('municipalPrecincts', ensureStringArray(filters.municipalPrecincts).filter(v => v !== value)),
         sectionKey: 'counties'
       });
