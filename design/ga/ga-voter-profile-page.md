@@ -350,5 +350,28 @@ To optimize response time, the backend API should fetch external data (Represent
     - The implementation uses `stg_processed_census_tract_data` as the source for tract-level statistics
     - The filter works by finding census tracts that match the criteria, then selecting voters who live in those tracts
 
+### CR-005: Restructure Filter Groups to Improve County-Based Filtering
+
+- **Date:** [Insert Date]
+- **Request:** Restructure the filter groups to better organize county-level data and improve user experience by showing precincts and municipalities only for selected counties.
+- **Implementation Details:**
+    - **Filter Panel Reorganization:**
+        - [ ] Create a new filter grouping called "Counties" in the Filter Panel.
+        - [ ] Move the existing County filter from the Geographic section to this new Counties grouping.
+        - [ ] Move County Precinct and Municipal Precinct filters to the new Counties grouping.
+        - [ ] Position the new Counties grouping between the Participation Score section and the Geographic section.
+    - **Dynamic Precinct Loading:**
+        - [ ] Modify the County Precinct filter to only show precincts for the selected county/counties.
+        - [ ] Modify the Municipal Precinct filter to only show municipalities for the selected county/counties.
+        - [ ] Add a dependency in the FilterPanel component so that when county selection changes, the precinct/municipality options update accordingly.
+        - [ ] Show a message prompting the user to select a county when no county is selected.
+    - **UI Improvements:**
+        - [ ] Add visual cues to indicate the relationship between county selection and precinct/municipality options.
+        - [ ] Ensure proper loading states when fetching precinct/municipality data for newly selected counties.
+        - [ ] Maintain existing filter badge display for active county and precinct filters, with proper section attribution.
+    - **Technical Changes:**
+        - [ ] Update the CountyMultiSelect component to trigger a callback when selection changes.
+        - [ ] Modify the useLookupData hook to support county-specific precinct/municipality fetching.
+        - [ ] Ensure URL parameters correctly reflect the restructured filter groupings.
  
  
