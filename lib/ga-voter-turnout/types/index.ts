@@ -55,6 +55,8 @@ export interface ConsolidatedDbRow {
     query_county_name?: string;
     query_district_id?: string;
     geo_unit_id: string | number;
+    geo_unit_desc?: string;
+    geo_unit_meta?: string | Record<string, any>;
     total_registered_overall: number;
     total_voted_overall: number;
     overall_turnout_rate_calculated: number;

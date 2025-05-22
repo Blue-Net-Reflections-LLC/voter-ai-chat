@@ -61,6 +61,7 @@ const formatCurrency = (value: number | null | undefined) => {
 export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>(({ rows, isLoading, error, isActive = false }, ref) => {
   const gridRef = useRef<AgGridReact>(null);
   const [gridApi, setGridApi] = useState<any>(null);
+  const [rowHeight] = useState(100); // Fixed row height for all rows
 
   // Function to apply the default sort
   const applyDefaultSort = useCallback((api: any) => {
@@ -153,10 +154,18 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
     dynamicColDefs.push(
       { 
         headerName: 'Geo Unit', 
-        valueGetter: (params) => params.data?.geoLabel,
+        field: 'geoLabel', // Use field instead of valueGetter for better performance
         sortable: true, 
         filter: true,
-        flex: 2 
+        flex: 2,
+        minWidth: 200,
+        wrapText: true,
+        cellStyle: { 
+          'white-space': 'pre-line',
+          'line-height': '1.5',
+          'padding': '12px 8px'
+        },
+        cellClass: 'geo-unit-cell'
       },
       { 
         headerName: 'Total Registered', 
@@ -501,11 +510,9 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
               columnDefs={columnDefs}
               defaultColDef={defaultColDef}
               domLayout='normal'
+              rowHeight={rowHeight}
               pinnedBottomRowData={pinnedBottomRowData}
               suppressAggFuncInHeader={true}
-              rowHeight={32}
-              headerHeight={36}
-              suppressMovableColumns={false}
               onGridReady={onGridReady}
               onFirstDataRendered={(params) => {
                 // Also do initial sizing after first render

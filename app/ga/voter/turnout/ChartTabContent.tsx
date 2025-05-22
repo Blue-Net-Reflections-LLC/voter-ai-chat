@@ -105,12 +105,23 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
     );
   }
 
+  // Process chart data to only include precinct description (first line)
+  // For charts, we don't want to show facility information
+  const processedChartData = {
+    ...chartData,
+    rows: chartData.rows.map(row => ({
+      ...row,
+      // Only keep the part before any newline character
+      geoLabel: row.geoLabel.split('\n')[0]
+    }))
+  };
+
   // Calculate dynamic chart height
   const MINIMUM_CHART_HEIGHT = isMobile ? 300 : 400; // Smaller minimum height on mobile
   const PIXELS_PER_BAR = isMobile ? 32 : 40; // Smaller per-bar height on mobile
   let chartHeight = MINIMUM_CHART_HEIGHT;
-  if (chartData && chartData.rows && chartData.rows.length > 0) {
-    chartHeight = Math.max(MINIMUM_CHART_HEIGHT, chartData.rows.length * PIXELS_PER_BAR);
+  if (processedChartData && processedChartData.rows && processedChartData.rows.length > 0) {
+    chartHeight = Math.max(MINIMUM_CHART_HEIGHT, processedChartData.rows.length * PIXELS_PER_BAR);
   }
 
   return (
@@ -123,7 +134,7 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
         <ChartExporter 
           ref={chartExporterRef} // Pass the ref
           chartRef={chartContainerRef} 
-          chartType={chartData?.type || 'chart'} // Provide a fallback for chartType
+          chartType={processedChartData?.type || 'chart'} // Provide a fallback for chartType
         />
       </CardHeader>
       <CardContent className="flex-grow overflow-y-auto p-0">
@@ -136,10 +147,10 @@ export const ChartTabContent = forwardRef<ChartTabActions, ChartTabContentProps>
             minHeight: `${MINIMUM_CHART_HEIGHT}px`
           }}
         >
-          {chartData.type === 'bar' ? (
-            <TurnoutBarChart rows={chartData.rows} xAxisMax={chartData.xAxisMax} />
+          {processedChartData.type === 'bar' ? (
+            <TurnoutBarChart rows={processedChartData.rows} xAxisMax={processedChartData.xAxisMax} />
           ) : (
-            <TurnoutStackedRowChart rows={chartData.rows} xAxisMax={chartData.xAxisMax} />
+            <TurnoutStackedRowChart rows={processedChartData.rows} xAxisMax={processedChartData.xAxisMax} />
           )}
         </div>
       </CardContent>
