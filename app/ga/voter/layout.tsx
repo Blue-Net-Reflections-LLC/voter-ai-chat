@@ -49,6 +49,10 @@ const countActiveFilters = (filters: any, residenceAddressFilters: any[]) => {
   if (filters.notVotedSinceYear) count++;
   if (filters.voterEventMethod) count++;
   
+  // Count boolean filters and special enum filters
+  if (filters.neverVoted) count++;
+  if (filters.electionParticipation === 'satOut') count++;
+  
   // Count address filters
   count += residenceAddressFilters.length;
   

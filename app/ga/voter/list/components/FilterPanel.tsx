@@ -13,6 +13,7 @@ import {
   AGE_RANGE_OPTIONS,
   INCOME_LEVEL_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
+  UNEMPLOYMENT_RATE_OPTIONS,
   REDISTRICTING_TYPE_OPTIONS,
   ELECTION_TYPE_OPTIONS,
   ELECTION_YEAR_OPTIONS,
@@ -35,7 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 
 // Define section keys for consistent usage
-type FilterSectionKey = 'participationScore' | 'geographic' | 'voterInfo' | 'demographics' | 'votingHistory';
+type FilterSectionKey = 'participationScore' | 'geographic' | 'voterInfo' | 'demographics' | 'votingHistory' | 'census';
 
 // Color Configuration for Filter Sections
 const sectionColorConfig: Record<FilterSectionKey, {
@@ -67,6 +68,11 @@ const sectionColorConfig: Record<FilterSectionKey, {
     badge: "bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200 border border-amber-300 dark:border-amber-600",
     accordionTriggerClasses: "bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-700 dark:hover:text-amber-100",
     countBubble: "bg-amber-500 dark:bg-amber-600 text-white dark:text-amber-100",
+  },
+  census: {
+    badge: "bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-600",
+    accordionTriggerClasses: "bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-200 dark:hover:bg-indigo-700 dark:hover:text-indigo-100",
+    countBubble: "bg-indigo-500 dark:bg-indigo-600 text-white dark:text-indigo-100",
   },
 };
 
@@ -200,9 +206,18 @@ export function FilterPanel() {
     if (ensureStringArray(filters.electionType).length > 0) count++;
     if (ensureStringArray(filters.electionYear).length > 0) count++;
     if (ensureStringArray(filters.electionDate).length > 0) count++;
+    if (filters.electionParticipation === 'satOut') count++;
     if (ensureStringArray(filters.ballotStyle).length > 0) count++;
     if (ensureStringArray(filters.eventParty).length > 0) count++;
     if (filters.voterEventMethod) count++;
+    return count;
+  };
+
+  const getCensusFilterCount = () => {
+    let count = 0;
+    if (ensureStringArray(filters.income).length > 0) count++;
+    if (ensureStringArray(filters.education).length > 0) count++;
+    if (ensureStringArray(filters.unemployment).length > 0) count++;
     return count;
   };
 
@@ -212,13 +227,14 @@ export function FilterPanel() {
   const voterInfoFilterCount = getVoterInfoFilterCount();
   const demographicsFilterCount = getDemographicsFilterCount();
   const votingHistoryFilterCount = getVotingHistoryFilterCount();
+  const censusFilterCount = getCensusFilterCount();
 
   const activeFiltersHeaderRef = useRef<HTMLDivElement>(null);
   const scrollableContainerRef = useRef<HTMLDivElement>(null);
 
   // Track which accordion items are open
-  const [openItems, setOpenItems] = useState<string[]>(["participation-score", "geographic-filters", "voter-info"]);
-  const previousOpenItems = useRef<string[]>(["participation-score", "geographic-filters", "voter-info"]);
+  const [openItems, setOpenItems] = useState<string[]>(["participation-score"]);
+  const previousOpenItems = useRef<string[]>(["participation-score"]);
 
   const handleAccordionChange = (values: string[]) => { setOpenItems(values); };
 
@@ -427,6 +443,14 @@ export function FilterPanel() {
     }));
     ensureStringArray(filters.electionYear).forEach((value) => activeBadges.push({ id: `electionYear-${value}`, label: `Election Year: ${value}`, onRemove: () => updateFilter('electionYear', ensureStringArray(filters.electionYear).filter(v => v !== value)), sectionKey: 'votingHistory' }));
     ensureStringArray(filters.electionDate).forEach((value) => activeBadges.push({ id: `electionDate-${value}`, label: `Election Date: ${formatDateLabel(value)}`, onRemove: () => updateFilter('electionDate', ensureStringArray(filters.electionDate).filter(v => v !== value)), sectionKey: 'votingHistory' }));
+    if (filters.electionParticipation === 'satOut' && ensureStringArray(filters.electionDate).length > 0) {
+      activeBadges.push({ 
+        id: 'electionParticipation', 
+        label: 'Sat Out Selected Elections', 
+        onRemove: () => updateFilter('electionParticipation', 'turnedOut'), 
+        sectionKey: 'votingHistory' 
+      });
+    }
     ensureStringArray(filters.ballotStyle).forEach((value) => activeBadges.push({ id: `ballotStyle-${value}`, label: `Ballot Style: ${value}`, onRemove: () => updateFilter('ballotStyle', ensureStringArray(filters.ballotStyle).filter(v => v !== value)), sectionKey: 'votingHistory' }));
     ensureStringArray(filters.eventParty).forEach((value) => activeBadges.push({
       id: `eventParty-${value}`,
@@ -435,6 +459,37 @@ export function FilterPanel() {
       sectionKey: 'votingHistory'
     }));
     if (filters.voterEventMethod) activeBadges.push({ id: 'voterEventMethod', label: `Ballot Cast: ${filters.voterEventMethod}`, onRemove: () => updateFilter('voterEventMethod', ''), sectionKey: 'votingHistory' });
+
+    // Census Data Filters
+    ensureStringArray(filters.income).forEach((value) => {
+      const option = INCOME_LEVEL_OPTIONS.find(opt => opt.value === value);
+      activeBadges.push({
+        id: `income-${value}`,
+        label: `Income: ${option?.label || value}`,
+        onRemove: () => updateFilter('income', ensureStringArray(filters.income).filter(v => v !== value)),
+        sectionKey: 'census'
+      });
+    });
+
+    ensureStringArray(filters.education).forEach((value) => {
+      const option = EDUCATION_LEVEL_OPTIONS.find(opt => opt.value === value);
+      activeBadges.push({
+        id: `education-${value}`,
+        label: `Education: ${option?.label || value}`,
+        onRemove: () => updateFilter('education', ensureStringArray(filters.education).filter(v => v !== value)),
+        sectionKey: 'census'
+      });
+    });
+
+    ensureStringArray(filters.unemployment).forEach((value) => {
+      const option = UNEMPLOYMENT_RATE_OPTIONS.find(opt => opt.value === value);
+      activeBadges.push({
+        id: `unemployment-${value}`,
+        label: `Unemployment: ${option?.label || value}`,
+        onRemove: () => updateFilter('unemployment', ensureStringArray(filters.unemployment).filter(v => v !== value)),
+        sectionKey: 'census'
+      });
+    });
 
     return activeBadges;
   };
@@ -498,7 +553,7 @@ export function FilterPanel() {
         <Accordion
           type="multiple"
           className="w-full space-y-1"
-          defaultValue={["participation-score", "geographic-filters", "voter-info"]}
+          defaultValue={["participation-score"]}
           onValueChange={handleAccordionChange}
         >
           {/* Participation Section - Renamed Header and Input Label, Moved Filter In */}
@@ -805,6 +860,36 @@ export function FilterPanel() {
                   compact={true}
                   formatLabel={formatDateLabel}
                 />
+                
+                <div className="pl-1 pt-1">
+                  <div className="text-xs font-medium mb-2">Election Participation</div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={filters.electionParticipation === 'turnedOut' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => updateFilter('electionParticipation', 'turnedOut')}
+                      className="text-xs py-1 px-2 h-auto"
+                      disabled={ensureStringArray(filters.electionDate).length === 0}
+                    >
+                      Turned Out
+                    </Button>
+                    <Button
+                      variant={filters.electionParticipation === 'satOut' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => updateFilter('electionParticipation', 'satOut')}
+                      className="text-xs py-1 px-2 h-auto"
+                      disabled={ensureStringArray(filters.electionDate).length === 0}
+                    >
+                      Sat Out
+                    </Button>
+                  </div>
+                  {ensureStringArray(filters.electionDate).length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Select election date(s) above to enable this filter
+                    </p>
+                  )}
+                </div>
+                
                 <Separator className="my-3" />
 
                 <MultiSelect
@@ -853,6 +938,50 @@ export function FilterPanel() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Census Data Filters */}
+          <AccordionItem value="census-data" data-accordion-id="census-data">
+            <AccordionTrigger className={cn(
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
+              sectionColorConfig.census.accordionTriggerClasses
+            )}>
+              <span>Census Data</span>
+              {censusFilterCount > 0 && (
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.census.countBubble)}>
+                  {censusFilterCount}
+                </span>
+              )}
+            </AccordionTrigger>
+            <AccordionContent className="pt-1 pl-2 space-y-3">
+              <div className="space-y-3">
+                <MultiSelect
+                  label="Income Brackets"
+                  options={INCOME_LEVEL_OPTIONS}
+                  value={ensureStringArray(filters.income)}
+                  setValue={(value) => updateFilter('income', value)}
+                  compact={true}
+                />
+                <Separator className="my-3" />
+
+                <MultiSelect
+                  label="Bachelor's Degree Rates"
+                  options={EDUCATION_LEVEL_OPTIONS}
+                  value={ensureStringArray(filters.education)}
+                  setValue={(value) => updateFilter('education', value)}
+                  compact={true}
+                />
+                <Separator className="my-3" />
+
+                <MultiSelect
+                  label="Unemployment Rate"
+                  options={UNEMPLOYMENT_RATE_OPTIONS}
+                  value={ensureStringArray(filters.unemployment)}
+                  setValue={(value) => updateFilter('unemployment', value)}
+                  compact={true}
+                />
               </div>
             </AccordionContent>
           </AccordionItem>

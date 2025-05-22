@@ -42,7 +42,9 @@ interface MapboxMapViewProps {
 interface VoterDetail {
   registrationNumber: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
+  aptNumber?: string;
 }
 interface VoterDetailResponse {
   address: string;
@@ -908,7 +910,10 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
                             }}
                           >
                             <span style={{ marginRight: '5px' }}>👤</span>
-                            {voter.firstName} {voter.lastName}
+                            {voter.firstName} {voter.middleName && voter.middleName.charAt(0) + '.'} {voter.lastName}
+                            {voter.aptNumber && <span style={{ fontSize: '0.85em', color: '#666', marginLeft: '3px' }}>
+                              (#{voter.aptNumber})
+                            </span>}
                           </div>
                         </li>
                       ))}

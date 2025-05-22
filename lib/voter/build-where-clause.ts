@@ -3,6 +3,7 @@
  * based on URL search parameters.
  */
 import { SCORE_RANGES } from "@/lib/participation-score/constants"; // Import score range definitions
+import { INCOME_BRACKETS, EDUCATION_BRACKETS, UNEMPLOYMENT_BRACKETS } from '@/lib/census/constants';
 
 export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAlias?: string): string {
   // Add a prefix to column names if tableAlias is provided
@@ -181,6 +182,81 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAl
       conditions.push(`(${raceConditions})`);
   }
 
+  // Census Data Filters
+  const incomeValues = searchParams.getAll('income');
+  const educationValues = searchParams.getAll('education');
+  const unemploymentValues = searchParams.getAll('unemployment');
+
+  // Handle Income Brackets filter (using census tract data)
+  if (incomeValues.length > 0) {
+    const incomeClauses: string[] = [];
+    
+    incomeValues.forEach(incomeValue => {
+      const bracket = INCOME_BRACKETS.find(b => b.value === incomeValue);
+      if (bracket) {
+        if (bracket.max === null) {
+          // For "over X" brackets
+          incomeClauses.push(`${col('census_tract')} IN (
+            SELECT tract_id 
+            FROM stg_processed_census_tract_data 
+            WHERE median_household_income >= ${bracket.min}
+          )`);
+        } else {
+          // For range brackets
+          incomeClauses.push(`${col('census_tract')} IN (
+            SELECT tract_id 
+            FROM stg_processed_census_tract_data 
+            WHERE median_household_income >= ${bracket.min} AND median_household_income < ${bracket.max}
+          )`);
+        }
+      }
+    });
+    
+    if (incomeClauses.length > 0) {
+      conditions.push(`(${incomeClauses.join(' OR ')})`);
+    }
+  }
+
+  // Handle Education Attainment filter
+  if (educationValues.length > 0) {
+    const educationClauses: string[] = [];
+    
+    educationValues.forEach(educationValue => {
+      const bracket = EDUCATION_BRACKETS.find(b => b.value === educationValue);
+      if (bracket) {
+        educationClauses.push(`${col('census_tract')} IN (
+          SELECT tract_id 
+          FROM stg_processed_census_tract_data 
+          WHERE pct_bachelors_degree_or_higher >= ${bracket.min} AND pct_bachelors_degree_or_higher < ${bracket.max}
+        )`);
+      }
+    });
+    
+    if (educationClauses.length > 0) {
+      conditions.push(`(${educationClauses.join(' OR ')})`);
+    }
+  }
+
+  // Handle Unemployment Rate filter
+  if (unemploymentValues.length > 0) {
+    const unemploymentClauses: string[] = [];
+    
+    unemploymentValues.forEach(unemploymentValue => {
+      const bracket = UNEMPLOYMENT_BRACKETS.find(b => b.value === unemploymentValue);
+      if (bracket) {
+        unemploymentClauses.push(`${col('census_tract')} IN (
+          SELECT tract_id 
+          FROM stg_processed_census_tract_data 
+          WHERE unemployment_rate >= ${bracket.min} AND unemployment_rate < ${bracket.max}
+        )`);
+      }
+    });
+    
+    if (unemploymentClauses.length > 0) {
+      conditions.push(`(${unemploymentClauses.join(' OR ')})`);
+    }
+  }
+
   const neverVoted = searchParams.get('neverVoted') === 'true';
   if (neverVoted) {
     conditions.push(`${col('derived_last_vote_date')} IS NULL`);
@@ -204,8 +280,17 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAl
   }
   // Election Date filter via voting_events JSONB
   if (electionDates.length > 0) {
+    const electionParticipation = searchParams.get('electionParticipation') || 'turnedOut';
+    
+    if (electionParticipation === 'turnedOut') {
+      // Find voters who turned out (participated)
       const dateClauses = electionDates.map(date => `${col('voting_events')} @> '[{"election_date":"${date}"}]'`).join(' OR ');
       conditions.push(`(${dateClauses})`);
+    } else {
+      // Find voters who sat out (did not participate)
+      const notDateClauses = electionDates.map(date => `NOT (${col('voting_events')} @> '[{"election_date":"${date}"}]')`).join(' AND ');
+      conditions.push(`(${notDateClauses})`);
+    }
   }
 
   // Voter Events filters via JSONB voting_events
