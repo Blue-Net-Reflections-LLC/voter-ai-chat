@@ -36,7 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 
 // Define section keys for consistent usage
-type FilterSectionKey = 'participationScore' | 'counties' | 'geographic' | 'voterInfo' | 'demographics' | 'votingHistory' | 'census';
+type FilterSectionKey = 'participationScore' | 'counties' | 'geographic' | 'voterInfo' | 'demographics' | 'votingHistory' | 'census' | 'districts';
 
 // Color Configuration for Filter Sections
 const sectionColorConfig: Record<FilterSectionKey, {
@@ -58,6 +58,11 @@ const sectionColorConfig: Record<FilterSectionKey, {
     badge: "bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-200 border border-sky-300 dark:border-sky-600",
     accordionTriggerClasses: "bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-200 hover:bg-sky-200 dark:hover:bg-sky-700 dark:hover:text-sky-100",
     countBubble: "bg-sky-500 dark:bg-sky-600 text-white dark:text-sky-100",
+  },
+  districts: {
+    badge: "bg-rose-100 dark:bg-rose-800 text-rose-700 dark:text-rose-200 border border-rose-300 dark:border-rose-600",
+    accordionTriggerClasses: "bg-rose-100 dark:bg-rose-800 text-rose-700 dark:text-rose-200 hover:bg-rose-200 dark:hover:bg-rose-700 dark:hover:text-rose-100",
+    countBubble: "bg-rose-500 dark:bg-rose-600 text-white dark:text-rose-100",
   },
   voterInfo: {
     badge: "bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-600",
@@ -212,7 +217,12 @@ export function FilterPanel() {
 
   const getGeographicFilterCount = () => {
     let count = 0;
-    // County and precinct filters are now handled in getCountiesFilterCount
+    if (residenceAddressFilters.length > 0) count++;
+    return count;
+  };
+
+  const getDistrictsFilterCount = () => {
+    let count = 0;
     if (Array.isArray(filters.congressionalDistricts) && filters.congressionalDistricts.length > 0) count++;
     if (Array.isArray(filters.stateSenateDistricts) && filters.stateSenateDistricts.length > 0) count++;
     if (Array.isArray(filters.stateHouseDistricts) && filters.stateHouseDistricts.length > 0) count++;
@@ -224,7 +234,6 @@ export function FilterPanel() {
     let count = 0;
     if (filters.firstName) count++;
     if (filters.lastName) count++;
-    if (residenceAddressFilters.length > 0) count++;
     if (Array.isArray(filters.status) && filters.status.length > 0) count++;
     if (Array.isArray(filters.statusReason) && filters.statusReason.length > 0) count++;
     if (Array.isArray(filters.party) && filters.party.length > 0) count++;
@@ -262,6 +271,7 @@ export function FilterPanel() {
   // Get counts for each section
   const participationScoreFilterCount = getParticipationScoreFilterCount();
   const geographicFilterCount = getGeographicFilterCount();
+  const districtsFilterCount = getDistrictsFilterCount();
   const voterInfoFilterCount = getVoterInfoFilterCount();
   const demographicsFilterCount = getDemographicsFilterCount();
   const votingHistoryFilterCount = getVotingHistoryFilterCount();
@@ -362,13 +372,13 @@ export function FilterPanel() {
       });
     });
 
-    // Residence Address Filters
+    // Residence Address Filters - Now part of Geographic section
     residenceAddressFilters.forEach((filter) => {
       activeBadges.push({
         id: `address-${filter.id}`,
         label: `Address: ${filter.residence_street_number || ''} ${filter.residence_street_name || ''} ${filter.residence_city || ''} ${filter.residence_zipcode || ''}`.trim().replace(/\s{2,}/g, ' '),
         onRemove: () => removeAddressFilter(filter.id),
-        sectionKey: 'voterInfo'
+        sectionKey: 'geographic'
       });
     });
 
@@ -410,7 +420,7 @@ export function FilterPanel() {
       });
     }
 
-    // Geographic Filters
+    // Counties Filters
     ensureStringArray(filters.county).forEach((value) => {
       // Find the county name from the options
       const countyOption = counties.find((c: { value: string; label: string }) => c.value === value);
@@ -423,41 +433,7 @@ export function FilterPanel() {
       });
     });
     
-    ensureStringArray(filters.congressionalDistricts).forEach((value) => {
-      activeBadges.push({
-        id: `cd-${value}`,
-        label: `Cong. District: ${value}`,
-        onRemove: () => updateFilter('congressionalDistricts', ensureStringArray(filters.congressionalDistricts).filter(v => v !== value)),
-        sectionKey: 'geographic'
-      });
-    });
-    ensureStringArray(filters.stateSenateDistricts).forEach((value) => {
-      activeBadges.push({
-        id: `ssd-${value}`,
-        label: `State Senate: ${value}`,
-        onRemove: () => updateFilter('stateSenateDistricts', ensureStringArray(filters.stateSenateDistricts).filter(v => v !== value)),
-        sectionKey: 'geographic'
-      });
-    });
-    ensureStringArray(filters.stateHouseDistricts).forEach((value) => {
-      activeBadges.push({
-        id: `shd-${value}`,
-        label: `State House: ${value}`,
-        onRemove: () => updateFilter('stateHouseDistricts', ensureStringArray(filters.stateHouseDistricts).filter(v => v !== value)),
-        sectionKey: 'geographic'
-      });
-    });
-    ensureStringArray(filters.redistrictingType).forEach((value) => {
-      activeBadges.push({
-        id: `redistrictingType-${value}`,
-        label: `Redistricting: ${value}`,
-        onRemove: () => updateFilter('redistrictingType', ensureStringArray(filters.redistrictingType).filter(v => v !== value)),
-        sectionKey: 'geographic'
-      });
-    });
-    // countyPrecincts and municipalPrecincts might be more complex if they are { county: string, precincts: string[] }
-    // For now, assuming they are simple string arrays for precinct names/IDs if directly filterable this way.
-    // If they are structured, this part needs adjustment.
+    // County Precincts and Municipal Precincts
     ensureStringArray(filters.countyPrecincts).forEach((value) => {
       activeBadges.push({
         id: `countyPrecinct-${value}`,
@@ -476,6 +452,41 @@ export function FilterPanel() {
       });
     });
 
+    // District Filters - Now in their own section
+    ensureStringArray(filters.congressionalDistricts).forEach((value) => {
+      activeBadges.push({
+        id: `cd-${value}`,
+        label: `Cong. District: ${value}`,
+        onRemove: () => updateFilter('congressionalDistricts', ensureStringArray(filters.congressionalDistricts).filter(v => v !== value)),
+        sectionKey: 'districts'
+      });
+    });
+    ensureStringArray(filters.stateSenateDistricts).forEach((value) => {
+      activeBadges.push({
+        id: `ssd-${value}`,
+        label: `State Senate: ${value}`,
+        onRemove: () => updateFilter('stateSenateDistricts', ensureStringArray(filters.stateSenateDistricts).filter(v => v !== value)),
+        sectionKey: 'districts'
+      });
+    });
+    ensureStringArray(filters.stateHouseDistricts).forEach((value) => {
+      activeBadges.push({
+        id: `shd-${value}`,
+        label: `State House: ${value}`,
+        onRemove: () => updateFilter('stateHouseDistricts', ensureStringArray(filters.stateHouseDistricts).filter(v => v !== value)),
+        sectionKey: 'districts'
+      });
+    });
+    
+    // Geographic Filters - Redistricting moved to districts
+    ensureStringArray(filters.redistrictingType).forEach((value) => {
+      activeBadges.push({
+        id: `redistrictingType-${value}`,
+        label: `Redistricting: ${value}`,
+        onRemove: () => updateFilter('redistrictingType', ensureStringArray(filters.redistrictingType).filter(v => v !== value)),
+        sectionKey: 'districts'
+      });
+    });
 
     // Voting History / Elections Filters
     ensureStringArray(filters.electionType).forEach((value) => activeBadges.push({
@@ -602,7 +613,7 @@ export function FilterPanel() {
           {/* Participation Section - Renamed Header and Input Label, Moved Filter In */}
           <AccordionItem value="participation-score" data-accordion-id="participation-score">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.participationScore.accordionTriggerClasses
             )}>
               <span>Participation</span>
@@ -659,7 +670,7 @@ export function FilterPanel() {
           {/* Counties Section - New section for county-level data */}
           <AccordionItem value="counties-filters" data-accordion-id="counties-filters">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.counties.accordionTriggerClasses
             )}>
               <span>Counties</span>
@@ -690,16 +701,16 @@ export function FilterPanel() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* Geographic Filters Section - Renamed Header */}
-          <AccordionItem value="geographic-filters" data-accordion-id="geographic-filters">
+          {/* Districts Section - New section for district filters */}
+          <AccordionItem value="districts-filters" data-accordion-id="districts-filters">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
-              sectionColorConfig.geographic.accordionTriggerClasses
+              "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
+              sectionColorConfig.districts.accordionTriggerClasses
             )}>
-              <span>Geography</span>
-              {geographicFilterCount > 0 && (
-                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.geographic.countBubble)}>
-                  {geographicFilterCount}
+              <span>Districts</span>
+              {districtsFilterCount > 0 && (
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.districts.countBubble)}>
+                  {districtsFilterCount}
                 </span>
               )}
             </AccordionTrigger>
@@ -748,7 +759,8 @@ export function FilterPanel() {
               <div>
                 <Separator className="my-3 mt-5" />
               </div>
-
+              
+              {/* Redistricting Type moved from Geography section */}
               <MultiSelect
                 label="Redistricting Type"
                 options={REDISTRICTING_TYPE_OPTIONS}
@@ -759,10 +771,37 @@ export function FilterPanel() {
             </AccordionContent>
           </AccordionItem>
 
+          {/* Geographic Filters Section - Renamed Header */}
+          <AccordionItem value="geographic-filters" data-accordion-id="geographic-filters">
+            <AccordionTrigger className={cn(
+              "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
+              sectionColorConfig.geographic.accordionTriggerClasses
+            )}>
+              <span>Geography</span>
+              {geographicFilterCount > 0 && (
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.geographic.countBubble)}>
+                  {geographicFilterCount}
+                </span>
+              )}
+            </AccordionTrigger>
+            <AccordionContent className="pt-1 pl-2 space-y-3">
+              {/* Address Filter moved from Voter Info */}
+              <ResidenceAddressFilter
+                addressFilters={residenceAddressFilters}
+                addAddressFilter={addAddressFilter}
+                removeAddressFilter={removeAddressFilter}
+                clearAllAddressFilters={clearAllAddressFilters}
+                updateAddressFilter={(id, field, value) => {
+                  updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
+                }}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
           {/* Voter Info Filters */}
           <AccordionItem value="voter-info" data-accordion-id="voter-info">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.voterInfo.accordionTriggerClasses
             )}>
               <span>Voter Info</span>
@@ -826,16 +865,6 @@ export function FilterPanel() {
                   </Button>
                 </div>
                 <Separator className="my-3" />
-                <ResidenceAddressFilter
-                  addressFilters={residenceAddressFilters}
-                  addAddressFilter={addAddressFilter}
-                  removeAddressFilter={removeAddressFilter}
-                  clearAllAddressFilters={clearAllAddressFilters}
-                  updateAddressFilter={(id, field, value) => {
-                    updateResidenceAddressFilter(id, field as keyof Omit<ResidenceAddressFilterState, 'id'>, value);
-                  }}
-                />
-                <Separator className="my-3" />
 
                 <MultiSelect
                   label="Registered Voter Party"
@@ -852,7 +881,7 @@ export function FilterPanel() {
           {/* Demographic Filters */}
           <AccordionItem value="demographics" data-accordion-id="demographics">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.demographics.accordionTriggerClasses
             )}>
               <span>Demographics</span>
@@ -898,7 +927,7 @@ export function FilterPanel() {
           {/* Elections Section (Formerly Voting History) - Renamed Header, Reordered Filters, Renamed Label */}
           <AccordionItem value="voting-history" data-accordion-id="voting-history">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.votingHistory.accordionTriggerClasses
             )}>
               <span>Elections</span>
@@ -1003,7 +1032,7 @@ export function FilterPanel() {
           {/* Census Data Filters */}
           <AccordionItem value="census-data" data-accordion-id="census-data">
             <AccordionTrigger className={cn(
-              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
+              "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.census.accordionTriggerClasses
             )}>
               <span>Census Data</span>
