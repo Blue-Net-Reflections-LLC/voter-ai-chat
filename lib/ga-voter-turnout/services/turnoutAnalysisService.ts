@@ -134,16 +134,40 @@ export async function generateTurnoutAnalysisData(
         else if (geography.districtType === 'StateHouse') mainDistrictColumn = 'state_house_district';
     }
 
+    // Check if we need to join with REFERENCE_DATA for precinct/municipal information
+    const needsReferenceDataJoin = 
+        (geography.subAreaType === 'Precinct' || 
+         geography.subAreaType === 'Municipality') &&
+        geography.areaValue !== 'ALL';
+    
+    const referenceDataJoinType = geography.subAreaType === 'Precinct' 
+        ? 'GA_COUNTY_PRECINCT_DESC' 
+        : geography.subAreaType === 'Municipality' 
+          ? 'GA_MUNICIPAL_PRECINCT_DESC' 
+          : '';
+
+    // Create the LEFT JOIN clause for REFERENCE_DATA if needed
+    const referenceDataJoin = needsReferenceDataJoin ? `
+        LEFT JOIN REFERENCE_DATA rd ON 
+            rd.lookup_type = '${referenceDataJoinType}' AND
+            rd.state_code = 'GA' AND
+            rd.county_code = vrl.county_code AND
+            rd.lookup_key = vrl.${consolidatedQueryGroupByClean}
+    ` : '';
+
     const consolidatedQuery = `
         WITH geo_data AS (
             SELECT 
                 ${ (geography.areaType === 'County' && geography.subAreaType && consolidatedQueryGroupByClean !== mainCountyNameColumn) ? `vrl.${mainCountyNameColumn} AS query_county_name,` : '' }
                 ${ (geography.areaType === 'District' && geography.subAreaType && mainDistrictColumn) ? `vrl.${mainDistrictColumn} AS query_district_id,` : '' }
                 ${consolidatedQueryGroupBy} AS geo_unit_id, 
+                ${needsReferenceDataJoin ? `rd.lookup_value AS geo_unit_desc,` : ''}
+                ${needsReferenceDataJoin ? `rd.lookup_meta AS geo_unit_meta,` : ''}
                 COUNT(DISTINCT vrl.voter_registration_number) AS total_registered_overall,
                 SUM(CASE WHEN vrl.voting_events @> '[{"election_date": "${electionDate}"}]'::jsonb THEN 1 ELSE 0 END) AS total_voted_overall
             FROM 
                 ga_voter_registration_list vrl
+                ${referenceDataJoin}
             WHERE 
                 ${whereClause}
                 AND vrl.${consolidatedQueryGroupByClean} IS NOT NULL
@@ -152,6 +176,7 @@ export async function generateTurnoutAnalysisData(
                 ${ (geography.areaType === 'County' && geography.subAreaType && consolidatedQueryGroupByClean !== mainCountyNameColumn) ? `vrl.${mainCountyNameColumn},` : '' }
                 ${ (geography.areaType === 'District' && geography.subAreaType && mainDistrictColumn) ? `vrl.${mainDistrictColumn},` : '' }
                 ${consolidatedQueryGroupBy}
+                ${needsReferenceDataJoin ? `, rd.lookup_value, rd.lookup_meta` : ''}
         )
         SELECT 
             gd.*
@@ -189,6 +214,29 @@ export async function generateTurnoutAnalysisData(
             
             let geoLabel = '';
             const currentGeoUnitId = String(dbRow.geo_unit_id); 
+            const geoUnitDesc = dbRow.geo_unit_desc ? String(dbRow.geo_unit_desc) : '';
+            let facilityLocation = '';
+            
+            // Extract facility location from geo_unit_meta if available
+            if (dbRow.geo_unit_meta) {
+                try {
+                    const meta = typeof dbRow.geo_unit_meta === 'string' 
+                        ? JSON.parse(dbRow.geo_unit_meta) 
+                        : dbRow.geo_unit_meta;
+                    
+                    const facilityName = meta?.facility_name || '';
+                    const facilityAddress = meta?.facility_address || '';
+                    
+                    if (facilityName) {
+                        facilityLocation = facilityName;
+                        if (facilityAddress) {
+                            facilityLocation += `: ${facilityAddress}`;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Error parsing geo_unit_meta:', e);
+                }
+            }
 
             if (geography.areaType === 'County') {
                 if (geography.areaValue === 'ALL') {
@@ -196,10 +244,19 @@ export async function generateTurnoutAnalysisData(
                 } else { 
                     if (geography.subAreaType) {
                         const countyContext = dbRow.query_county_name || geography.areaValue;
-                        geoLabel = `${groupLabel} (${countyContext}) ${currentGeoUnitId}`;
-                         if (geography.subAreaType === 'Precinct' && precinctData[currentGeoUnitId]) {
-                             geoLabel += `: ${precinctData[currentGeoUnitId].name}`;
-                         }
+                        
+                        if ((geography.subAreaType === 'Precinct' || geography.subAreaType === 'Municipality') && geoUnitDesc) {
+                            // For reports: Code + Description on first line, Location on second line
+                            geoLabel = `${currentGeoUnitId} (${geoUnitDesc})`;
+                            
+                            // Only add facility info if it exists
+                            if (facilityLocation && facilityLocation.trim()) {
+                                // Ensure clean separation with a newline character
+                                geoLabel += `\n${facilityLocation}`;
+                            }
+                        } else {
+                            geoLabel = `${groupLabel} (${countyContext}) ${currentGeoUnitId}`;
+                        }
                     } else { 
                         geoLabel = `${groupLabel} ${currentGeoUnitId}`; 
                     }
@@ -208,7 +265,19 @@ export async function generateTurnoutAnalysisData(
                 if (geography.subAreaType) {
                     const districtType = geography.districtType || '';
                     const districtId = dbRow.query_district_id || geography.areaValue;
-                    geoLabel = `${groupLabel} (${districtType} ${districtId}) ${currentGeoUnitId}`;
+                    
+                    if ((geography.subAreaType === 'Precinct' || geography.subAreaType === 'Municipality') && geoUnitDesc) {
+                        // For reports: Code + Description on first line, Location on second line
+                        geoLabel = `${currentGeoUnitId} (${geoUnitDesc})`;
+                        
+                        // Only add facility info if it exists
+                        if (facilityLocation && facilityLocation.trim()) {
+                            // Ensure clean separation with a newline character
+                            geoLabel += `\n${facilityLocation}`;
+                        }
+                    } else {
+                        geoLabel = `${groupLabel} (${districtType} ${districtId}) ${currentGeoUnitId}`;
+                    }
                 } else {
                     geoLabel = `${groupLabel} ${currentGeoUnitId}`;
                 }

@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
 import { ResidenceAddressFilterState } from '../types';
 import { SCORE_RANGES } from '@/lib/participation-score/constants';
-import { PrecinctFilters } from './PrecinctFilters';
+import { PrecinctFilters, getPrecinctLabel } from './PrecinctFilters';
 import {
   Accordion,
   AccordionContent,
@@ -36,7 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 
 // Define section keys for consistent usage
-type FilterSectionKey = 'participationScore' | 'geographic' | 'voterInfo' | 'demographics' | 'votingHistory' | 'census';
+type FilterSectionKey = 'participationScore' | 'counties' | 'geographic' | 'voterInfo' | 'demographics' | 'votingHistory' | 'census';
 
 // Color Configuration for Filter Sections
 const sectionColorConfig: Record<FilterSectionKey, {
@@ -48,6 +48,11 @@ const sectionColorConfig: Record<FilterSectionKey, {
     badge: "bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 border border-teal-300 dark:border-teal-600",
     accordionTriggerClasses: "bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-200 hover:bg-teal-200 dark:hover:bg-teal-700 dark:hover:text-teal-100",
     countBubble: "bg-teal-500 dark:bg-teal-600 text-white dark:text-teal-100",
+  },
+  counties: {
+    badge: "bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-200 border border-orange-300 dark:border-orange-600",
+    accordionTriggerClasses: "bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-700 dark:hover:text-orange-100",
+    countBubble: "bg-orange-500 dark:bg-orange-600 text-white dark:text-orange-100",
   },
   geographic: {
     badge: "bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-200 border border-sky-300 dark:border-sky-600",
@@ -97,6 +102,7 @@ export function FilterPanel() {
   const {
     isLoading,
     error,
+    counties,
     congressionalDistricts,
     stateSenateDistricts,
     stateHouseDistricts,
@@ -108,6 +114,31 @@ export function FilterPanel() {
     eventParties,
     statusReasons
   } = useLookupData();
+
+  // State to track selected counties for precincts
+  const [selectedCountiesForPrecincts, setSelectedCountiesForPrecincts] = useState<string[]>(
+    Array.isArray(filters.county) ? filters.county : []
+  );
+
+  // State to track precinct options for badge display
+  const [countyPrecinctOptions, setCountyPrecinctOptions] = useState<any[]>([]);
+  const [municipalPrecinctOptions, setMunicipalPrecinctOptions] = useState<any[]>([]);
+
+  // Update selectedCountiesForPrecincts when filters.county changes
+  useEffect(() => {
+    setSelectedCountiesForPrecincts(Array.isArray(filters.county) ? filters.county : []);
+  }, [filters.county]);
+
+  // Handler for county selection changes
+  const handleCountySelectionChange = (selectedCounties: string[]) => {
+    setSelectedCountiesForPrecincts(selectedCounties);
+  };
+
+  // Handler for precinct option updates
+  const handlePrecinctOptionsUpdate = (countyOptions: any[], municipalOptions: any[]) => {
+    setCountyPrecinctOptions(countyOptions);
+    setMunicipalPrecinctOptions(municipalOptions);
+  };
 
   // Helper function to ensure filter values are always string arrays
   const ensureStringArray = (value: string | boolean | string[] | undefined): string[] => {
@@ -170,14 +201,21 @@ export function FilterPanel() {
     return count;
   };
 
-  const getGeographicFilterCount = () => {
+  const getCountiesFilterCount = () => {
     let count = 0;
     if (Array.isArray(filters.county) && filters.county.length > 0) count++;
+    // Include precinct filters in counties count
+    if (Array.isArray(filters.countyPrecincts) && filters.countyPrecincts.length > 0) count++;
+    if (Array.isArray(filters.municipalPrecincts) && filters.municipalPrecincts.length > 0) count++;
+    return count;
+  };
+
+  const getGeographicFilterCount = () => {
+    let count = 0;
+    // County and precinct filters are now handled in getCountiesFilterCount
     if (Array.isArray(filters.congressionalDistricts) && filters.congressionalDistricts.length > 0) count++;
     if (Array.isArray(filters.stateSenateDistricts) && filters.stateSenateDistricts.length > 0) count++;
     if (Array.isArray(filters.stateHouseDistricts) && filters.stateHouseDistricts.length > 0) count++;
-    if (Array.isArray(filters.countyPrecincts) && filters.countyPrecincts.length > 0) count++;
-    if (Array.isArray(filters.municipalPrecincts) && filters.municipalPrecincts.length > 0) count++;
     if (Array.isArray(filters.redistrictingType) && filters.redistrictingType.length > 0) count++;
     return count;
   };
@@ -374,13 +412,17 @@ export function FilterPanel() {
 
     // Geographic Filters
     ensureStringArray(filters.county).forEach((value) => {
+      // Find the county name from the options
+      const countyOption = counties.find((c: { value: string; label: string }) => c.value === value);
+      const countyName = countyOption ? countyOption.label.split(' (')[0] : value;
       activeBadges.push({
         id: `county-${value}`,
-        label: `County: ${value}`,
+        label: `County: ${countyName} (${value})`,
         onRemove: () => updateFilter('county', ensureStringArray(filters.county).filter(v => v !== value)),
-        sectionKey: 'geographic'
+        sectionKey: 'counties'
       });
     });
+    
     ensureStringArray(filters.congressionalDistricts).forEach((value) => {
       activeBadges.push({
         id: `cd-${value}`,
@@ -419,17 +461,18 @@ export function FilterPanel() {
     ensureStringArray(filters.countyPrecincts).forEach((value) => {
       activeBadges.push({
         id: `countyPrecinct-${value}`,
-        label: `County Precinct: ${value}`, // Adjust label if needed
+        label: `County Precinct: ${getPrecinctLabel(value)}`,
         onRemove: () => updateFilter('countyPrecincts', ensureStringArray(filters.countyPrecincts).filter(v => v !== value)),
-        sectionKey: 'geographic'
+        sectionKey: 'counties'
       });
     });
+    
     ensureStringArray(filters.municipalPrecincts).forEach((value) => {
       activeBadges.push({
         id: `municipalPrecinct-${value}`,
-        label: `Municipal Precinct: ${value}`, // Adjust label if needed
+        label: `Municipal Precinct: ${getPrecinctLabel(value)}`,
         onRemove: () => updateFilter('municipalPrecincts', ensureStringArray(filters.municipalPrecincts).filter(v => v !== value)),
-        sectionKey: 'geographic'
+        sectionKey: 'counties'
       });
     });
 
@@ -553,7 +596,7 @@ export function FilterPanel() {
         <Accordion
           type="multiple"
           className="w-full space-y-1"
-          defaultValue={["participation-score"]}
+          defaultValue={["participation-score", "counties-filters"]}
           onValueChange={handleAccordionChange}
         >
           {/* Participation Section - Renamed Header and Input Label, Moved Filter In */}
@@ -613,6 +656,40 @@ export function FilterPanel() {
             </AccordionContent>
           </AccordionItem>
 
+          {/* Counties Section - New section for county-level data */}
+          <AccordionItem value="counties-filters" data-accordion-id="counties-filters">
+            <AccordionTrigger className={cn(
+              "text-sm font-semibold flex justify-between items-center w-full py-3 px-3 rounded-sm hover:no-underline",
+              sectionColorConfig.counties.accordionTriggerClasses
+            )}>
+              <span>Counties</span>
+              {getCountiesFilterCount() > 0 && (
+                <span className={cn("text-xs px-2 py-0.5 rounded-full ml-auto mr-2", sectionColorConfig.counties.countBubble)}>
+                  {getCountiesFilterCount()}
+                </span>
+              )}
+            </AccordionTrigger>
+            <AccordionContent className="pt-1 pl-2 space-y-3">
+              <div className="space-y-2">
+                <CountyMultiSelect
+                  value={ensureStringArray(filters.county)}
+                  setValue={(value) => updateFilter('county', value)}
+                  isLoading={isLoading}
+                  compact={true}
+                  onSelectionChange={handleCountySelectionChange}
+                />
+              </div>
+              <div>
+                <Separator className="my-3 mt-5" />
+              </div>
+
+              {/* Precinct Filters moved from Geographic section */}
+              <PrecinctFilters
+                selectedCounties={selectedCountiesForPrecincts}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
           {/* Geographic Filters Section - Renamed Header */}
           <AccordionItem value="geographic-filters" data-accordion-id="geographic-filters">
             <AccordionTrigger className={cn(
@@ -627,25 +704,6 @@ export function FilterPanel() {
               )}
             </AccordionTrigger>
             <AccordionContent className="pt-1 pl-2 space-y-3">
-              {/* County Filter */}
-              <div className="space-y-2">
-                <CountyMultiSelect
-                  value={ensureStringArray(filters.county)}
-                  setValue={(value) => updateFilter('county', value)}
-                  isLoading={isLoading}
-                  compact={true}
-                />
-              </div>
-              <div>
-                <Separator className="my-3 mt-5" />
-              </div>
-
-              {/* Add Precinct Filters component */}
-              <PrecinctFilters />
-              <div>
-                <Separator className="my-3 mt-5" />
-              </div>
-
               {/* Congressional District Filter */}
               <div className="space-y-2">
                 <DistrictMultiSelect

@@ -11,7 +11,6 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAl
 
   // --- Start: Filter parameter extraction ---
   const registrationNumber = searchParams.get('registrationNumber');
-  const county = searchParams.get('county');
   const congressionalDistricts = searchParams.getAll('congressionalDistricts');
   const stateSenateDistricts = searchParams.getAll('stateSenateDistricts');
   const stateHouseDistricts = searchParams.getAll('stateHouseDistricts');
@@ -79,9 +78,11 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAl
   }
 
   // --- If no registrationNumber, proceed with other filters ---
-  // County Filter (Example)
-  if (county) {
-    conditions.push(`UPPER(${col('county_name')}) = UPPER('${county}')`);
+  // County Filter - Handle multiple counties
+  const counties = searchParams.getAll('county');
+  if (counties.length > 0) {
+    const countyPlaceholders = counties.map(c => `'${c}'`);
+    conditions.push(`${col('county_code')} IN (${countyPlaceholders.join(', ')})`);
   }
 
   // Participation Score Range Filter

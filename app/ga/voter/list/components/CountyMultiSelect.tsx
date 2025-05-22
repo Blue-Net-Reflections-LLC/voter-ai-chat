@@ -12,9 +12,16 @@ interface CountyMultiSelectProps {
   setValue: (value: string[]) => void;
   isLoading?: boolean;
   compact?: boolean;
+  onSelectionChange?: (selectedCounties: string[]) => void;
 }
 
-export function CountyMultiSelect({ value, setValue, isLoading: propIsLoading, compact = false }: CountyMultiSelectProps) {
+export function CountyMultiSelect({ 
+  value, 
+  setValue, 
+  isLoading: propIsLoading, 
+  compact = false,
+  onSelectionChange 
+}: CountyMultiSelectProps) {
   const [search, setSearch] = useState("");
   const { counties, isLoading: dataIsLoading, error } = useLookupData();
   
@@ -29,6 +36,14 @@ export function CountyMultiSelect({ value, setValue, isLoading: propIsLoading, c
   // For display: selected at top, then all filtered (with checked/unchecked)
   const selected = value.filter((v) => counties?.some(c => c.value === v) || false);
 
+  // Helper function to update selection and trigger callback
+  const updateSelection = (newSelection: string[]) => {
+    setValue(newSelection);
+    if (onSelectionChange) {
+      onSelectionChange(newSelection);
+    }
+  };
+
   // Helper: render a county checkbox (checked if selected)
   function renderCountyCheckbox(county: MultiSelectOption, keyPrefix: string, index: number) {
     const checked = value.includes(county.value);
@@ -42,9 +57,11 @@ export function CountyMultiSelect({ value, setValue, isLoading: propIsLoading, c
           checked={checked}
           onChange={() => {
             if (checked) {
-              setValue(value.filter((v) => v !== county.value));
+              const newSelection = value.filter((v) => v !== county.value);
+              updateSelection(newSelection);
             } else {
-              setValue([...value, county.value]);
+              const newSelection = [...value, county.value];
+              updateSelection(newSelection);
             }
           }}
           className="form-checkbox h-3 w-3"
@@ -94,7 +111,7 @@ export function CountyMultiSelect({ value, setValue, isLoading: propIsLoading, c
             variant="ghost"
             size="sm"
             className="mt-2 w-full text-xs"
-            onClick={() => setValue([])}
+            onClick={() => updateSelection([])}
           >
             Clear All
           </Button>
