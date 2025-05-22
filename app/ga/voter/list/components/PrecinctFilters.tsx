@@ -23,61 +23,11 @@ interface PrecinctOption {
   facilityAddress: string | null;
 }
 
-// Remove hardcoded county code
-// const HARDCODED_COUNTY_CODE = "067";
-
-// Cache now includes county code in the key
-const getCountyPrecinctCacheKey = (countyCode: string) => `voter-county-precinct-cache-${countyCode}`;
-const getMunicipalPrecinctCacheKey = (countyCode: string) => `voter-municipal-precinct-cache-${countyCode}`;
-const PRECINCT_CACHE_TIMESTAMP_KEY = 'voter-precinct-cache-timestamp';
-// Cache expiration time - 1 hour in milliseconds
-const CACHE_EXPIRATION = 60 * 60 * 1000;
-
 // Global cache map by county code
 const globalPrecinctCache: Record<string, { 
   county: PrecinctOption[], 
   municipal: PrecinctOption[] 
 }> = {};
-
-// Helper function to save precinct data to localStorage
-function savePrecinctDataToCache(countyCode: string, countyData: PrecinctOption[], municipalData: PrecinctOption[]): void {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    localStorage.setItem(getCountyPrecinctCacheKey(countyCode), JSON.stringify(countyData));
-    localStorage.setItem(getMunicipalPrecinctCacheKey(countyCode), JSON.stringify(municipalData));
-    localStorage.setItem(PRECINCT_CACHE_TIMESTAMP_KEY, Date.now().toString());
-    console.log(`Precinct data for county ${countyCode} saved to localStorage cache`);
-  } catch (error) {
-    console.error("Error saving precinct data to localStorage:", error);
-  }
-}
-
-// Helper function to load precinct data from localStorage
-function loadPrecinctDataFromCache(countyCode: string): { county: PrecinctOption[], municipal: PrecinctOption[] } | null {
-  if (typeof window === 'undefined') return null;
-  
-  try {
-    const timestamp = localStorage.getItem(PRECINCT_CACHE_TIMESTAMP_KEY);
-    // Check if cache is expired
-    if (timestamp && Date.now() - parseInt(timestamp) < CACHE_EXPIRATION) {
-      const cachedCountyData = localStorage.getItem(getCountyPrecinctCacheKey(countyCode));
-      const cachedMunicipalData = localStorage.getItem(getMunicipalPrecinctCacheKey(countyCode));
-      
-      if (cachedCountyData && cachedMunicipalData) {
-        console.log(`Using cached precinct data for county ${countyCode}`);
-        return {
-          county: JSON.parse(cachedCountyData),
-          municipal: JSON.parse(cachedMunicipalData)
-        };
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error("Error loading precinct data from localStorage:", error);
-    return null;
-  }
-}
 
 // Function to fetch precinct data from API
 async function fetchPrecinctData(countyCode: string): Promise<{ county: PrecinctOption[], municipal: PrecinctOption[] }> {
@@ -197,16 +147,7 @@ export function PrecinctFilters({ selectedCounties = [] }: PrecinctFiltersProps)
         return;
       }
       
-      // Try to load from localStorage first
-      const cachedData = loadPrecinctDataFromCache(countyCode);
-      if (cachedData) {
-        globalPrecinctCache[countyCode] = cachedData;
-        setCountyPrecinctOptions(cachedData.county);
-        setMunicipalPrecinctOptions(cachedData.municipal);
-        return;
-      }
-      
-      // If no cached data, fetch from API
+      // Fetch from API
       setIsLoading(true);
       setError(null);
       
@@ -219,9 +160,6 @@ export function PrecinctFilters({ selectedCounties = [] }: PrecinctFiltersProps)
         // Update component state
         setCountyPrecinctOptions(data.county);
         setMunicipalPrecinctOptions(data.municipal);
-        
-        // Save to localStorage for future component mounts
-        savePrecinctDataToCache(countyCode, data.county, data.municipal);
       } catch (err) {
         console.error(`Error fetching precincts for county ${countyCode}:`, err);
         setError(err instanceof Error ? err.message : 'Error loading precincts');
