@@ -18,7 +18,7 @@ const LOOKUP_FIELDS = [
   { name: 'residence_zipcode', limit: 1000, category: 'address' },
   
   // District fields
-  { name: 'county_name', limit: 500, category: 'district' },
+  { name: 'county_code', limit: 500, category: 'district' },
   { name: 'congressional_district', limit: 50, category: 'district' },
   { name: 'state_senate_district', limit: 100, category: 'district' },
   { name: 'state_house_district', limit: 200, category: 'district' },
@@ -42,7 +42,7 @@ const CATEGORIES: Record<string, { displayName: string; fields: string[] }> = {
   district: {
     displayName: "District Information",
     fields: [
-      'county_name',
+      'county_code',
       'congressional_district',
       'state_senate_district',
       'state_house_district',

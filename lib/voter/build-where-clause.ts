@@ -79,9 +79,9 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAl
   }
 
   // --- If no registrationNumber, proceed with other filters ---
-  // County Filter (Example)
+  // County Filter 
   if (county) {
-    conditions.push(`UPPER(${col('county_name')}) = UPPER('${county}')`);
+    conditions.push(`${col('county_code')} = '${county}'`);
   }
 
   // Participation Score Range Filter

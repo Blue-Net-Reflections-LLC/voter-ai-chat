@@ -200,7 +200,7 @@ export function useLookupData() {
   };
 
   // Cached values for commonly used fields using the standard getOptionsForField
-  const counties = getOptionsForField('county_name');
+  const counties = getOptionsForField('county_code');
   const congressionalDistricts = getOptionsForField('congressional_district');
   const stateSenateDistricts = getOptionsForField('state_senate_district');
   const stateHouseDistricts = getOptionsForField('state_house_district');
