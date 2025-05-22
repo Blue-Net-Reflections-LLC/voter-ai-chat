@@ -280,8 +280,17 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAl
   }
   // Election Date filter via voting_events JSONB
   if (electionDates.length > 0) {
+    const electionParticipation = searchParams.get('electionParticipation') || 'turnedOut';
+    
+    if (electionParticipation === 'turnedOut') {
+      // Find voters who turned out (participated)
       const dateClauses = electionDates.map(date => `${col('voting_events')} @> '[{"election_date":"${date}"}]'`).join(' OR ');
       conditions.push(`(${dateClauses})`);
+    } else {
+      // Find voters who sat out (did not participate)
+      const notDateClauses = electionDates.map(date => `NOT (${col('voting_events')} @> '[{"election_date":"${date}"}]')`).join(' AND ');
+      conditions.push(`(${notDateClauses})`);
+    }
   }
 
   // Voter Events filters via JSONB voting_events

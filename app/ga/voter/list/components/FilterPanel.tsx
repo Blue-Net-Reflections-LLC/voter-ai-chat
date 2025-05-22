@@ -206,6 +206,7 @@ export function FilterPanel() {
     if (ensureStringArray(filters.electionType).length > 0) count++;
     if (ensureStringArray(filters.electionYear).length > 0) count++;
     if (ensureStringArray(filters.electionDate).length > 0) count++;
+    if (filters.electionParticipation === 'satOut') count++;
     if (ensureStringArray(filters.ballotStyle).length > 0) count++;
     if (ensureStringArray(filters.eventParty).length > 0) count++;
     if (filters.voterEventMethod) count++;
@@ -442,6 +443,14 @@ export function FilterPanel() {
     }));
     ensureStringArray(filters.electionYear).forEach((value) => activeBadges.push({ id: `electionYear-${value}`, label: `Election Year: ${value}`, onRemove: () => updateFilter('electionYear', ensureStringArray(filters.electionYear).filter(v => v !== value)), sectionKey: 'votingHistory' }));
     ensureStringArray(filters.electionDate).forEach((value) => activeBadges.push({ id: `electionDate-${value}`, label: `Election Date: ${formatDateLabel(value)}`, onRemove: () => updateFilter('electionDate', ensureStringArray(filters.electionDate).filter(v => v !== value)), sectionKey: 'votingHistory' }));
+    if (filters.electionParticipation === 'satOut' && ensureStringArray(filters.electionDate).length > 0) {
+      activeBadges.push({ 
+        id: 'electionParticipation', 
+        label: 'Sat Out Selected Elections', 
+        onRemove: () => updateFilter('electionParticipation', 'turnedOut'), 
+        sectionKey: 'votingHistory' 
+      });
+    }
     ensureStringArray(filters.ballotStyle).forEach((value) => activeBadges.push({ id: `ballotStyle-${value}`, label: `Ballot Style: ${value}`, onRemove: () => updateFilter('ballotStyle', ensureStringArray(filters.ballotStyle).filter(v => v !== value)), sectionKey: 'votingHistory' }));
     ensureStringArray(filters.eventParty).forEach((value) => activeBadges.push({
       id: `eventParty-${value}`,
@@ -851,6 +860,36 @@ export function FilterPanel() {
                   compact={true}
                   formatLabel={formatDateLabel}
                 />
+                
+                <div className="pl-1 pt-1">
+                  <div className="text-xs font-medium mb-2">Election Participation</div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={filters.electionParticipation === 'turnedOut' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => updateFilter('electionParticipation', 'turnedOut')}
+                      className="text-xs py-1 px-2 h-auto"
+                      disabled={ensureStringArray(filters.electionDate).length === 0}
+                    >
+                      Turned Out
+                    </Button>
+                    <Button
+                      variant={filters.electionParticipation === 'satOut' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => updateFilter('electionParticipation', 'satOut')}
+                      className="text-xs py-1 px-2 h-auto"
+                      disabled={ensureStringArray(filters.electionDate).length === 0}
+                    >
+                      Sat Out
+                    </Button>
+                  </div>
+                  {ensureStringArray(filters.electionDate).length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Select election date(s) above to enable this filter
+                    </p>
+                  )}
+                </div>
+                
                 <Separator className="my-3" />
 
                 <MultiSelect

@@ -61,6 +61,7 @@ export interface FilterState {
   electionType: string[];
   electionYear: string[];
   electionDate: string[];
+  electionParticipation: 'turnedOut' | 'satOut';
   ballotStyle: string[];
   eventParty: string[];
   voterEventMethod: string;
