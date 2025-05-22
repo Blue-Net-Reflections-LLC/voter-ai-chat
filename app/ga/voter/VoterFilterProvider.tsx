@@ -141,6 +141,16 @@ export function buildQueryParams(
   // Use the mapping for all filter keys
   Object.entries(FILTER_TO_URL_PARAM_MAP).forEach(([filterKey, urlKey]) => {
     const value = (filters as any)[filterKey];
+
+    // Special handling for electionParticipation - only include if electionDate has values
+    if (filterKey === 'electionParticipation') {
+      const electionDates = (filters as any)['electionDate'];
+      if (Array.isArray(electionDates) && electionDates.length > 0 && typeof value === 'string' && value) {
+        params.set(urlKey, value);
+      }
+      return;
+    }
+
     if (Array.isArray(value) && value.length > 0) {
       value.forEach((v: string) => params.append(urlKey, v));
     } else if (typeof value === 'string' && value) {
