@@ -90,8 +90,8 @@ export async function generateTurnoutAnalysisData(
 
     if (geography.areaType === 'County') {
         if (geography.areaValue !== 'ALL') {
-            // Specific County: Use case-insensitive county_name
-            whereClause += ` AND UPPER(vrl.county_name) = UPPER('${geography.areaValue.replace(/'/g, "''")}')`; // Sanitize apostrophes
+            // Specific County: Use county_code for filtering
+            whereClause += ` AND vrl.county_code = '${geography.areaValue.replace(/'/g, "''")}'`; // Changed from county_name
 
             if (geography.subAreaType && geography.subAreaValue && geography.subAreaValue !== 'ALL') {
                 let subAreaCol = '';
