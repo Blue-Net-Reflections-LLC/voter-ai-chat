@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { FilterX, X, Info } from "lucide-react";
 import { Button } from '@/components/ui/button';
@@ -25,6 +23,18 @@ import { DemographicsFilterControls } from './filters/DemographicsFilterControls
 import { ElectionsFilterControls } from './filters/ElectionsFilterControls';
 import { CensusDataFilterControls } from './filters/CensusDataFilterControls';
 import { getPrecinctLabel } from './PrecinctFilters';
+import {
+  ensureStringArray,
+  formatDateLabel,
+  getParticipationScoreFilterCount,
+  getCountiesFilterCount,
+  getGeographicFilterCount,
+  getDistrictsFilterCount,
+  getVoterInfoFilterCount,
+  getDemographicsFilterCount,
+  getVotingHistoryFilterCount,
+  getCensusFilterCount
+} from './filters/utils';
 import {
   INCOME_LEVEL_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
@@ -130,14 +140,6 @@ export function FilterPanel() {
     setSelectedCountiesForPrecincts(selectedCounties);
   };
 
-  // Helper function to ensure filter values are always string arrays
-  const ensureStringArray = (value: string | boolean | string[] | undefined): string[] => {
-    if (!value) return [];
-    if (Array.isArray(value)) return value;
-    if (typeof value === 'string') return [value];
-    return [];
-  };
-
   // Add address filter handler (from ResidenceAddressFilter component)
   const addAddressFilter = (filter?: Partial<ResidenceAddressFilterState>) => {
     if (!filter) return;
@@ -165,100 +167,15 @@ export function FilterPanel() {
     setResidenceAddressFilters([]);
   };
 
-  // Helper function to format YYYY-MM-DD to Month D, YYYY
-  const formatDateLabel = (dateString: string): string => {
-    try {
-      const [year, month, day] = dateString.split('-');
-      const date = new Date(Number(year), Number(month) - 1, Number(day));
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch (e) {
-      return dateString; // Fallback to original string on error
-    }
-  };
-
-  // Calculate filter counts for each section
-  const getParticipationScoreFilterCount = () => {
-    let count = 0;
-    if (ensureStringArray(filters.scoreRanges).length > 0) count++;
-    if (filters.notVotedSinceYear) count++;
-    if (filters.neverVoted) count++;
-    return count;
-  };
-
-  const getCountiesFilterCount = () => {
-    let count = 0;
-    if (Array.isArray(filters.county) && filters.county.length > 0) count++;
-    if (Array.isArray(filters.countyPrecincts) && filters.countyPrecincts.length > 0) count++;
-    if (Array.isArray(filters.municipalPrecincts) && filters.municipalPrecincts.length > 0) count++;
-    return count;
-  };
-
-  const getGeographicFilterCount = () => {
-    let count = 0;
-    if (residenceAddressFilters.length > 0) count++;
-    return count;
-  };
-
-  const getDistrictsFilterCount = () => {
-    let count = 0;
-    if (Array.isArray(filters.congressionalDistricts) && filters.congressionalDistricts.length > 0) count++;
-    if (Array.isArray(filters.stateSenateDistricts) && filters.stateSenateDistricts.length > 0) count++;
-    if (Array.isArray(filters.stateHouseDistricts) && filters.stateHouseDistricts.length > 0) count++;
-    if (Array.isArray(filters.redistrictingType) && filters.redistrictingType.length > 0) count++;
-    return count;
-  };
-
-  const getVoterInfoFilterCount = () => {
-    let count = 0;
-    if (filters.firstName) count++;
-    if (filters.lastName) count++;
-    if (Array.isArray(filters.status) && filters.status.length > 0) count++;
-    if (Array.isArray(filters.statusReason) && filters.statusReason.length > 0) count++;
-    if (Array.isArray(filters.party) && filters.party.length > 0) count++;
-    return count;
-  };
-
-  const getDemographicsFilterCount = () => {
-    let count = 0;
-    if (Array.isArray(filters.age) && filters.age.length > 0) count++;
-    if (Array.isArray(filters.gender) && filters.gender.length > 0) count++;
-    if (Array.isArray(filters.race) && filters.race.length > 0) count++;
-    return count;
-  };
-
-  const getVotingHistoryFilterCount = () => {
-    let count = 0;
-    if (ensureStringArray(filters.electionType).length > 0) count++;
-    if (ensureStringArray(filters.electionYear).length > 0) count++;
-    if (ensureStringArray(filters.electionDate).length > 0) count++;
-    if (filters.electionParticipation === 'satOut') count++;
-    if (ensureStringArray(filters.ballotStyle).length > 0) count++;
-    if (ensureStringArray(filters.eventParty).length > 0) count++;
-    if (filters.voterEventMethod) count++;
-    return count;
-  };
-
-  const getCensusFilterCount = () => {
-    let count = 0;
-    if (ensureStringArray(filters.income).length > 0) count++;
-    if (ensureStringArray(filters.education).length > 0) count++;
-    if (ensureStringArray(filters.unemployment).length > 0) count++;
-    return count;
-  };
-
   // Get counts for each section
-  const participationScoreFilterCount = getParticipationScoreFilterCount();
-  const countiesFilterCount = getCountiesFilterCount();
-  const geographicFilterCount = getGeographicFilterCount();
-  const districtsFilterCount = getDistrictsFilterCount();
-  const voterInfoFilterCount = getVoterInfoFilterCount();
-  const demographicsFilterCount = getDemographicsFilterCount();
-  const votingHistoryFilterCount = getVotingHistoryFilterCount();
-  const censusFilterCount = getCensusFilterCount();
+  const participationScoreFilterCount = getParticipationScoreFilterCount(filters);
+  const countiesFilterCount = getCountiesFilterCount(filters);
+  const geographicFilterCount = getGeographicFilterCount(residenceAddressFilters);
+  const districtsFilterCount = getDistrictsFilterCount(filters);
+  const voterInfoFilterCount = getVoterInfoFilterCount(filters);
+  const demographicsFilterCount = getDemographicsFilterCount(filters);
+  const votingHistoryFilterCount = getVotingHistoryFilterCount(filters);
+  const censusFilterCount = getCensusFilterCount(filters);
 
   const activeFiltersHeaderRef = useRef<HTMLDivElement>(null);
   const scrollableContainerRef = useRef<HTMLDivElement>(null);

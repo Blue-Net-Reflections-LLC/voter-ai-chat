@@ -1,6 +1,6 @@
 import { FilterState, ResidenceAddressFilterState } from '../../types';
 
-export type { ResidenceAddressFilterState };
+export type { ResidenceAddressFilterState, FilterState };
 
 // Define section keys for consistent usage
 export type FilterSectionKey = 'participationScore' | 'counties' | 'geographic' | 'voterInfo' | 'demographics' | 'votingHistory' | 'census' | 'districts';

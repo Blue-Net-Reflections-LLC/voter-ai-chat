@@ -1,3 +1,5 @@
+import { FilterState, ResidenceAddressFilterState } from './types'; // Ensure types are imported
+
 export const ensureStringArray = (value: string | boolean | string[] | undefined): string[] => {
   if (!value) return [];
   if (Array.isArray(value)) return value as string[];
@@ -17,4 +19,75 @@ export const formatDateLabel = (dateString: string): string => {
   } catch (e) {
     return dateString; // Fallback to original string on error
   }
+};
+
+// Calculate filter counts for each section
+export const getParticipationScoreFilterCount = (filters: FilterState) => {
+  let count = 0;
+  if (ensureStringArray(filters.scoreRanges).length > 0) count++;
+  if (filters.notVotedSinceYear) count++;
+  if (filters.neverVoted) count++;
+  return count;
+};
+
+export const getCountiesFilterCount = (filters: FilterState) => {
+  let count = 0;
+  if (Array.isArray(filters.county) && filters.county.length > 0) count++;
+  if (Array.isArray(filters.countyPrecincts) && filters.countyPrecincts.length > 0) count++;
+  if (Array.isArray(filters.municipalPrecincts) && filters.municipalPrecincts.length > 0) count++;
+  return count;
+};
+
+export const getGeographicFilterCount = (residenceAddressFilters: ResidenceAddressFilterState[]) => {
+  let count = 0;
+  if (residenceAddressFilters.length > 0) count++;
+  return count;
+};
+
+export const getDistrictsFilterCount = (filters: FilterState) => {
+  let count = 0;
+  if (Array.isArray(filters.congressionalDistricts) && filters.congressionalDistricts.length > 0) count++;
+  if (Array.isArray(filters.stateSenateDistricts) && filters.stateSenateDistricts.length > 0) count++;
+  if (Array.isArray(filters.stateHouseDistricts) && filters.stateHouseDistricts.length > 0) count++;
+  // Ensure 'redistrictingAffectedTypes' is used here if that's the correct filter key
+  if (Array.isArray(filters.redistrictingAffectedTypes) && filters.redistrictingAffectedTypes.length > 0) count++;
+  return count;
+};
+
+export const getVoterInfoFilterCount = (filters: FilterState) => {
+  let count = 0;
+  if (filters.firstName) count++;
+  if (filters.lastName) count++;
+  if (Array.isArray(filters.status) && filters.status.length > 0) count++;
+  if (Array.isArray(filters.statusReason) && filters.statusReason.length > 0) count++;
+  if (Array.isArray(filters.party) && filters.party.length > 0) count++;
+  return count;
+};
+
+export const getDemographicsFilterCount = (filters: FilterState) => {
+  let count = 0;
+  if (Array.isArray(filters.age) && filters.age.length > 0) count++;
+  if (Array.isArray(filters.gender) && filters.gender.length > 0) count++;
+  if (Array.isArray(filters.race) && filters.race.length > 0) count++;
+  return count;
+};
+
+export const getVotingHistoryFilterCount = (filters: FilterState) => {
+  let count = 0;
+  if (ensureStringArray(filters.electionType).length > 0) count++;
+  if (ensureStringArray(filters.electionYear).length > 0) count++;
+  if (ensureStringArray(filters.electionDate).length > 0) count++;
+  if (filters.electionParticipation === 'satOut') count++;
+  if (ensureStringArray(filters.ballotStyle).length > 0) count++;
+  if (ensureStringArray(filters.eventParty).length > 0) count++;
+  if (filters.voterEventMethod) count++;
+  return count;
+};
+
+export const getCensusFilterCount = (filters: FilterState) => {
+  let count = 0;
+  if (ensureStringArray(filters.income).length > 0) count++;
+  if (ensureStringArray(filters.education).length > 0) count++;
+  if (ensureStringArray(filters.unemployment).length > 0) count++;
+  return count;
 }; 
