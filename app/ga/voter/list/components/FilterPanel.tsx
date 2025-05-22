@@ -102,6 +102,7 @@ export function FilterPanel() {
   const {
     isLoading,
     error,
+    counties,
     congressionalDistricts,
     stateSenateDistricts,
     stateHouseDistricts,
@@ -401,13 +402,17 @@ export function FilterPanel() {
 
     // Geographic Filters
     ensureStringArray(filters.county).forEach((value) => {
+      // Find the county name from the options
+      const countyOption = counties.find((c: { value: string; label: string }) => c.value === value);
+      const countyName = countyOption ? countyOption.label.split(' (')[0] : value;
       activeBadges.push({
         id: `county-${value}`,
-        label: `County: ${value}`,
+        label: `County: ${countyName} (${value})`,
         onRemove: () => updateFilter('county', ensureStringArray(filters.county).filter(v => v !== value)),
         sectionKey: 'counties'
       });
     });
+    
     ensureStringArray(filters.congressionalDistricts).forEach((value) => {
       activeBadges.push({
         id: `cd-${value}`,
