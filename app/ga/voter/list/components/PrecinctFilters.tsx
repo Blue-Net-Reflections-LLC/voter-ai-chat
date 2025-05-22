@@ -137,31 +137,38 @@ export function PrecinctFilters({ selectedCounties = [] }: PrecinctFiltersProps)
         return;
       }
       
-      // Only supporting a single county for now - use the first selected county
-      const countyCode = selectedCounties[0];
-      
-      // Check if we already have this county's data in the global cache
-      if (globalPrecinctCache[countyCode]) {
-        setCountyPrecinctOptions(globalPrecinctCache[countyCode].county);
-        setMunicipalPrecinctOptions(globalPrecinctCache[countyCode].municipal);
-        return;
-      }
-      
-      // Fetch from API
       setIsLoading(true);
       setError(null);
       
       try {
-        const data = await fetchPrecinctData(countyCode);
+        // Fetch precincts for all selected counties
+        const allCountyPrecincts: PrecinctOption[] = [];
+        const allMunicipalPrecincts: PrecinctOption[] = [];
         
-        // Update global cache
-        globalPrecinctCache[countyCode] = data;
+        // Process each selected county
+        for (const countyCode of selectedCounties) {
+          // Check if we already have this county's data in the global cache
+          if (globalPrecinctCache[countyCode]) {
+            allCountyPrecincts.push(...globalPrecinctCache[countyCode].county);
+            allMunicipalPrecincts.push(...globalPrecinctCache[countyCode].municipal);
+          } else {
+            // Fetch from API if not in cache
+            const data = await fetchPrecinctData(countyCode);
+            
+            // Update global cache
+            globalPrecinctCache[countyCode] = data;
+            
+            // Add to our combined arrays
+            allCountyPrecincts.push(...data.county);
+            allMunicipalPrecincts.push(...data.municipal);
+          }
+        }
         
-        // Update component state
-        setCountyPrecinctOptions(data.county);
-        setMunicipalPrecinctOptions(data.municipal);
+        // Update component state with combined precincts from all counties
+        setCountyPrecinctOptions(allCountyPrecincts);
+        setMunicipalPrecinctOptions(allMunicipalPrecincts);
       } catch (err) {
-        console.error(`Error fetching precincts for county ${countyCode}:`, err);
+        console.error(`Error fetching precincts:`, err);
         setError(err instanceof Error ? err.message : 'Error loading precincts');
       } finally {
         setIsLoading(false);
