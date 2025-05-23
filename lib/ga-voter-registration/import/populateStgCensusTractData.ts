@@ -33,7 +33,7 @@ interface ProcessedTractData {
     unemployment_rate: number | null;
     employment_rate: number | null;
     education_total_pop_25_plus: number | null;
-    // New population and race fields
+    // Total population and race fields from 2020 Decennial Census
     total_population: number | null;
     pop_white_alone: number | null;
     pop_black_alone: number | null;
@@ -42,6 +42,7 @@ interface ProcessedTractData {
     pop_pacific_islander_alone: number | null;
     pop_other_race_alone: number | null;
     decennial_data_year: string;
+    // REMOVED: Flawed calculated 18+ fields - use CVAP data instead
 }
 
 // --- Census API Fetching Logic (adapted from getCensusData.ts) ---
@@ -66,7 +67,7 @@ async function fetchCensusApi(censusTractId: string, tableId: string): Promise<a
     }
 }
 
-// --- New function to fetch 2020 Decennial Census P1 data ---
+// --- Function to fetch 2020 Decennial Census P1 data ---
 async function fetchDecennialCensusApi(censusTractId: string): Promise<any> {
     try {
         const formattedTractId = `1400000US${censusTractId}`;
@@ -85,12 +86,13 @@ async function fetchDecennialCensusApi(censusTractId: string): Promise<any> {
     }
 }
 
-// --- Data Processing Logic (adapted from getCensusData.ts) ---
+// --- Data Processing Logic (updated to remove flawed 18+ calculations) ---
 function processRawCensusData(
     censusTractId: string,
     educationDataRaw: any,
     incomeDataRaw: any,
     employmentDataRaw: any,
+    // 2020 Decennial Census total population by race data
     populationDataRaw: any
 ): ProcessedTractData | null {
     try {
@@ -135,7 +137,7 @@ function processRawCensusData(
         const unemployment_rate = Number(empMap['S2301_C04_001E']) || null; // Unemployment rate (percent of civilian labor force)
         const employment_rate = unemployment_rate !== null ? 100 - unemployment_rate : null;
 
-        // Population and Race data (2020 Decennial P1)
+        // Total Population and Race data (2020 Decennial P1)
         const popHeaders = populationDataRaw[0];
         const popValues = populationDataRaw[1] || [];
         const popMap = popHeaders.reduce((acc: Record<string, any>, header: string, index: number) => {
@@ -161,7 +163,7 @@ function processRawCensusData(
             unemployment_rate,
             employment_rate,
             education_total_pop_25_plus: totalPopulationEdu,
-            // New population and race fields
+            // Total population and race fields from 2020 Decennial Census
             total_population,
             pop_white_alone,
             pop_black_alone,
@@ -170,6 +172,7 @@ function processRawCensusData(
             pop_pacific_islander_alone,
             pop_other_race_alone,
             decennial_data_year: "2020 Decennial"
+            // REMOVED: All 18+ fields - these will be populated by CVAP data
         };
     } catch (error) {
         console.error(`Error processing raw census data for tract ${censusTractId}:`, error);
@@ -178,7 +181,7 @@ function processRawCensusData(
 }
 
 
-// --- Database Upsert Logic for a Single Record ---
+// --- Database Upsert Logic for a Single Record (updated for new schema) ---
 async function upsertSingleTractData(tractData: ProcessedTractData): Promise<void> {
     try {
         // Pre-process the single row to ensure correct types
@@ -204,7 +207,7 @@ async function upsertSingleTractData(tractData: ProcessedTractData): Promise<voi
             unemployment_rate: toFixedNumberOrNull(tractData.unemployment_rate, 2),
             employment_rate: toFixedNumberOrNull(tractData.employment_rate, 2),
             education_total_pop_25_plus: toNumberOrNull(tractData.education_total_pop_25_plus),
-            // New population and race fields
+            // Total population and race fields from 2020 Decennial Census
             total_population: toNumberOrNull(tractData.total_population),
             pop_white_alone: toNumberOrNull(tractData.pop_white_alone),
             pop_black_alone: toNumberOrNull(tractData.pop_black_alone),
@@ -215,7 +218,7 @@ async function upsertSingleTractData(tractData: ProcessedTractData): Promise<voi
             decennial_data_year: String(tractData.decennial_data_year || '')
         };
 
-        // Using sql template for a single row insert/update
+        // Using sql template for a single row insert/update (removed unreliable 18+ fields)
         await sql`
             INSERT INTO ${sql(STAGING_TABLE_NAME)} (
                 tract_id, census_data_year, median_household_income,
@@ -270,9 +273,10 @@ async function upsertSingleTractData(tractData: ProcessedTractData): Promise<voi
 }
 
 
-// --- Main Script Logic ---
+// --- Main Script Logic (simplified - no more flawed 18+ calculations) ---
 async function main() {
-    console.log('Starting script to populate STG_PROCESSED_CENSUS_TRACT_DATA with population and race data (all counties)...');
+    console.log('Starting script to populate STG_PROCESSED_CENSUS_TRACT_DATA with reliable census data (all counties)...');
+    console.log('NOTE: This script now focuses on reliable data only. Use populateCvapData.ts for 18+ population data.');
 
     let uniqueTracts: { census_tract: string }[];
     try {
@@ -295,8 +299,6 @@ async function main() {
         return; // Exit if we can't get tracts
     }
 
-    // Remove batching variables
-    // let currentBatch: ProcessedTractData[] = []; 
     let processedCount = 0;
     let errorCount = 0;
 
@@ -310,16 +312,16 @@ async function main() {
 
         console.log(`[${index + 1}/${uniqueTracts.length}] Processing tract: ${censusTractId}`);
         try {
-            // Fetch ACS data (existing)
+            // Fetch reliable ACS data
             const educationDataRaw = await fetchCensusApi(censusTractId, 'B15003');
             const incomeDataRaw = await fetchCensusApi(censusTractId, 'B19013');
             const employmentDataRaw = await fetchCensusApi(censusTractId, 'S2301');
             
-            // Fetch 2020 Decennial Census population/race data (new)
+            // Fetch 2020 Decennial Census total population/race data
             const populationDataRaw = await fetchDecennialCensusApi(censusTractId);
 
             if (educationDataRaw && incomeDataRaw && employmentDataRaw && populationDataRaw) {
-                // Process data (updated to include population data)
+                // Process data (simplified - no more flawed 18+ calculations)
                 const processedData = processRawCensusData(
                     censusTractId,
                     educationDataRaw,
@@ -329,7 +331,7 @@ async function main() {
                 );
 
                 if (processedData) {
-                    // Insert/Update immediately instead of batching
+                    // Insert/Update immediately
                     await upsertSingleTractData(processedData);
                     processedCount++;
                 } else {
@@ -341,25 +343,20 @@ async function main() {
                 errorCount++;
             }
 
-            // Remove batch check
-            // if (currentBatch.length >= BATCH_SIZE) { ... }
-
         } catch (error) {
             // Catch errors from fetch, process, or upsert
             console.error(`Failed to process or upsert tract ${censusTractId}:`, error);
             errorCount++;
-            // Optional: Add a delay or break if API errors are frequent
         }
          // Optional: Add a small delay to be kind to the Census API if processing many tracts
          // await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
     }
 
-    // Remove final batch processing
-    // if (currentBatch.length > 0) { ... }
-
     console.log('--- Script Finished ---');
     console.log(`Successfully processed and upserted data for ${processedCount} tracts.`);
     console.log(`Encountered errors/skips for ${errorCount} tracts.`);
+    console.log('');
+    console.log('NEXT STEP: Run populateCvapData.ts to add trustworthy 18+ citizen population data.');
 }
 
 // --- Script Execution ---
