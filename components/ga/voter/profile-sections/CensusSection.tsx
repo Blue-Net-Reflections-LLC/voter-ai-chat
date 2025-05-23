@@ -48,7 +48,7 @@ export function CensusSection({ data, loading, error }: CensusSectionProps) {
       <CardHeader>
         <CardTitle>Census Data</CardTitle>
         <CardDescription>
-          Demographic information for this voter&apos;s Census tract
+          Population, citizenship, and demographic information for this voter&apos;s Census tract
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -68,12 +68,100 @@ export function CensusSection({ data, loading, error }: CensusSectionProps) {
           <div className="text-sm text-red-500">{message || "Error retrieving census data."}</div>
         ) : censusData ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            {/* Left column - Education */}
+            {/* Left column - Education & Population */}
             <div>
               <h3 className="font-medium mb-2">Census Tract: {censusData.tract || 'N/A'}</h3>
               <p className="text-xs mb-3 text-muted-foreground">
                 Based on {censusData.source || 'Census Data'} ({censusData.year || 'Current'})
               </p>
+
+              {/* Population Data Section */}
+              {censusData.population && (
+                <div className="mb-4">
+                  <h4 className="font-medium mb-2">Total Population</h4>
+                  <div className="bg-primary/10 p-3 rounded-md mb-2">
+                    <p className="font-bold text-lg">
+                      {censusData.population.total.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Total residents ({censusData.population.source})
+                    </p>
+                  </div>
+                  
+                  {/* Population by Race */}
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span>White alone</span>
+                      <span>{censusData.population.byRace.white.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Black alone</span>
+                      <span>{censusData.population.byRace.black.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Asian alone</span>
+                      <span>{censusData.population.byRace.asian.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Other races</span>
+                      <span>{(censusData.population.byRace.americanIndian + censusData.population.byRace.pacificIslander + censusData.population.byRace.other).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* CVAP Data Section */}
+              {censusData.cvap && (
+                <div className="mb-4">
+                  <h4 className="font-medium mb-2 flex items-center">
+                    Citizen Voting Age Population (CVAP)
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="ml-1 cursor-help">
+                            <HelpCircle size={14} className="text-muted-foreground" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>U.S. citizens age 18 and over who are eligible to vote. This is the official Census Bureau data used for voting rights analysis.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </h4>
+                  <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-md mb-2">
+                    <p className="font-bold text-lg text-blue-900 dark:text-blue-100">
+                      {censusData.cvap.total.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      Eligible voters ({censusData.cvap.year})
+                    </p>
+                  </div>
+                  
+                  {/* CVAP by Race */}
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span>White alone</span>
+                      <span>{censusData.cvap.byRace.white.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Black alone</span>
+                      <span>{censusData.cvap.byRace.black.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Asian alone</span>
+                      <span>{censusData.cvap.byRace.asian.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Hispanic/Latino</span>
+                      <span>{censusData.cvap.byRace.hispanic.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Other races</span>
+                      <span>{(censusData.cvap.byRace.americanIndian + censusData.cvap.byRace.pacificIslander + censusData.cvap.byRace.other + censusData.cvap.byRace.twoOrMore).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <h4 className="font-medium mt-3 mb-2">Education Attainment</h4>
               <p className="text-xs text-muted-foreground mb-2">Population 25 years and over: {
@@ -240,7 +328,8 @@ export function CensusSection({ data, loading, error }: CensusSectionProps) {
                   census tract, not just registered voters.
                 </p>
                 <p className="mt-2">
-                  Source: U.S. Census Bureau, American Community Survey
+                  Sources: U.S. Census Bureau - American Community Survey (ACS), 
+                  2020 Decennial Census, and Citizen Voting Age Population (CVAP) Special Tabulations
                 </p>
               </div>
             </div>
