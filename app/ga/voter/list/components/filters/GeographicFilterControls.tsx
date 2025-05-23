@@ -9,6 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Navigation, X } from "lucide-react";
 
 const RADIUS_OPTIONS = [
+  { value: '0.028409', label: '150 feet' },
+  { value: '0.056818', label: '300 feet' },
+  { value: '0.113636', label: '600 feet' },
+  { value: '0.25', label: '1/4 mile' },
   { value: '0.5', label: '1/2 mile' },
   { value: '1', label: '1 mile' },
   { value: '1.5', label: '1 1/2 miles' },
@@ -96,7 +100,7 @@ export function GeographicFilterControls({
   onClearRadiusFilter
 }: GeographicFilterControlsProps) {
   const [radiusAddress, setRadiusAddress] = useState('');
-  const [selectedRadius, setSelectedRadius] = useState('1'); // Default to 1 mile
+  const [selectedRadius, setSelectedRadius] = useState('0.5'); // Default to 1/2 mile
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -247,7 +251,7 @@ export function GeographicFilterControls({
 
   const handleClearRadius = () => {
     setRadiusAddress('');
-    setSelectedRadius('1'); // Reset to default
+    setSelectedRadius('0.5'); // Reset to default
     setSuggestions([]);
     setShowSuggestions(false);
     onClearRadiusFilter();
