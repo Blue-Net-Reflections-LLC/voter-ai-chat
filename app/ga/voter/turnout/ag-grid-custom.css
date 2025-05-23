@@ -8,7 +8,7 @@
   --ag-header-font-family: var(--font-sans);
   
   /* Adjust row height */
-  --ag-row-height: 32px;
+  --ag-row-height: 100px; /* Increase default row height */
   --ag-header-height: 36px;
   
   /* Make borders more subtle */
@@ -78,6 +78,56 @@
 
 /* Adjust cell padding */
 .ag-theme-quartz .ag-cell {
-  padding-left: 8px;
-  padding-right: 8px;
+  padding: 8px;
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+/* Specific styles for geo-unit-cell */
+.ag-theme-quartz .geo-unit-cell {
+  white-space: pre-line !important;
+  line-height: 1.5;
+  padding: 12px 8px;
+  word-break: break-word;
+}
+
+/* Make the first line bold */
+.ag-theme-quartz .geo-unit-cell:first-line {
+  font-weight: bold;
+}
+
+/* Adjust row height for all rows */
+.ag-theme-quartz .ag-row {
+  height: 100px !important;
+}
+
+/* Clean up and remove conflicting styles */
+
+/* Custom AG Grid styles */
+
+/* Add styles for precinct and facility information */
+.precinct-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.precinct-code {
+  font-weight: 600;
+}
+
+.facility-info {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Make sure cell content can wrap and expand */
+.ag-cell {
+  white-space: normal !important;
+  line-height: 1.4;
+}
+
+/* Override default AG Grid cell padding */
+.ag-cell-wrapper {
+  padding: 6px 0;
 } 

@@ -563,6 +563,59 @@ const MapboxMapView: React.FC<MapboxMapViewProps> = () => {
     debouncedFetchMapStats
   ]);
 
+  // --- Radius Filter Initialization Effect ---
+  useEffect(() => {
+    // Only run after filters are hydrated and map is ready
+    if (!filtersHydrated || !mapReady || !mapRef.current) {
+      return;
+    }
+
+    // Check if there's a radiusFilter and we haven't already processed it
+    if (filters.radiusFilter && isInitialLoadPendingRef.current) {
+      const parts = filters.radiusFilter.split(',');
+      if (parts.length === 3) {
+        const lat = parseFloat(parts[0]);
+        const lng = parseFloat(parts[1]);
+        const radiusMiles = parseFloat(parts[2]);
+        
+        // Validate coordinates
+        if (!isNaN(lat) && !isNaN(lng) && !isNaN(radiusMiles) &&
+            lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 && radiusMiles > 0) {
+          
+          // Determine zoom level based on radius distance
+          let zoom = 14; // Default zoom
+          if (radiusMiles <= 0.1) zoom = 17;      // Very close (150-600ft)
+          else if (radiusMiles <= 0.25) zoom = 15; // 1/4 mile
+          else if (radiusMiles <= 0.5) zoom = 14;  // 1/2 mile (reference point)
+          else if (radiusMiles <= 1) zoom = 13;    // 1 mile
+          else if (radiusMiles <= 2) zoom = 12;    // 1.5-2 miles
+          else if (radiusMiles <= 5) zoom = 11;    // 5 miles
+          else zoom = 10;                          // 10+ miles
+          
+          // Only auto-center if zoom level is high enough to show individual voter points
+          if (zoom >= ZOOM_ZIP_LEVEL) {
+            console.log(`Centering map on radius filter: lat=${lat}, lng=${lng}, zoom=${zoom} (${radiusMiles}mi)`);
+            
+            // Set the view state to center on the radius filter
+            setViewState({
+              ...viewState,
+              longitude: lng,
+              latitude: lat,
+              zoom: zoom
+            });
+            
+            // Mark that we've processed the initial load
+            isInitialLoadPendingRef.current = false;
+          } else {
+            console.log(`Skipping auto-center for radius filter: zoom=${zoom} is below ZOOM_ZIP_LEVEL=${ZOOM_ZIP_LEVEL} (${radiusMiles}mi)`);
+            // Still mark as processed to avoid repeated attempts
+            isInitialLoadPendingRef.current = false;
+          }
+        }
+      }
+    }
+  }, [filtersHydrated, mapReady, filters.radiusFilter, setViewState, viewState]);
+
   // --- Layer Styling (Keep address point styling) --- //
   const voterAddressPointStyle: ReactMapGlCircleLayerStyle = {
     paint: {

@@ -18,7 +18,7 @@ const LOOKUP_FIELDS = [
   { name: 'residence_zipcode', limit: 1000, category: 'address' },
   
   // District fields
-  { name: 'county_name', limit: 500, category: 'district' },
+  { name: 'county_code', limit: 500, category: 'district' },
   { name: 'congressional_district', limit: 50, category: 'district' },
   { name: 'state_senate_district', limit: 100, category: 'district' },
   { name: 'state_house_district', limit: 200, category: 'district' },
@@ -42,7 +42,7 @@ const CATEGORIES: Record<string, { displayName: string; fields: string[] }> = {
   district: {
     displayName: "District Information",
     fields: [
-      'county_name',
+      'county_code',
       'congressional_district',
       'state_senate_district',
       'state_house_district',
@@ -90,6 +90,7 @@ const CATEGORIES: Record<string, { displayName: string; fields: string[] }> = {
 interface PrecinctValue {
   code: string;
   description: string | null;
+  formatted_label: string;
   meta?: Record<string, any> | null;
 }
 
@@ -98,6 +99,8 @@ async function fetchCountyPrecincts(countyCode?: string | null): Promise<Precinc
     SELECT DISTINCT
       v.county_precinct AS code,
       rd.lookup_value AS description,
+      v.county_name,
+      v.county_code,
       rd.lookup_meta AS meta
     FROM ga_voter_registration_list v
     LEFT JOIN reference_data rd ON rd.lookup_key = v.county_precinct
@@ -109,13 +112,14 @@ async function fetchCountyPrecincts(countyCode?: string | null): Promise<Precinc
   if (countyCode) {
     query += ` AND v.county_code = '${countyCode}'`;
   }
-  query += ` ORDER BY description, code;`;
+  query += ` ORDER BY v.county_name, description, code;`;
 
   try {
     const result = await sql.unsafe(query);
     return result.map((row: any) => ({ 
         code: row.code, 
-        description: row.description || row.code, 
+        description: row.description || row.code,
+        formatted_label: `${row.county_name} (${row.county_code}): ${row.description || row.code} (${row.code})`,
         meta: row.meta || null
     }));
   } catch (error) {
@@ -128,7 +132,9 @@ async function fetchMunicipalPrecincts(countyCode?: string | null): Promise<Prec
   let query = `
     SELECT DISTINCT
       municipal_precinct AS code,
-      municipal_precinct_description AS description
+      municipal_precinct_description AS description,
+      county_name,
+      county_code
     FROM ga_voter_registration_list
     WHERE municipal_precinct IS NOT NULL AND TRIM(municipal_precinct) != ''
       AND municipal_precinct_description IS NOT NULL AND TRIM(municipal_precinct_description) != ''
@@ -136,19 +142,60 @@ async function fetchMunicipalPrecincts(countyCode?: string | null): Promise<Prec
   if (countyCode) {
     query += ` AND county_code = '${countyCode}'`;
   }
-  query += ` ORDER BY description, code;`;
+  query += ` ORDER BY county_name, description, code;`;
 
   try {
     const result = await sql.unsafe(query);
-    return result.map((row: any) => ({ code: row.code, description: row.description }));
+    return result.map((row: any) => ({ 
+      code: row.code, 
+      description: row.description,
+      formatted_label: `${row.county_name} (${row.county_code}): ${row.description} (${row.code})`
+    }));
   } catch (error) {
     console.error("Error fetching municipal precincts:", error);
     return [];
   }
 }
 
+// Add a function to fetch county name from county code
+async function fetchCountyName(countyCode: string): Promise<{ code: string, name: string }> {
+  if (!countyCode) {
+    return { code: '', name: '' };
+  }
+  
+  try {
+    const query = `
+      SELECT DISTINCT
+        county_code as code,
+        county_name as name
+      FROM ga_voter_registration_list
+      WHERE county_code = '${countyCode}'
+      LIMIT 1
+    `;
+    
+    const result = await sql.unsafe(query);
+    
+    if (result.length > 0) {
+      return { 
+        code: result[0].code,
+        name: result[0].name
+      };
+    }
+    
+    return { code: countyCode, name: countyCode };
+  } catch (error) {
+    console.error("Error fetching county name:", error);
+    return { code: countyCode, name: countyCode };
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
+    // Clear cache for testing
+    for (const key in lookupCache) {
+      delete lookupCache[key];
+    }
+    
     const url = new URL(req.url);
     console.log("[/api/ga/voter/list/lookup] Received request:", url.search);
     
@@ -201,8 +248,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(metadata);
     }
 
+    // --- Handle County Name Lookup ---
+    if (requestedCategory === 'countyName') {
+      if (!countyCodeParam) {
+        return NextResponse.json({ error: "County code is required for countyName lookup" }, { status: 400 });
+      }
+      
+      const countyData = await fetchCountyName(countyCodeParam);
+      lookupCache[cacheKey] = countyData;
+      return NextResponse.json(countyData);
+    }
+
     // --- Handle Regular Field/Category Lookups (Existing Logic) ---
-    const results: Record<string, string[]> = {};
+    const results: Record<string, any[]> = {};
     let fieldsToFetch = [...LOOKUP_FIELDS];
     
     if (requestedField) {
@@ -219,6 +277,7 @@ export async function GET(req: NextRequest) {
     const queries = fieldsToFetch.map(async (fieldInfo) => {
       const sourceTable = 'GA_VOTER_REGISTRATION_LIST';
       let queryString: string;
+      
       if (fieldInfo.name === 'election_date') {
         // Extract distinct event dates from JSONB and order reverse chronologic
         queryString = `
@@ -226,6 +285,15 @@ export async function GET(req: NextRequest) {
           FROM ${sourceTable}
           WHERE voting_events IS NOT NULL
           ORDER BY election_date DESC
+          LIMIT ${fieldInfo.limit}
+        `;
+      } else if (fieldInfo.name === 'county_code') {
+        // Special handling for county_code to fetch both code and name
+        queryString = `
+          SELECT DISTINCT county_code, county_name
+          FROM ${sourceTable}
+          WHERE county_code IS NOT NULL AND TRIM(county_code) != ''
+          ORDER BY county_code
           LIMIT ${fieldInfo.limit}
         `;
       } else {
@@ -241,13 +309,21 @@ export async function GET(req: NextRequest) {
       try {
         const fieldResult = await sql.unsafe(queryString);
         
-        // Extract values and clean them
-        results[fieldInfo.name] = Array.from(new Set(
-          fieldResult
-            .map(row => row[fieldInfo.name])
-            .filter(Boolean)
-            .map(val => String(val).trim().toUpperCase())
-        ));
+        if (fieldInfo.name === 'county_code') {
+          // Format county data as objects with code and name
+          results[fieldInfo.name] = fieldResult.map(row => ({
+            code: String(row.county_code).trim().toUpperCase(),
+            name: String(row.county_name).trim().toUpperCase()
+          }));
+        } else {
+          // For other fields, keep the existing logic
+          results[fieldInfo.name] = Array.from(new Set(
+            fieldResult
+              .map(row => row[fieldInfo.name])
+              .filter(Boolean)
+              .map(val => String(val).trim().toUpperCase())
+          ));
+        }
       } catch (error) {
         console.error(`Error fetching field ${fieldInfo.name}:`, error);
         results[fieldInfo.name] = [];

@@ -169,10 +169,10 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
     
     if (activeTab === 'report') {
       setIsReportLoading(true);
-      setRawChartData(null); // Clear other tab's data
+      // Don't clear chart data: setRawChartData(null); 
     } else if (activeTab === 'chart') {
       setIsChartLoading(true);
-      setRawReportData(null); // Clear other tab's data
+      // Don't clear report data: setRawReportData(null);
     }
     setError(null);
 
@@ -293,7 +293,7 @@ const GeorgiaVoterTurnoutPage: React.FC = () => {
         setError(err.message || 'Failed to fetch data.');
         
         if (activeTab === 'report') {
-          setRawReportData(null);
+          setRawReportData(null); // Only clear the active tab's data
         } else if (activeTab === 'chart') {
           setRawChartData(null);
           setProcessedChartData(null);

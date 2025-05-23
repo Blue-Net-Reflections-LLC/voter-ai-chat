@@ -65,7 +65,9 @@ const initialFilterState: FilterState = {
   neverVoted: false,
   notVotedSinceYear: '',
   redistrictingAffectedTypes: [],
-  statusReason: []
+  statusReason: [],
+  // Radius search filter - stores "lat,lng,miles" as a single string
+  radiusFilter: undefined
 };
 
 const initialAddressFilterState: ResidenceAddressFilterState = {
@@ -125,8 +127,10 @@ export const FILTER_TO_URL_PARAM_MAP: Record<string, string> = {
   neverVoted: 'neverVoted',
   notVotedSinceYear: 'notVotedSinceYear',
   redistrictingAffectedTypes: 'redistrictingAffectedTypes',
-  statusReason: 'statusReason',
+    statusReason: 'statusReason',
   resident_address: 'resident_address',
+  // Radius search URL param - single combined value
+  radiusFilter: 'radiusFilter',
 };
 
 export const FILTER_URL_KEYS = Object.values(FILTER_TO_URL_PARAM_MAP);
@@ -141,6 +145,16 @@ export function buildQueryParams(
   // Use the mapping for all filter keys
   Object.entries(FILTER_TO_URL_PARAM_MAP).forEach(([filterKey, urlKey]) => {
     const value = (filters as any)[filterKey];
+
+    // Special handling for electionParticipation - only include if electionDate has values
+    if (filterKey === 'electionParticipation') {
+      const electionDates = (filters as any)['electionDate'];
+      if (Array.isArray(electionDates) && electionDates.length > 0 && typeof value === 'string' && value) {
+        params.set(urlKey, value);
+      }
+      return;
+    }
+
     if (Array.isArray(value) && value.length > 0) {
       value.forEach((v: string) => params.append(urlKey, v));
     } else if (typeof value === 'string' && value) {
@@ -214,7 +228,7 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
             newFilters[typedKey] = urlValue as unknown as typeof initialFilterState[typeof typedKey];
           } else if (typeof initialFilterState[typedKey] === 'boolean') {
             newFilters[typedKey] = (urlValue[0] === 'true') as unknown as typeof initialFilterState[typeof typedKey];
-          } else {
+                    } else {
             newFilters[typedKey] = urlValue[0] as unknown as typeof initialFilterState[typeof typedKey];
           }
         }
@@ -291,13 +305,17 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // Voter Events: Ballot Cast selection
     const hasVoterEventMethod = !!(filters.voterEventMethod && filters.voterEventMethod.trim().length > 0);
 
+    // Radius search filter
+    const hasRadiusFilter = !!(filters.radiusFilter && filters.radiusFilter.trim().length > 0);
+
     return (
       hasActiveArrayFilters ||
       hasActiveNameFilters ||
       hasNeverVoted ||
       hasNotVotedYear ||
       hasActiveAddressFilters ||
-      hasVoterEventMethod
+      hasVoterEventMethod ||
+      hasRadiusFilter
     );
   };
 

@@ -14,7 +14,7 @@ export type LookupField = {
   name: string;
   displayName: string;
   category: string;
-  values: string[];
+  values: any[]; // Changed from string[] to any[] to support objects
   count: number;
 };
 
@@ -23,11 +23,10 @@ export type LookupData = {
   timestamp: string;
 };
 
-// Cache keys
-const LOOKUP_CACHE_KEY = 'voter-lookup-data-cache';
-const LOOKUP_CACHE_TIMESTAMP_KEY = 'voter-lookup-data-timestamp';
-// Cache expiration time - 1 hour in milliseconds
-const CACHE_EXPIRATION = 60 * 60 * 1000;
+// Create a singleton instance to ensure the data is only fetched once across components
+let globalLookupData: LookupData | null = null;
+let isGlobalFetchInProgress = false;
+let fetchPromise: Promise<LookupData | null> | null = null;
 
 // Helper function to convert text to Title Case
 const toTitleCase = (text: string): string => {
@@ -45,11 +44,6 @@ const toOptions = (values: string[]): MultiSelectOption[] => {
     label: value
   }));
 };
-
-// Create a singleton instance to ensure the data is only fetched once across components
-let globalLookupData: LookupData | null = null;
-let isGlobalFetchInProgress = false;
-let fetchPromise: Promise<LookupData | null> | null = null;
 
 async function fetchLookupDataFromAPI(): Promise<LookupData | null> {
   try {
@@ -91,40 +85,6 @@ async function fetchLookupDataFromAPI(): Promise<LookupData | null> {
   }
 }
 
-// Helper to save data to localStorage
-function saveLookupDataToCache(data: LookupData): void {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    localStorage.setItem(LOOKUP_CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(LOOKUP_CACHE_TIMESTAMP_KEY, Date.now().toString());
-    console.log("Lookup data saved to localStorage cache");
-  } catch (error) {
-    console.error("Error saving lookup data to localStorage:", error);
-  }
-}
-
-// Helper to load data from localStorage
-function loadLookupDataFromCache(): LookupData | null {
-  if (typeof window === 'undefined') return null;
-  
-  try {
-    const timestamp = localStorage.getItem(LOOKUP_CACHE_TIMESTAMP_KEY);
-    // Check if cache is expired
-    if (timestamp && Date.now() - parseInt(timestamp) < CACHE_EXPIRATION) {
-      const cachedData = localStorage.getItem(LOOKUP_CACHE_KEY);
-      if (cachedData) {
-        console.log("Using cached lookup data from localStorage");
-        return JSON.parse(cachedData);
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error("Error loading lookup data from localStorage:", error);
-    return null;
-  }
-}
-
 export function useLookupData() {
   const [lookupData, setLookupData] = useState<LookupData | null>(globalLookupData);
   const [isLoading, setIsLoading] = useState<boolean>(!globalLookupData);
@@ -152,16 +112,7 @@ export function useLookupData() {
         return;
       }
       
-      // Try to load from localStorage first
-      const cachedData = loadLookupDataFromCache();
-      if (cachedData) {
-        globalLookupData = cachedData;
-        setLookupData(cachedData);
-        setIsLoading(false);
-        return;
-      }
-      
-      // If no cached data, fetch from API
+      // Fetch from API
       setIsLoading(true);
       isGlobalFetchInProgress = true;
       fetchPromise = fetchLookupDataFromAPI();
@@ -171,8 +122,6 @@ export function useLookupData() {
         if (data) {
           globalLookupData = data;
           setLookupData(data);
-          // Save to localStorage for future component mounts
-          saveLookupDataToCache(data);
         }
       } catch (err) {
         console.error('Error in lookup data initialization:', err);
@@ -188,19 +137,39 @@ export function useLookupData() {
   }, []);
 
   // Helper function to get values for a specific field
-  const getValuesForField = (fieldName: string): string[] => {
+  const getValuesForField = (fieldName: string): any[] => {
     if (!lookupData) return [];
     const field = lookupData.fields.find(f => f.name === fieldName);
-    return field?.values.map(toTitleCase) || [];
+    
+    if (!field) return [];
+    
+    // Check if values are objects (for county_code)
+    if (field.values.length > 0 && typeof field.values[0] === 'object') {
+      return field.values;
+    }
+    
+    // For string values, apply title case as before
+    return field.values.map(toTitleCase);
   };
 
   // Helper function to get options for a specific field
   const getOptionsForField = (fieldName: string): MultiSelectOption[] => {
-    return toOptions(getValuesForField(fieldName));
+    const values = getValuesForField(fieldName);
+    
+    // Handle county_code specially
+    if (fieldName === 'county_code' && values.length > 0 && typeof values[0] === 'object') {
+      return values.map(county => ({
+        value: county.code,
+        label: `${county.name} (${county.code})`
+      }));
+    }
+    
+    // For regular string values
+    return toOptions(values);
   };
 
   // Cached values for commonly used fields using the standard getOptionsForField
-  const counties = getOptionsForField('county_name');
+  const counties = getOptionsForField('county_code');
   const congressionalDistricts = getOptionsForField('congressional_district');
   const stateSenateDistricts = getOptionsForField('state_senate_district');
   const stateHouseDistricts = getOptionsForField('state_house_district');
