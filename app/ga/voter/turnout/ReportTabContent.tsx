@@ -231,15 +231,12 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
         });
         const headerPrefix = categoryDisplayParts.join(' & ');
 
-        // Use valueGetter instead of field for complex paths with special characters
         dynamicColDefs.push({ 
-          headerName: `${headerPrefix} - Reg.`, 
+          headerName: `${headerPrefix} - Registered`, 
           valueGetter: (params) => {
-            // For regular rows, access the nested property
             if (params.data?.breakdowns?.[key]) {
               return params.data.breakdowns[key].registered;
             }
-            // For pinned rows, access the flattened property
             return params.data?.[`breakdowns.${key}.registered` as keyof typeof params.data];
           },
           sortable: true, 
@@ -287,12 +284,229 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
           type: 'numericColumn', 
           flex: 1 
         });
+
+        // Add census race data columns immediately after race breakdown columns if Race dimension is detected
+        if (firstRowWithActualCensusData?.censusData && key.includes('Race:')) {
+          const raceCategory = key.split('Race:')[1].split('_')[0]; // Extract race category
+          
+          // Add corresponding census race population and percentage columns for both total and 18+ population
+          if (raceCategory === 'White') {
+            if (firstRowWithActualCensusData.censusData.totalCvapWhiteAlone !== undefined) {
+              dynamicColDefs.push({
+                headerName: `CVAP: White Citizens 18+`,
+                valueGetter: (params) => params.data?.censusData?.totalCvapWhiteAlone || (params.data as any)?.['censusData.totalCvapWhiteAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatNumber(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+              dynamicColDefs.push({
+                headerName: `CVAP: % White Citizens`,
+                valueGetter: (params) => params.data?.censusData?.pctCvapWhiteAlone || (params.data as any)?.['censusData.pctCvapWhiteAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatPercent(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+            }
+          } else if (raceCategory === 'Black') {
+            if (firstRowWithActualCensusData.censusData.totalPopBlackAlone !== undefined) {
+              dynamicColDefs.push({
+                headerName: `Census: Black Population`,
+                valueGetter: (params) => params.data?.censusData?.totalPopBlackAlone || (params.data as any)?.['censusData.totalPopBlackAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatNumber(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+              dynamicColDefs.push({
+                headerName: `Census: % Black`,
+                valueGetter: (params) => params.data?.censusData?.pctPopBlackAlone || (params.data as any)?.['censusData.pctPopBlackAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatPercent(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+            }
+            if (firstRowWithActualCensusData.censusData.totalCvapBlackAlone !== undefined) {
+              dynamicColDefs.push({
+                headerName: `CVAP: Black Citizens 18+`,
+                valueGetter: (params) => params.data?.censusData?.totalCvapBlackAlone || (params.data as any)?.['censusData.totalCvapBlackAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatNumber(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+              dynamicColDefs.push({
+                headerName: `CVAP: % Black Citizens`,
+                valueGetter: (params) => params.data?.censusData?.pctCvapBlackAlone || (params.data as any)?.['censusData.pctCvapBlackAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatPercent(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+            }
+          } else if (raceCategory === 'Asian') {
+            if (firstRowWithActualCensusData.censusData.totalPopAsianAlone !== undefined) {
+              dynamicColDefs.push({
+                headerName: `Census: Asian Population`,
+                valueGetter: (params) => params.data?.censusData?.totalPopAsianAlone || (params.data as any)?.['censusData.totalPopAsianAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatNumber(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+              dynamicColDefs.push({
+                headerName: `Census: % Asian`,
+                valueGetter: (params) => params.data?.censusData?.pctPopAsianAlone || (params.data as any)?.['censusData.pctPopAsianAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatPercent(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+            }
+            if (firstRowWithActualCensusData.censusData.totalCvapAsianAlone !== undefined) {
+              dynamicColDefs.push({
+                headerName: `CVAP: Asian Citizens 18+`,
+                valueGetter: (params) => params.data?.censusData?.totalCvapAsianAlone || (params.data as any)?.['censusData.totalCvapAsianAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatNumber(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+              dynamicColDefs.push({
+                headerName: `CVAP: % Asian Citizens`,
+                valueGetter: (params) => params.data?.censusData?.pctCvapAsianAlone || (params.data as any)?.['censusData.pctCvapAsianAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatPercent(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+            }
+          } else if (raceCategory === 'Hispanic' && firstRowWithActualCensusData.censusData.totalCvapHispanicOrLatino !== undefined) {
+            dynamicColDefs.push({
+              headerName: `CVAP: Hispanic Citizens 18+`,
+              valueGetter: (params) => params.data?.censusData?.totalCvapHispanicOrLatino || (params.data as any)?.['censusData.totalCvapHispanicOrLatino'],
+              sortable: true,
+              filter: false,
+              valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatNumber(params.value),
+              type: 'numericColumn',
+              flex: 1
+            });
+            dynamicColDefs.push({
+              headerName: `CVAP: % Hispanic Citizens`,
+              valueGetter: (params) => params.data?.censusData?.pctCvapHispanicOrLatino || (params.data as any)?.['censusData.pctCvapHispanicOrLatino'],
+              sortable: true,
+              filter: false,
+              valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatPercent(params.value),
+              type: 'numericColumn',
+              flex: 1
+            });
+          } else if (raceCategory === 'Other') {
+            if (firstRowWithActualCensusData.censusData.totalPopOtherRaceAlone !== undefined) {
+              dynamicColDefs.push({
+                headerName: `Census: Other Race Population`,
+                valueGetter: (params) => {
+                  // Sum American Indian, Pacific Islander, and Other Race alone categories
+                  const americanIndian = params.data?.censusData?.totalPopAmericanIndianAlone || (params.data as any)?.['censusData.totalPopAmericanIndianAlone'] || 0;
+                  const pacificIslander = params.data?.censusData?.totalPopPacificIslanderAlone || (params.data as any)?.['censusData.totalPopPacificIslanderAlone'] || 0;
+                  const otherRace = params.data?.censusData?.totalPopOtherRaceAlone || (params.data as any)?.['censusData.totalPopOtherRaceAlone'] || 0;
+                  const total = americanIndian + pacificIslander + otherRace;
+                  return total > 0 ? total : null;
+                },
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatNumber(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+              dynamicColDefs.push({
+                headerName: `Census: % Other Race`,
+                valueGetter: (params) => params.data?.censusData?.pctPopOtherRaceAlone || (params.data as any)?.['censusData.pctPopOtherRaceAlone'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatPercent(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+            }
+            if (firstRowWithActualCensusData.censusData.totalCvapOtherRacesCombined !== undefined) {
+              dynamicColDefs.push({
+                headerName: `CVAP: Other Race Citizens 18+`,
+                valueGetter: (params) => {
+                  // Sum CVAP American Indian, Pacific Islander, Other Race, and Two or More Races
+                  const americanIndian = params.data?.censusData?.totalCvapAmericanIndianAlone || (params.data as any)?.['censusData.totalCvapAmericanIndianAlone'] || 0;
+                  const pacificIslander = params.data?.censusData?.totalCvapPacificIslanderAlone || (params.data as any)?.['censusData.totalCvapPacificIslanderAlone'] || 0;
+                  const otherRace = params.data?.censusData?.totalCvapOtherRaceAlone || (params.data as any)?.['censusData.totalCvapOtherRaceAlone'] || 0;
+                  const twoOrMore = params.data?.censusData?.totalCvapTwoOrMoreRaces || (params.data as any)?.['censusData.totalCvapTwoOrMoreRaces'] || 0;
+                  const total = americanIndian + pacificIslander + otherRace + twoOrMore;
+                  return total > 0 ? total : null;
+                },
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatNumber(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+              dynamicColDefs.push({
+                headerName: `CVAP: % Other Race Citizens`,
+                valueGetter: (params) => params.data?.censusData?.pctCvapOtherRacesCombined || (params.data as any)?.['censusData.pctCvapOtherRacesCombined'],
+                sortable: true,
+                filter: false,
+                valueFormatter: params => params.value === null || params.value === undefined ? 'N/A' : formatPercent(params.value),
+                type: 'numericColumn',
+                flex: 1
+              });
+            }
+          }
+        }
       });
     }
 
-    // Dynamically add census data columns
+    // Dynamically add other census data columns (excluding the race data we already added)
     if (firstRowWithActualCensusData && firstRowWithActualCensusData.censusData) {
+      // Track which race columns we've already added to avoid duplication
+      const raceColumnsAdded = new Set<string>();
+      if (firstRow.breakdowns) {
+        Object.keys(firstRow.breakdowns).forEach(key => {
+          if (key.includes('Race:')) {
+            const raceCategory = key.split('Race:')[1].split('_')[0];
+            if (raceCategory === 'White') {
+              raceColumnsAdded.add('totalPopWhiteAlone');
+              raceColumnsAdded.add('pctPopWhiteAlone');
+            } else if (raceCategory === 'Black') {
+              raceColumnsAdded.add('totalPopBlackAlone');
+              raceColumnsAdded.add('pctPopBlackAlone');
+            } else if (raceCategory === 'Asian') {
+              raceColumnsAdded.add('totalPopAsianAlone');
+              raceColumnsAdded.add('pctPopAsianAlone');
+            } else if (raceCategory === 'Hispanic') {
+              raceColumnsAdded.add('totalPopHispanic');
+              raceColumnsAdded.add('pctPopHispanic');
+            } else if (raceCategory === 'Other') {
+              raceColumnsAdded.add('totalPopOtherRaceAlone');
+              raceColumnsAdded.add('pctPopOtherRaceAlone');
+            }
+          }
+        });
+      }
+
       Object.keys(firstRowWithActualCensusData.censusData).forEach(censusKey => {
+        // Skip race-specific columns if they were already added near race breakdowns
+        if (raceColumnsAdded.has(censusKey)) {
+          return;
+        }
+
         const header = censusKey.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
         const fieldName = censusKey.toLowerCase();
         
@@ -337,8 +551,55 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
           colDef.filter = true;
           colDef.type = undefined;
         }
+
+        // Position total population towards the end by adding it last among numeric columns
+        if (censusKey === 'totalPopulation') {
+          // We'll add this after all other columns
+        } else {
         dynamicColDefs.push(colDef);
+        }
       });
+
+      // Add total population columns at the end if they exist
+      if (firstRowWithActualCensusData.censusData.totalPopulation !== undefined) {
+        dynamicColDefs.push({
+          headerName: `Census: Total Population`,
+          valueGetter: (params) => {
+            if (params.data?.censusData) {
+              return params.data.censusData.totalPopulation;
+            }
+            return (params.data as any)?.['censusData.totalPopulation'];
+          },
+          sortable: true,
+          filter: false,
+          valueFormatter: params => {
+            if (params.value === null || params.value === undefined) return 'N/A';
+            return formatNumber(params.value);
+          },
+          type: 'numericColumn',
+          flex: 1
+        });
+      }
+      
+      if (firstRowWithActualCensusData.censusData.totalCvap !== undefined) {
+        dynamicColDefs.push({
+          headerName: `CVAP: Total Citizens 18+`,
+          valueGetter: (params) => {
+            if (params.data?.censusData) {
+              return params.data.censusData.totalCvap;
+            }
+            return (params.data as any)?.['censusData.totalCvap'];
+          },
+          sortable: true,
+          filter: false,
+          valueFormatter: params => {
+            if (params.value === null || params.value === undefined) return 'N/A';
+            return formatNumber(params.value);
+          },
+          type: 'numericColumn',
+          flex: 1
+        });
+      }
     }
     return dynamicColDefs;
   }, [rows]);
@@ -385,7 +646,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
     if (firstRowWithCensusForAgg && firstRowWithCensusForAgg.censusData) {
       const censusKeys = Object.keys(firstRowWithCensusForAgg.censusData);
       censusKeys.forEach(censusKey => {
-        if (censusKey === 'distinctTractIdsInGeography' || censusKey === 'censusDataSourceYear') {
+        if (censusKey === 'distinctTractIdsInGeography' || censusKey === 'censusDataSourceYear' || censusKey === 'decennialDataSourceYear') {
           totalRow[`censusData.${censusKey}`] = null; // Explicitly set to null for non-aggregatable fields
         } else {
           let sum = 0;
@@ -406,7 +667,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
             if (lowerCensusKey.includes('pct') || lowerCensusKey.includes('rate') || lowerCensusKey.includes('percentage')) {
               totalRow[`censusData.${censusKey}`] = sum / numericCount; // Average for percentages/rates
             } else {
-              totalRow[`censusData.${censusKey}`] = sum; // Sum for other numeric data (income, counts)
+              totalRow[`censusData.${censusKey}`] = sum; // Sum for other numeric data (population counts, income, etc.)
             }
           } else {
             // No numeric values found for this key across all rows (all were null, undefined, or non-numeric strings).

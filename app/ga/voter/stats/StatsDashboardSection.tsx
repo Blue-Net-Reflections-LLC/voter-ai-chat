@@ -326,8 +326,7 @@ function StatsDashboardSection() {
 
   // Handle tab changes by updating URL
   const handleTabChange = useCallback((value: string) => {
-    // Ignore selection of 'census' tab
-    if (value === 'census') return;
+    // Remove the restriction that prevented census tab selection
     
     if (value && ALL_SECTIONS.includes(value as keyof SummaryData)) {
       // Update our dropdown display
@@ -363,7 +362,6 @@ function StatsDashboardSection() {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-[200px]">
               {ALL_SECTIONS.map(section => {
-                if (section === 'census') return null;
                 return (
                   <DropdownMenuItem 
                     key={section} 
@@ -410,8 +408,7 @@ function StatsDashboardSection() {
             {ALL_SECTIONS.map(section => (
               <TabsTrigger 
                 key={section} 
-                value={section} 
-                disabled={section === 'census'}
+                value={section}
               >
                 <div className="truncate max-w-full">{formatTabTitle(section)}</div>
               </TabsTrigger>
