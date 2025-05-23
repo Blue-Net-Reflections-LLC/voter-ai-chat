@@ -343,67 +343,71 @@ export function GeographicFilterControls({
           </div>
         )}
 
-        {/* Address Input with Autocomplete */}
-        <div className="space-y-2 relative">
-          <Input
-            ref={inputRef}
-            placeholder="Enter Georgia address..."
-            value={radiusAddress}
-            onChange={(e) => handleAddressChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                setShowSuggestions(false);
-                handleAddressSelect(radiusAddress);
-              } else if (e.key === 'Escape') {
-                setShowSuggestions(false);
-              }
-            }}
-            onFocus={() => {
-              if (suggestions.length > 0) {
-                // Calculate dropdown position
-                if (inputRef.current) {
-                  const inputRect = inputRef.current.getBoundingClientRect();
-                  setDropdownPosition({
-                    top: inputRect.bottom + window.scrollY,
-                    left: inputRect.left + window.scrollX,
-                    width: inputRect.width
-                  });
+        {/* Address Input with Autocomplete - Hidden when filter is active */}
+        {!radiusFilter && (
+          <div className="space-y-2 relative">
+            <Input
+              ref={inputRef}
+              placeholder="Enter Georgia address..."
+              value={radiusAddress}
+              onChange={(e) => handleAddressChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  setShowSuggestions(false);
+                  handleAddressSelect(radiusAddress);
+                } else if (e.key === 'Escape') {
+                  setShowSuggestions(false);
                 }
-                setShowSuggestions(true);
-              }
-            }}
-          />
-          
-          {/* Use My Location Button */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleUseMyLocation}
-            className="w-full"
-          >
-            <Navigation size={14} className="mr-2" />
-            Use My Location
-          </Button>
-        </div>
+              }}
+              onFocus={() => {
+                if (suggestions.length > 0) {
+                  // Calculate dropdown position
+                  if (inputRef.current) {
+                    const inputRect = inputRef.current.getBoundingClientRect();
+                    setDropdownPosition({
+                      top: inputRect.bottom + window.scrollY,
+                      left: inputRect.left + window.scrollX,
+                      width: inputRect.width
+                    });
+                  }
+                  setShowSuggestions(true);
+                }
+              }}
+            />
+            
+            {/* Use My Location Button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleUseMyLocation}
+              className="w-full"
+            >
+              <Navigation size={14} className="mr-2" />
+              Use My Location
+            </Button>
+          </div>
+        )}
 
-        {/* Radius Selection */}
-        <div className="space-y-2">
-          <Label className="text-xs">Distance</Label>
-          <Select value={selectedRadius} onValueChange={handleRadiusChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select radius..." />
-            </SelectTrigger>
-            <SelectContent>
-              {RADIUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Radius Selection - Hidden when filter is active */}
+        {!radiusFilter && (
+          <div className="space-y-2">
+            <Label className="text-xs">Distance</Label>
+            <Select value={selectedRadius} onValueChange={handleRadiusChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select radius..." />
+              </SelectTrigger>
+              <SelectContent>
+                {RADIUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Address Suggestions Dropdown - Rendered via Portal */}
