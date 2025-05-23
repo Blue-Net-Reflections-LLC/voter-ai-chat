@@ -65,20 +65,20 @@ export default async function EventRegistrationPage({ params }: PageProps) {
   const isCapacityReached = event.max_capacity && event.registration_count >= event.max_capacity;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="space-y-6">
           {/* Registration Form */}
           {isEventActive && !isCapacityReached ? (
-            <div className="bg-white shadow-sm p-6">
+            <div className="bg-card shadow-sm p-6 border border-border">
               <RegistrationForm eventId={event.id} eventTitle={event.title} />
             </div>
           ) : (
-            <div className="bg-yellow-50 p-6">
-              <h2 className="text-xl font-semibold text-yellow-800 mb-2">
+            <div className="bg-yellow-50 dark:bg-yellow-950/20 p-6 border border-yellow-200 dark:border-yellow-800">
+              <h2 className="text-xl font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
                 Check-in Not Available
               </h2>
-              <p className="text-yellow-700">
+              <p className="text-yellow-700 dark:text-yellow-300">
                 {!isEventActive 
                   ? 'This event is not currently accepting check-ins.'
                   : 'This event has reached its maximum capacity.'

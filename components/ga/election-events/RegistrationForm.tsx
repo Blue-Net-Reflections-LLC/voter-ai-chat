@@ -2,8 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { z } from 'zod';
-import { CheckCircleIcon, AlertCircleIcon, LoaderIcon } from 'lucide-react';
+import { CheckCircleIcon, AlertCircleIcon, LoaderIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { gaCountyCodeToNameMap } from '@/lib/data/ga_county_codes';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
 
 // Validation schema matching the backend
 const registrationSchema = z.object({
@@ -86,6 +93,7 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [countiesLoading, setCountiesLoading] = useState(true);
+  const [countyOpen, setCountyOpen] = useState(false);
 
   // Load counties on component mount
   useEffect(() => {
@@ -221,12 +229,13 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
         <p className="text-gray-600 mb-4">
           Thank you for signing in. You're all checked in for the event.
         </p>
-        <button
+        <Button
           onClick={() => setSuccess(false)}
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          variant="link"
+          className="text-blue-600 hover:text-blue-700"
         >
           Sign in another person
-        </button>
+        </Button>
       </div>
     );
   }
@@ -234,28 +243,32 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
   return (
     <div>
       {/* Title */}
-      <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+      <h2 className="text-2xl font-semibold text-foreground mb-6">
         Sign-in {eventTitle}
       </h2>
 
+      {/* Separator */}
+      <div className="border-t border-border mb-8"></div>
+
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Full Name */}
-        <div>
-          <label htmlFor="fullName" className="block text-lg font-medium text-gray-900 mb-2">
+        <div className="space-y-2">
+          <Label htmlFor="fullName" className="text-lg font-medium text-foreground">
             Full Name *
-          </label>
-          <input
-            type="text"
+          </Label>
+          <Input
             id="fullName"
             value={formData.fullName}
             onChange={(e) => handleInputChange('fullName', e.target.value)}
-            className={`w-full px-4 py-4 text-xl text-black bg-blue-50 border-2 focus:outline-none focus:ring-3 focus:ring-blue-300 focus:bg-blue-100 ${
-              errors.fullName ? 'border-red-400 bg-red-50' : 'border-blue-200'
-            }`}
+            className={cn(
+              "text-xl h-14 bg-blue-50 dark:bg-slate-800 border-2 border-blue-200 dark:border-slate-600 text-foreground placeholder:text-muted-foreground",
+              "focus:bg-blue-100 dark:focus:bg-slate-700 focus:border-blue-400 dark:focus:border-blue-400",
+              errors.fullName && "border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/20"
+            )}
             placeholder="Enter your full name"
           />
           {errors.fullName && (
-            <p className="mt-2 text-base text-red-600 flex items-center">
+            <p className="text-base text-red-600 dark:text-red-400 flex items-center">
               <AlertCircleIcon className="h-5 w-5 mr-2" />
               {errors.fullName}
             </p>
@@ -263,22 +276,24 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
         </div>
 
         {/* Email */}
-        <div>
-          <label htmlFor="email" className="block text-lg font-medium text-gray-900 mb-2">
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-lg font-medium text-foreground">
             Email Address *
-          </label>
-          <input
+          </Label>
+          <Input
             type="email"
             id="email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            className={`w-full px-4 py-4 text-xl text-black bg-blue-50 border-2 focus:outline-none focus:ring-3 focus:ring-blue-300 focus:bg-blue-100 ${
-              errors.email ? 'border-red-400 bg-red-50' : 'border-blue-200'
-            }`}
+            className={cn(
+              "text-xl h-14 bg-blue-50 dark:bg-slate-800 border-2 border-blue-200 dark:border-slate-600 text-foreground placeholder:text-muted-foreground",
+              "focus:bg-blue-100 dark:focus:bg-slate-700 focus:border-blue-400 dark:focus:border-blue-400",
+              errors.email && "border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/20"
+            )}
             placeholder="Enter your email address"
           />
           {errors.email && (
-            <p className="mt-2 text-base text-red-600 flex items-center">
+            <p className="text-base text-red-600 dark:text-red-400 flex items-center">
               <AlertCircleIcon className="h-5 w-5 mr-2" />
               {errors.email}
             </p>
@@ -286,58 +301,93 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
         </div>
 
         {/* Mobile Number */}
-        <div>
-          <label htmlFor="mobileNumber" className="block text-lg font-medium text-gray-900 mb-2">
+        <div className="space-y-2">
+          <Label htmlFor="mobileNumber" className="text-lg font-medium text-foreground">
             Mobile Number *
-          </label>
-          <input
+          </Label>
+          <Input
             type="tel"
             id="mobileNumber"
             value={formData.mobileNumber}
             onChange={(e) => handleInputChange('mobileNumber', e.target.value)}
-            className={`w-full px-4 py-4 text-xl text-black bg-blue-50 border-2 focus:outline-none focus:ring-3 focus:ring-blue-300 focus:bg-blue-100 ${
-              errors.mobileNumber ? 'border-red-400 bg-red-50' : 'border-blue-200'
-            }`}
+            className={cn(
+              "text-xl h-14 bg-blue-50 dark:bg-slate-800 border-2 border-blue-200 dark:border-slate-600 text-foreground placeholder:text-muted-foreground",
+              "focus:bg-blue-100 dark:focus:bg-slate-700 focus:border-blue-400 dark:focus:border-blue-400",
+              errors.mobileNumber && "border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/20"
+            )}
             placeholder="(555) 123-4567"
             maxLength={14}
           />
           {errors.mobileNumber && (
-            <p className="mt-2 text-base text-red-600 flex items-center">
+            <p className="text-base text-red-600 dark:text-red-400 flex items-center">
               <AlertCircleIcon className="h-5 w-5 mr-2" />
               {errors.mobileNumber}
             </p>
           )}
         </div>
 
-        {/* County Selection */}
-        <div>
-          <label htmlFor="countyName" className="block text-lg font-medium text-gray-900 mb-2">
+        {/* County Selection with Search */}
+        <div className="space-y-2">
+          <Label className="text-lg font-medium text-foreground">
             County (Optional)
-          </label>
+          </Label>
           {countiesLoading ? (
-            <div className="flex items-center text-gray-600 text-lg">
+            <div className="flex items-center text-muted-foreground text-lg h-14">
               <LoaderIcon className="h-6 w-6 mr-3 animate-spin" />
               Loading counties...
             </div>
           ) : (
-            <select
-              id="countyName"
-              value={formData.countyName}
-              onChange={(e) => handleInputChange('countyName', e.target.value)}
-              className={`w-full px-4 py-4 text-xl text-black bg-blue-50 border-2 focus:outline-none focus:ring-3 focus:ring-blue-300 focus:bg-blue-100 ${
-                errors.countyCode || errors.countyName ? 'border-red-400 bg-red-50' : 'border-blue-200'
-              }`}
-            >
-              <option value="">Select a county (optional)</option>
-              {counties.map((county) => (
-                <option key={county.value} value={county.value}>
-                  {county.label}
-                </option>
-              ))}
-            </select>
+            <Popover open={countyOpen} onOpenChange={setCountyOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={countyOpen}
+                  className={cn(
+                    "w-full justify-between text-xl h-14 bg-blue-50 dark:bg-slate-800 border-2 border-blue-200 dark:border-slate-600",
+                    "hover:bg-blue-100 dark:hover:bg-slate-700 hover:border-blue-400 dark:hover:border-blue-400",
+                    !formData.countyName && "text-muted-foreground",
+                    formData.countyName && "text-foreground",
+                    (errors.countyCode || errors.countyName) && "border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/20"
+                  )}
+                >
+                  {formData.countyName || "Select a county (optional)"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0">
+                <Command>
+                  <CommandInput placeholder="Search counties..." className="text-lg" />
+                  <CommandList>
+                    <CommandEmpty>No county found.</CommandEmpty>
+                    <CommandGroup>
+                      {counties.map((county) => (
+                        <CommandItem
+                          key={county.value}
+                          value={county.value}
+                          onSelect={(currentValue) => {
+                            handleInputChange('countyName', currentValue === formData.countyName ? "" : currentValue);
+                            setCountyOpen(false);
+                          }}
+                          className="text-lg"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.countyName === county.value ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {county.label}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           )}
           {(errors.countyCode || errors.countyName) && (
-            <p className="mt-2 text-base text-red-600 flex items-center">
+            <p className="text-base text-red-600 dark:text-red-400 flex items-center">
               <AlertCircleIcon className="h-5 w-5 mr-2" />
               {errors.countyCode || errors.countyName}
             </p>
@@ -345,50 +395,52 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
         </div>
 
         {/* Voter Registration Status */}
-        <div>
-          <label className="block text-lg font-medium text-gray-900 mb-4">
+        <div className="space-y-4">
+          <Label className="text-lg font-medium text-foreground">
             Are you registered to vote in Georgia?
-          </label>
-          <div className="space-y-4">
-            {[
-              { value: 'Y', label: 'Yes, I am registered to vote' },
-              { value: 'N', label: 'No, I am not registered to vote' },
-              { value: 'U', label: 'I am unsure of my registration status' }
-            ].map((option) => (
-              <label key={option.value} className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="isVoterRegistered"
-                  value={option.value}
-                  checked={formData.isVoterRegistered === option.value}
-                  onChange={(e) => handleInputChange('isVoterRegistered', e.target.value)}
-                  className="h-6 w-6 text-blue-600 focus:ring-blue-500 border-gray-300"
-                />
-                <span className="ml-4 text-lg text-gray-900">{option.label}</span>
-              </label>
-            ))}
-          </div>
+          </Label>
+          <RadioGroup
+            value={formData.isVoterRegistered}
+            onValueChange={(value: string) => handleInputChange('isVoterRegistered', value)}
+            className="space-y-4"
+          >
+            <div className="flex items-center space-x-4">
+              <RadioGroupItem value="Y" id="voter-yes" className="h-6 w-6" />
+              <Label htmlFor="voter-yes" className="text-lg text-foreground cursor-pointer">
+                Yes, I am registered to vote
+              </Label>
+            </div>
+            <div className="flex items-center space-x-4">
+              <RadioGroupItem value="N" id="voter-no" className="h-6 w-6" />
+              <Label htmlFor="voter-no" className="text-lg text-foreground cursor-pointer">
+                No, I am not registered to vote
+              </Label>
+            </div>
+            <div className="flex items-center space-x-4">
+              <RadioGroupItem value="U" id="voter-unsure" className="h-6 w-6" />
+              <Label htmlFor="voter-unsure" className="text-lg text-foreground cursor-pointer">
+                I am unsure of my registration status
+              </Label>
+            </div>
+          </RadioGroup>
         </div>
 
         {/* Submit Error */}
         {errors.submit && (
-          <div className="bg-red-50 border-2 border-red-200 p-6">
+          <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-500 p-6">
             <div className="flex items-center">
-              <AlertCircleIcon className="h-6 w-6 text-red-400 mr-3" />
-              <p className="text-lg text-red-700">{errors.submit}</p>
+              <AlertCircleIcon className="h-6 w-6 text-red-500 dark:text-red-400 mr-3" />
+              <p className="text-lg text-red-700 dark:text-red-300">{errors.submit}</p>
             </div>
           </div>
         )}
 
         {/* Submit Button */}
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className={`w-full flex justify-center py-5 px-6 border-2 border-transparent text-xl font-medium text-white ${
-            loading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-blue-500'
-          }`}
+          className="w-full h-14 text-xl font-medium"
+          size="lg"
         >
           {loading ? (
             <>
@@ -398,9 +450,9 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
           ) : (
             'Sign-in to Event'
           )}
-        </button>
+        </Button>
 
-        <p className="text-base text-gray-600 text-center">
+        <p className="text-base text-muted-foreground text-center">
           * Required fields. Your information will be used only for event check-in purposes.
         </p>
       </form>
