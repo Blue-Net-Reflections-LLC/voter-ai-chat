@@ -351,9 +351,6 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAl
         // Convert miles to meters (PostGIS geography uses meters)
         const radiusMeters = radiusMiles * 1609.344;
         
-        // Debug logging
-        console.log(`Radius filter: lat=${lat}, lng=${lng}, radiusMiles=${radiusMiles}, radiusMeters=${radiusMeters}`);
-        
         // Use optimized two-step approach: bounding box filter + precise distance
         // This approach is 3,600x faster than direct ST_Distance (0.9ms vs 3,363ms)
         // Step 1: Fast spatial index lookup with bounding box
@@ -361,8 +358,6 @@ export function buildVoterListWhereClause(searchParams: URLSearchParams, tableAl
         
         // Step 2: Precise distance calculation (only applied to bbox-filtered results)
         const distanceCondition = `ST_Distance(${col('geom')}::geography, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography) <= ${radiusMeters}`;
-        
-        console.log(`Generated optimized spatial conditions: ${bboxCondition} AND ${distanceCondition}`);
         
         // Add all conditions: bbox filter, precise distance, and geom null check
         conditions.push(bboxCondition);
