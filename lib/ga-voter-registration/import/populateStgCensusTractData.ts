@@ -33,6 +33,15 @@ interface ProcessedTractData {
     unemployment_rate: number | null;
     employment_rate: number | null;
     education_total_pop_25_plus: number | null;
+    // New population and race fields
+    total_population: number | null;
+    pop_white_alone: number | null;
+    pop_black_alone: number | null;
+    pop_american_indian_alone: number | null;
+    pop_asian_alone: number | null;
+    pop_pacific_islander_alone: number | null;
+    pop_other_race_alone: number | null;
+    decennial_data_year: string;
 }
 
 // --- Census API Fetching Logic (adapted from getCensusData.ts) ---
@@ -57,12 +66,32 @@ async function fetchCensusApi(censusTractId: string, tableId: string): Promise<a
     }
 }
 
+// --- New function to fetch 2020 Decennial Census P1 data ---
+async function fetchDecennialCensusApi(censusTractId: string): Promise<any> {
+    try {
+        const formattedTractId = `1400000US${censusTractId}`;
+        const endpoint = `https://api.census.gov/data/2020/dec/pl?get=group(P1)&ucgid=${formattedTractId}&key=${CENSUS_API_KEY}`;
+
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Decennial Census API error for tract ${censusTractId}: ${response.status} - ${errorText}`);
+            throw new Error(`Decennial Census API error: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Error fetching decennial census data for tract ${censusTractId}:`, error);
+        throw error; // Re-throw to handle upstream
+    }
+}
+
 // --- Data Processing Logic (adapted from getCensusData.ts) ---
 function processRawCensusData(
     censusTractId: string,
     educationDataRaw: any,
     incomeDataRaw: any,
-    employmentDataRaw: any
+    employmentDataRaw: any,
+    populationDataRaw: any
 ): ProcessedTractData | null {
     try {
         // Education (B15003)
@@ -106,6 +135,22 @@ function processRawCensusData(
         const unemployment_rate = Number(empMap['S2301_C04_001E']) || null; // Unemployment rate (percent of civilian labor force)
         const employment_rate = unemployment_rate !== null ? 100 - unemployment_rate : null;
 
+        // Population and Race data (2020 Decennial P1)
+        const popHeaders = populationDataRaw[0];
+        const popValues = populationDataRaw[1] || [];
+        const popMap = popHeaders.reduce((acc: Record<string, any>, header: string, index: number) => {
+            acc[header] = popValues[index];
+            return acc;
+        }, {});
+        
+        const total_population = Number(popMap['P1_001N']) || null; // Total population
+        const pop_white_alone = Number(popMap['P1_003N']) || null; // White alone
+        const pop_black_alone = Number(popMap['P1_004N']) || null; // Black or African American alone
+        const pop_american_indian_alone = Number(popMap['P1_005N']) || null; // American Indian and Alaska Native alone
+        const pop_asian_alone = Number(popMap['P1_006N']) || null; // Asian alone
+        const pop_pacific_islander_alone = Number(popMap['P1_007N']) || null; // Native Hawaiian and Other Pacific Islander alone
+        const pop_other_race_alone = Number(popMap['P1_008N']) || null; // Some other race alone
+
         return {
             tract_id: censusTractId,
             census_data_year: "2023 ACS 5-Year", // As indicated in getCensusData.ts
@@ -116,6 +161,15 @@ function processRawCensusData(
             unemployment_rate,
             employment_rate,
             education_total_pop_25_plus: totalPopulationEdu,
+            // New population and race fields
+            total_population,
+            pop_white_alone,
+            pop_black_alone,
+            pop_american_indian_alone,
+            pop_asian_alone,
+            pop_pacific_islander_alone,
+            pop_other_race_alone,
+            decennial_data_year: "2020 Decennial"
         };
     } catch (error) {
         console.error(`Error processing raw census data for tract ${censusTractId}:`, error);
@@ -149,7 +203,16 @@ async function upsertSingleTractData(tractData: ProcessedTractData): Promise<voi
             labor_force_participation_rate: toFixedNumberOrNull(tractData.labor_force_participation_rate, 2),
             unemployment_rate: toFixedNumberOrNull(tractData.unemployment_rate, 2),
             employment_rate: toFixedNumberOrNull(tractData.employment_rate, 2),
-            education_total_pop_25_plus: toNumberOrNull(tractData.education_total_pop_25_plus)
+            education_total_pop_25_plus: toNumberOrNull(tractData.education_total_pop_25_plus),
+            // New population and race fields
+            total_population: toNumberOrNull(tractData.total_population),
+            pop_white_alone: toNumberOrNull(tractData.pop_white_alone),
+            pop_black_alone: toNumberOrNull(tractData.pop_black_alone),
+            pop_american_indian_alone: toNumberOrNull(tractData.pop_american_indian_alone),
+            pop_asian_alone: toNumberOrNull(tractData.pop_asian_alone),
+            pop_pacific_islander_alone: toNumberOrNull(tractData.pop_pacific_islander_alone),
+            pop_other_race_alone: toNumberOrNull(tractData.pop_other_race_alone),
+            decennial_data_year: String(tractData.decennial_data_year || '')
         };
 
         // Using sql template for a single row insert/update
@@ -158,7 +221,9 @@ async function upsertSingleTractData(tractData: ProcessedTractData): Promise<voi
                 tract_id, census_data_year, median_household_income,
                 pct_bachelors_degree_only, pct_bachelors_degree_or_higher,
                 labor_force_participation_rate, unemployment_rate, employment_rate,
-                education_total_pop_25_plus
+                education_total_pop_25_plus, total_population, pop_white_alone,
+                pop_black_alone, pop_american_indian_alone, pop_asian_alone,
+                pop_pacific_islander_alone, pop_other_race_alone, decennial_data_year
             )
             VALUES (
                 ${dataToInsert.tract_id},
@@ -169,7 +234,15 @@ async function upsertSingleTractData(tractData: ProcessedTractData): Promise<voi
                 ${dataToInsert.labor_force_participation_rate},
                 ${dataToInsert.unemployment_rate},
                 ${dataToInsert.employment_rate},
-                ${dataToInsert.education_total_pop_25_plus}
+                ${dataToInsert.education_total_pop_25_plus},
+                ${dataToInsert.total_population},
+                ${dataToInsert.pop_white_alone},
+                ${dataToInsert.pop_black_alone},
+                ${dataToInsert.pop_american_indian_alone},
+                ${dataToInsert.pop_asian_alone},
+                ${dataToInsert.pop_pacific_islander_alone},
+                ${dataToInsert.pop_other_race_alone},
+                ${dataToInsert.decennial_data_year}
             )
             ON CONFLICT (tract_id) DO UPDATE SET
                 census_data_year = EXCLUDED.census_data_year,
@@ -180,6 +253,14 @@ async function upsertSingleTractData(tractData: ProcessedTractData): Promise<voi
                 unemployment_rate = EXCLUDED.unemployment_rate,
                 employment_rate = EXCLUDED.employment_rate,
                 education_total_pop_25_plus = EXCLUDED.education_total_pop_25_plus,
+                total_population = EXCLUDED.total_population,
+                pop_white_alone = EXCLUDED.pop_white_alone,
+                pop_black_alone = EXCLUDED.pop_black_alone,
+                pop_american_indian_alone = EXCLUDED.pop_american_indian_alone,
+                pop_asian_alone = EXCLUDED.pop_asian_alone,
+                pop_pacific_islander_alone = EXCLUDED.pop_pacific_islander_alone,
+                pop_other_race_alone = EXCLUDED.pop_other_race_alone,
+                decennial_data_year = EXCLUDED.decennial_data_year,
                 fetched_at = NOW();
         `;
     } catch (error) {
@@ -191,21 +272,20 @@ async function upsertSingleTractData(tractData: ProcessedTractData): Promise<voi
 
 // --- Main Script Logic ---
 async function main() {
-    console.log('Starting script to populate STG_PROCESSED_CENSUS_TRACT_DATA (single insert mode)...');
+    console.log('Starting script to populate STG_PROCESSED_CENSUS_TRACT_DATA with population and race data (all counties)...');
 
     let uniqueTracts: { census_tract: string }[];
     try {
-        console.log('Fetching unique census tracts for Cobb County from ga_voter_registration_list...');
+        console.log('Fetching unique census tracts from all counties in ga_voter_registration_list...');
         uniqueTracts = await sql`
             SELECT DISTINCT
                 vrl.census_tract
             FROM
                 ${sql(schemaName)}.ga_voter_registration_list vrl
             WHERE
-                vrl.county_code = '067' -- Cobb County FIPS code
-                AND vrl.census_tract IS NOT NULL AND TRIM(vrl.census_tract) <> '';
+                vrl.census_tract IS NOT NULL AND TRIM(vrl.census_tract) <> '';
         `;
-        console.log(`Found ${uniqueTracts.length} unique census tracts in Cobb County.`);
+        console.log(`Found ${uniqueTracts.length} unique census tracts across all counties.`);
         if (uniqueTracts.length === 0) {
             console.log("No census tracts found. Exiting.");
             return;
@@ -230,18 +310,22 @@ async function main() {
 
         console.log(`[${index + 1}/${uniqueTracts.length}] Processing tract: ${censusTractId}`);
         try {
-            // Fetch data (remains the same)
+            // Fetch ACS data (existing)
             const educationDataRaw = await fetchCensusApi(censusTractId, 'B15003');
             const incomeDataRaw = await fetchCensusApi(censusTractId, 'B19013');
             const employmentDataRaw = await fetchCensusApi(censusTractId, 'S2301');
+            
+            // Fetch 2020 Decennial Census population/race data (new)
+            const populationDataRaw = await fetchDecennialCensusApi(censusTractId);
 
-            if (educationDataRaw && incomeDataRaw && employmentDataRaw) {
-                // Process data (remains the same)
+            if (educationDataRaw && incomeDataRaw && employmentDataRaw && populationDataRaw) {
+                // Process data (updated to include population data)
                 const processedData = processRawCensusData(
                     censusTractId,
                     educationDataRaw,
                     incomeDataRaw,
-                    employmentDataRaw
+                    employmentDataRaw,
+                    populationDataRaw
                 );
 
                 if (processedData) {
