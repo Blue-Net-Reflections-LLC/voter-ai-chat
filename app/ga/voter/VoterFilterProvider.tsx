@@ -65,7 +65,9 @@ const initialFilterState: FilterState = {
   neverVoted: false,
   notVotedSinceYear: '',
   redistrictingAffectedTypes: [],
-  statusReason: []
+  statusReason: [],
+  // Radius search filter - stores "lat,lng,miles" as a single string
+  radiusFilter: undefined
 };
 
 const initialAddressFilterState: ResidenceAddressFilterState = {
@@ -125,8 +127,10 @@ export const FILTER_TO_URL_PARAM_MAP: Record<string, string> = {
   neverVoted: 'neverVoted',
   notVotedSinceYear: 'notVotedSinceYear',
   redistrictingAffectedTypes: 'redistrictingAffectedTypes',
-  statusReason: 'statusReason',
+    statusReason: 'statusReason',
   resident_address: 'resident_address',
+  // Radius search URL param - single combined value
+  radiusFilter: 'radiusFilter',
 };
 
 export const FILTER_URL_KEYS = Object.values(FILTER_TO_URL_PARAM_MAP);
@@ -224,7 +228,7 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
             newFilters[typedKey] = urlValue as unknown as typeof initialFilterState[typeof typedKey];
           } else if (typeof initialFilterState[typedKey] === 'boolean') {
             newFilters[typedKey] = (urlValue[0] === 'true') as unknown as typeof initialFilterState[typeof typedKey];
-          } else {
+                    } else {
             newFilters[typedKey] = urlValue[0] as unknown as typeof initialFilterState[typeof typedKey];
           }
         }
@@ -301,13 +305,17 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // Voter Events: Ballot Cast selection
     const hasVoterEventMethod = !!(filters.voterEventMethod && filters.voterEventMethod.trim().length > 0);
 
+    // Radius search filter
+    const hasRadiusFilter = !!(filters.radiusFilter && filters.radiusFilter.trim().length > 0);
+
     return (
       hasActiveArrayFilters ||
       hasActiveNameFilters ||
       hasNeverVoted ||
       hasNotVotedYear ||
       hasActiveAddressFilters ||
-      hasVoterEventMethod
+      hasVoterEventMethod ||
+      hasRadiusFilter
     );
   };
 

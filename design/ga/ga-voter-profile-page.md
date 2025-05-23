@@ -373,5 +373,36 @@ To optimize response time, the backend API should fetch external data (Represent
         - [ ] Update the CountyMultiSelect component to trigger a callback when selection changes.
         - [ ] Modify the useLookupData hook to support county-specific precinct/municipality fetching.
         - [ ] Ensure URL parameters correctly reflect the restructured filter groupings.
- 
+
+### CR-006: Add Radius Search Filter to Filter Panel
+
+-   **Date:** `[Insert Date]`
+-   **Request:** Introduce a "Radius Search" filter to the Filter Panel, enabling users to find voters within a specified distance from a central point. The central point can be determined by manual address entry (with Georgia-specific autocomplete) or by using the browser's location services. Radius options will include 1/2 mile, 1 mile, 1 1/2 miles, 2 miles, 5 miles, and 10 miles.
+-   **Implementation Details:**
+    -   **UI (Filter Panel):**
+        -   A new accordion section, tentatively named "Location Proximity," will be added to `FilterPanel.tsx`.
+        -   **Address Input:** An input field for manual address entry. This field should feature an address autocomplete service (e.g., Google Places API, Mapbox Geocoding API, or a custom solution) scoped to Georgia to assist users.
+        -   **Use My Location:** A button/icon allowing users to use their browser's geolocation services to set the central point.
+        -   **Radius Selection:** A dropdown or radio button group for users to select the desired radius (0.5, 1, 1.5, 2, 5, 10 miles).
+        -   **Selected Point Display:** A clear indication of the currently set central point (e.g., "Near: 123 Main St, Atlanta, GA" or "Near: Your Current Location").
+    -   **State Management (`VoterFilterProvider.tsx`):**
+        -   Extend `FilterState` with new fields:
+            -   `radiusSearchAddress?: string` (stores the manually entered address or "Current Location" text)
+            -   `radiusCenterLat?: number` (latitude of the search center)
+            -   `radiusCenterLng?: number` (longitude of the search center)
+            -   `radiusDistanceMiles?: number` (selected radius in miles)
+        -   Update `FILTER_TO_URL_PARAM_MAP` and URL parsing logic to include these new parameters (e.g., `radiusAddress`, `radiusLat`, `radiusLng`, `radiusMiles`).
+    -   **Backend Filtering (`lib/voter/build-where-clause.ts`):**
+        -   When a radius filter is active, the `buildVoterListWhereClause` function must:
+            -   Ensure the central point (latitude/longitude) and radius distance are valid.
+            -   Construct a spatial query using PostGIS functions (e.g., `ST_DWithin`) to filter voters from `ga_voter_registration_list` whose `geom` column (geography/geometry type) falls within the specified radius of the `radiusCenterLat`, `radiusCenterLng`.
+            -   Ensure the `geom` column is properly indexed for efficient spatial queries.
+    -   **Geocoding & Reverse Geocoding:**
+        -   **Manual Address Entry:** When an address is entered, it must be geocoded to obtain latitude and longitude. This can be done client-side (if using a library like Google Maps JavaScript API) or server-side via a dedicated API endpoint (e.g., `/api/utils/geocode`) to protect API keys.
+        -   **Use My Location:** Browser geolocation provides latitude/longitude directly. Optionally, reverse geocoding could be performed to display an approximate address for "Your Current Location."
+    -   **Filter Badges (`FilterPanel.tsx`):**
+        -   When the radius filter is active, display a badge indicating the search criteria (e.g., "Radius: 2 miles from 123 Main St" or "Radius: 0.5 miles from Current Location").
+    -   **Error Handling:**
+        -   Handle cases where geolocation fails or an entered address cannot be geocoded.
+
  

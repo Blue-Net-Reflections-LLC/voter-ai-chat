@@ -71,8 +71,10 @@ export interface FilterState {
   notVotedSinceYear?: string;
   redistrictingAffectedTypes: string[];
   statusReason: string[];
+  // Radius search filter - stores "lat,lng,miles" as a single string
+  radiusFilter?: string;
   // Add more filter fields as needed
-  [key: string]: string | boolean | string[] | undefined;
+  [key: string]: string | boolean | string[] | number | undefined;
 }
 
 export interface ResidenceAddressFilterState {
