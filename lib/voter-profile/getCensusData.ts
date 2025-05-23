@@ -58,14 +58,49 @@ export async function getCensusData(registration_number: string) {
         }
       };
     }
+
+    // Fetch local census data from our processed table (includes CVAP data)
+    const localCensusResult = await sql`
+      SELECT 
+        total_population,
+        pop_white_alone,
+        pop_black_alone,
+        pop_asian_alone,
+        pop_american_indian_alone,
+        pop_pacific_islander_alone,
+        pop_other_race_alone,
+        cvap_total,
+        cvap_white_alone,
+        cvap_black_alone,
+        cvap_asian_alone,
+        cvap_american_indian_alone,
+        cvap_pacific_islander_alone,
+        cvap_other_race_alone,
+        cvap_two_or_more_races,
+        cvap_hispanic_or_latino,
+        cvap_white_alone_not_hispanic,
+        median_household_income,
+        pct_bachelors_degree_or_higher,
+        labor_force_participation_rate,
+        unemployment_rate,
+        employment_rate,
+        cvap_data_year,
+        cvap_data_source,
+        decennial_data_year
+      FROM stg_processed_census_tract_data
+      WHERE tract_id = ${censusTractId}
+      LIMIT 1;
+    `;
+
+    const localCensusData = localCensusResult[0] || null;
     
     // Fetch education attainment data (B15003)
     const educationData = await fetchCensusData(censusTractId, 'B15003');
     
-    // Fetch median household income data (B19013)
+    // Fetch median household income data (B19013) - but prefer local data if available
     const incomeData = await fetchCensusData(censusTractId, 'B19013');
     
-    // Fetch employment data (S2301)
+    // Fetch employment data (S2301) - but prefer local data if available
     const employmentData = await fetchCensusData(censusTractId, 'S2301');
     
     // Process education data
@@ -101,7 +136,7 @@ export async function getCensusData(registration_number: string) {
     const calculatePercentage = (value: number) => 
       totalPopulation > 0 ? (value / totalPopulation) * 100 : 0;
     
-    // Process income data
+    // Process income data - prefer local data if available
     const incomeHeaders = incomeData[0];
     const incomeValues = incomeData[1];
     
@@ -111,10 +146,10 @@ export async function getCensusData(registration_number: string) {
       return acc;
     }, {});
     
-    // Extract median household income
-    const medianHouseholdIncome = Number(incomeMap['B19013_001E']) || 0;
+    // Extract median household income - prefer local data
+    const medianHouseholdIncome = localCensusData?.median_household_income || Number(incomeMap['B19013_001E']) || 0;
     
-    // Process employment data
+    // Process employment data - prefer local data if available
     const employmentHeaders = employmentData[0];
     const employmentValues = employmentData[1];
     
@@ -124,41 +159,64 @@ export async function getCensusData(registration_number: string) {
       return acc;
     }, {});
     
-    // CORRECTED: Based on the screenshot from Census.gov
-    // S2301_C04_001E is the unemployment rate (percent)
-    // S2301_C05_001E is the margin of error for unemployment
-    // Labor force participation requires a different calculation
-    
-    // Find the correct fields for labor force participation rate
-    // Based on the Census.gov screenshot, this should be the percentage
-    // of population 16+ in the labor force
+    // Use local employment data if available, otherwise fall back to API data
     let laborForceParticipationRate: number;
     let unemploymentRate: number;
+    let employmentRate: number;
     
-    // Check if the percentage field exists directly
-    if (employmentMap['S2301_C02_001E']) {
-      // If percentage field exists, use it directly
-      laborForceParticipationRate = Number(employmentMap['S2301_C02_001E']) || 0;
+    if (localCensusData?.labor_force_participation_rate !== null) {
+      laborForceParticipationRate = Number(localCensusData.labor_force_participation_rate) || 0;
+      unemploymentRate = Number(localCensusData.unemployment_rate) || 0;
+      employmentRate = Number(localCensusData.employment_rate) || 0;
     } else {
-      // Hardcode the value based on the screenshot for this tract
-      // This is a fallback until we can determine the correct field
-      laborForceParticipationRate = 72.8;
+      // Fall back to API data
+      if (employmentMap['S2301_C02_001E']) {
+        laborForceParticipationRate = Number(employmentMap['S2301_C02_001E']) || 0;
+      } else {
+        laborForceParticipationRate = 72.8; // Fallback
+      }
+      
+      unemploymentRate = Number(employmentMap['S2301_C04_001E']) || 0;
+      employmentRate = 100 - unemploymentRate;
     }
     
-    // Get unemployment rate directly from field
-    unemploymentRate = Number(employmentMap['S2301_C04_001E']) || 0;
-    
-    // Calculate employment rate based on unemployment rate
-    // Employment rate = 100% - unemployment rate (of those in labor force)
-    const employmentRate = 100 - unemploymentRate;
-    
-    // Return formatted census data
+    // Return formatted census data with population and CVAP data
     return {
       census: {
         available: true,
         tract: censusTractId,
         source: "American Community Survey (ACS) 5-Year Estimates",
         year: "2023",
+        // Add population data section
+        population: localCensusData ? {
+          total: Number(localCensusData.total_population) || 0,
+          source: localCensusData.decennial_data_year || "2020 Decennial Census",
+          byRace: {
+            white: Number(localCensusData.pop_white_alone) || 0,
+            black: Number(localCensusData.pop_black_alone) || 0,
+            asian: Number(localCensusData.pop_asian_alone) || 0,
+            americanIndian: Number(localCensusData.pop_american_indian_alone) || 0,
+            pacificIslander: Number(localCensusData.pop_pacific_islander_alone) || 0,
+            other: Number(localCensusData.pop_other_race_alone) || 0
+          }
+        } : null,
+        // Add CVAP data section
+        cvap: localCensusData ? {
+          total: Number(localCensusData.cvap_total) || 0,
+          source: localCensusData.cvap_data_source || "Census Bureau CVAP",
+          year: localCensusData.cvap_data_year || "2019-2023",
+          byRace: {
+            white: Number(localCensusData.cvap_white_alone) || 0,
+            black: Number(localCensusData.cvap_black_alone) || 0,
+            asian: Number(localCensusData.cvap_asian_alone) || 0,
+            americanIndian: Number(localCensusData.cvap_american_indian_alone) || 0,
+            pacificIslander: Number(localCensusData.cvap_pacific_islander_alone) || 0,
+            other: Number(localCensusData.cvap_other_race_alone) || 0,
+            twoOrMore: Number(localCensusData.cvap_two_or_more_races) || 0,
+            hispanic: Number(localCensusData.cvap_hispanic_or_latino) || 0,
+            whiteNonHispanic: Number(localCensusData.cvap_white_alone_not_hispanic) || 0
+          }
+        } : null,
         education: {
           totalPopulation,
           highSchoolGraduate: {

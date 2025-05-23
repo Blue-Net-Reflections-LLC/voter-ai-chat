@@ -10,6 +10,7 @@ interface AggregateDataPoint {
     value: string | number; // The specific category value (e.g., 'White', 'Male', 'Active')
     count: number;
     filterValue?: string | number; // Optional property to store original value for filtering
+    fill?: string; // Optional custom color for this data point
     meta?: {
         facility_name?: string;
         facility_address?: string;
@@ -107,7 +108,7 @@ const AggregateFieldDisplay: React.FC<AggregateFieldDisplayProps> = ({
         return data.map((item, index) => ({
             name: String(item.value), // Recharts expects string names
             count: item.count,
-            fill: COLORS[index % COLORS.length],
+            fill: item.fill || COLORS[index % COLORS.length], // Use custom fill if provided, otherwise default
             percentage: totalVoters > 0 ? ((item.count / totalVoters) * 100).toFixed(2) : '0.00',
             filterValue: item.filterValue, // Preserve filterValue for interaction handling
             originalItem: item // Store the original item for reference
