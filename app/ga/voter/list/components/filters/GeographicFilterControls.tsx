@@ -304,110 +304,113 @@ export function GeographicFilterControls({
         }}
       />
 
-      {/* Radius Search */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium">Radius Search</Label>
-        
-        {/* Current filter display with static map */}
-        {radiusFilter && currentLat !== null && currentLng !== null && (
-          <div className="bg-muted/50 p-2 rounded space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span>Radius: {currentRadiusMiles} miles</span>
+      {/* Separator between Address Filters and Radius Search */}
+      <div className="border-t border-border/30 pt-3 mt-3">
+        {/* Radius Search */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">Radius Search</Label>
+          
+          {/* Current filter display with static map */}
+          {radiusFilter && currentLat !== null && currentLng !== null && (
+            <div className="bg-muted/50 p-2 rounded space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span>Radius: {currentRadiusMiles} miles</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearRadius}
+                  className="h-6 w-6 p-0"
+                >
+                  <X size={12} />
+                </Button>
+              </div>
+              
+              {/* Static map with pin */}
+              {(() => {
+                const mapUrl = getStaticMapUrl(currentLat, currentLng, currentRadiusMiles || '1');
+                return mapUrl ? (
+                  <div className="relative">
+                    <img 
+                      src={mapUrl} 
+                      alt={`Map showing radius search center at ${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`}
+                      className="w-full h-24 object-cover rounded border"
+                      loading="lazy"
+                    />
+                    <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
+                      {currentLat.toFixed(4)}, {currentLng.toFixed(4)}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          )}
+
+          {/* Address Input with Autocomplete - Hidden when filter is active */}
+          {!radiusFilter && (
+            <div className="space-y-2 relative">
+              <Input
+                ref={inputRef}
+                placeholder="Enter Georgia address..."
+                value={radiusAddress}
+                onChange={(e) => handleAddressChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    setShowSuggestions(false);
+                    handleAddressSelect(radiusAddress);
+                  } else if (e.key === 'Escape') {
+                    setShowSuggestions(false);
+                  }
+                }}
+                onFocus={() => {
+                  if (suggestions.length > 0) {
+                    // Calculate dropdown position
+                    if (inputRef.current) {
+                      const inputRect = inputRef.current.getBoundingClientRect();
+                      setDropdownPosition({
+                        top: inputRect.bottom + window.scrollY,
+                        left: inputRect.left + window.scrollX,
+                        width: inputRect.width
+                      });
+                    }
+                    setShowSuggestions(true);
+                  }
+                }}
+              />
+              
+              {/* Use My Location Button */}
               <Button
-                variant="ghost"
+                type="button"
+                variant="outline"
                 size="sm"
-                onClick={handleClearRadius}
-                className="h-6 w-6 p-0"
+                onClick={handleUseMyLocation}
+                className="w-full"
               >
-                <X size={12} />
+                <Navigation size={14} className="mr-2" />
+                Use My Location
               </Button>
             </div>
-            
-            {/* Static map with pin */}
-            {(() => {
-              const mapUrl = getStaticMapUrl(currentLat, currentLng, currentRadiusMiles || '1');
-              return mapUrl ? (
-                <div className="relative">
-                  <img 
-                    src={mapUrl} 
-                    alt={`Map showing radius search center at ${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`}
-                    className="w-full h-24 object-cover rounded border"
-                    loading="lazy"
-                  />
-                  <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
-                    {currentLat.toFixed(4)}, {currentLng.toFixed(4)}
-                  </div>
-                </div>
-              ) : null;
-            })()}
-          </div>
-        )}
+          )}
 
-        {/* Address Input with Autocomplete - Hidden when filter is active */}
-        {!radiusFilter && (
-          <div className="space-y-2 relative">
-            <Input
-              ref={inputRef}
-              placeholder="Enter Georgia address..."
-              value={radiusAddress}
-              onChange={(e) => handleAddressChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  setShowSuggestions(false);
-                  handleAddressSelect(radiusAddress);
-                } else if (e.key === 'Escape') {
-                  setShowSuggestions(false);
-                }
-              }}
-              onFocus={() => {
-                if (suggestions.length > 0) {
-                  // Calculate dropdown position
-                  if (inputRef.current) {
-                    const inputRect = inputRef.current.getBoundingClientRect();
-                    setDropdownPosition({
-                      top: inputRect.bottom + window.scrollY,
-                      left: inputRect.left + window.scrollX,
-                      width: inputRect.width
-                    });
-                  }
-                  setShowSuggestions(true);
-                }
-              }}
-            />
-            
-            {/* Use My Location Button */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleUseMyLocation}
-              className="w-full"
-            >
-              <Navigation size={14} className="mr-2" />
-              Use My Location
-            </Button>
-          </div>
-        )}
-
-        {/* Radius Selection - Hidden when filter is active */}
-        {!radiusFilter && (
-          <div className="space-y-2">
-            <Label className="text-xs">Distance</Label>
-            <Select value={selectedRadius} onValueChange={handleRadiusChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select radius..." />
-              </SelectTrigger>
-              <SelectContent>
-                {RADIUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+          {/* Radius Selection - Hidden when filter is active */}
+          {!radiusFilter && (
+            <div className="space-y-2">
+              <Label className="text-xs">Distance</Label>
+              <Select value={selectedRadius} onValueChange={handleRadiusChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select radius..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {RADIUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Address Suggestions Dropdown - Rendered via Portal */}

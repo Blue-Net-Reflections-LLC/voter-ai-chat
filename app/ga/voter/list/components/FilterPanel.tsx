@@ -469,7 +469,7 @@ export function FilterPanel() {
       <div className={cn("flex-grow px-3")} >
         <Accordion
           type="multiple"
-          className="w-full space-y-0"
+          className="w-full space-y-2"
           defaultValue={["participation-score"]}
           onValueChange={handleAccordionChange}
         >
