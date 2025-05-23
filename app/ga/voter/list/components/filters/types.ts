@@ -52,6 +52,10 @@ export interface GeographicFilterControlsProps extends BaseFilterControlsProps {
   addAddressFilter: (filter?: Partial<ResidenceAddressFilterState>) => void;
   removeAddressFilter: (id: string) => void;
   clearAllAddressFilters: () => void;
+  // Radius search props - single combined filter value
+  radiusFilter?: string;
+  onRadiusFilterChange: (radiusFilter?: string) => void;
+  onClearRadiusFilter: () => void;
 }
 
 export interface VoterInfoFilterControlsProps extends BaseFilterControlsProps {

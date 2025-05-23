@@ -1,9 +1,10 @@
 import { FilterState, ResidenceAddressFilterState } from './types'; // Ensure types are imported
 
-export const ensureStringArray = (value: string | boolean | string[] | undefined): string[] => {
+export const ensureStringArray = (value: string | boolean | string[] | number | undefined): string[] => {
   if (!value) return [];
   if (Array.isArray(value)) return value as string[];
   if (typeof value === 'string') return [value];
+  if (typeof value === 'number') return [value.toString()];
   return []; // Should not happen with proper FilterState types, but good for safety
 };
 
@@ -38,9 +39,13 @@ export const getCountiesFilterCount = (filters: FilterState) => {
   return count;
 };
 
-export const getGeographicFilterCount = (residenceAddressFilters: ResidenceAddressFilterState[]) => {
+export const getGeographicFilterCount = (residenceAddressFilters: ResidenceAddressFilterState[], filters: FilterState) => {
   let count = 0;
   if (residenceAddressFilters.length > 0) count++;
+  // Check if radius filter is active
+  if (filters.radiusFilter && filters.radiusFilter.trim().length > 0) {
+    count++;
+  }
   return count;
 };
 

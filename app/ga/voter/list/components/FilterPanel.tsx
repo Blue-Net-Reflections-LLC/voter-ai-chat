@@ -111,10 +111,19 @@ export function FilterPanel() {
     setResidenceAddressFilters([]);
   };
 
+  // Radius filter handlers
+  const handleRadiusFilterChange = (radiusFilter?: string) => {
+    updateFilter('radiusFilter', radiusFilter);
+  };
+
+  const handleClearRadiusFilter = () => {
+    updateFilter('radiusFilter', undefined);
+  };
+
   // Get counts for each section
   const participationScoreFilterCount = getParticipationScoreFilterCount(filters);
   const countiesFilterCount = getCountiesFilterCount(filters);
-  const geographicFilterCount = getGeographicFilterCount(residenceAddressFilters);
+  const geographicFilterCount = getGeographicFilterCount(residenceAddressFilters, filters);
   const districtsFilterCount = getDistrictsFilterCount(filters);
   const voterInfoFilterCount = getVoterInfoFilterCount(filters);
   const demographicsFilterCount = getDemographicsFilterCount(filters);
@@ -222,6 +231,22 @@ export function FilterPanel() {
         sectionKey: 'geographic'
       });
     });
+
+    // Radius Filter
+    if (filters.radiusFilter) {
+      const parts = filters.radiusFilter.split(',');
+      if (parts.length === 3) {
+        const lat = parseFloat(parts[0]);
+        const lng = parseFloat(parts[1]);
+        const radiusMiles = parts[2];
+        activeBadges.push({
+          id: 'radiusFilter',
+          label: `Radius: ${lat.toFixed(3)}, ${lng.toFixed(3)} (${radiusMiles}mi)`,
+          onRemove: handleClearRadiusFilter,
+          sectionKey: 'geographic'
+        });
+      }
+    }
 
     // Demographics Filters
     ensureStringArray(filters.age).forEach((value) => {
@@ -444,12 +469,12 @@ export function FilterPanel() {
       <div className={cn("flex-grow px-3")} >
         <Accordion
           type="multiple"
-          className="w-full space-y-1"
+          className="w-full space-y-0"
           defaultValue={["participation-score"]}
           onValueChange={handleAccordionChange}
         >
           {/* Participation Section */}
-          <AccordionItem value="participation-score" data-accordion-id="participation-score">
+          <AccordionItem value="participation-score" data-accordion-id="participation-score" className="border-b border-border/50">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.participationScore.accordionTriggerClasses
@@ -461,7 +486,7 @@ export function FilterPanel() {
                 </span>
               )}
             </AccordionTrigger>
-            <AccordionContent className="pt-1 pl-2 space-y-3">
+            <AccordionContent className="pt-1 pl-2 space-y-3 pb-3">
               <ParticipationFilterControls
                 filters={filters}
                 updateFilter={updateFilter}
@@ -471,7 +496,7 @@ export function FilterPanel() {
           </AccordionItem>
 
           {/* Counties Section */}
-          <AccordionItem value="counties-filters" data-accordion-id="counties-filters">
+          <AccordionItem value="counties-filters" data-accordion-id="counties-filters" className="border-b border-border/50">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.counties.accordionTriggerClasses
@@ -483,7 +508,7 @@ export function FilterPanel() {
                 </span>
               )}
             </AccordionTrigger>
-            <AccordionContent className="pt-1 pl-2 space-y-3">
+            <AccordionContent className="pt-1 pl-2 space-y-3 pb-3">
               <CountiesFilterControls
                 filters={filters}
                 updateFilter={updateFilter}
@@ -495,7 +520,7 @@ export function FilterPanel() {
           </AccordionItem>
 
           {/* Districts Section */}
-          <AccordionItem value="districts-filters" data-accordion-id="districts-filters">
+          <AccordionItem value="districts-filters" data-accordion-id="districts-filters" className="border-b border-border/50">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.districts.accordionTriggerClasses
@@ -507,7 +532,7 @@ export function FilterPanel() {
                 </span>
               )}
             </AccordionTrigger>
-            <AccordionContent className="pt-1 pl-2 space-y-3">
+            <AccordionContent className="pt-1 pl-2 space-y-3 pb-3">
               <DistrictsFilterControls
                 filters={filters}
                 updateFilter={updateFilter}
@@ -520,7 +545,7 @@ export function FilterPanel() {
           </AccordionItem>
 
           {/* Geographic Filters Section */}
-          <AccordionItem value="geographic-filters" data-accordion-id="geographic-filters">
+          <AccordionItem value="geographic-filters" data-accordion-id="geographic-filters" className="border-b border-border/50">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.geographic.accordionTriggerClasses
@@ -532,7 +557,7 @@ export function FilterPanel() {
                 </span>
               )}
             </AccordionTrigger>
-            <AccordionContent className="pt-1 pl-2 space-y-3">
+            <AccordionContent className="pt-1 pl-2 space-y-3 pb-3">
               <GeographicFilterControls
                 filters={filters}
                 updateFilter={updateFilter}
@@ -542,12 +567,15 @@ export function FilterPanel() {
                 addAddressFilter={addAddressFilter}
                 removeAddressFilter={removeAddressFilter}
                 clearAllAddressFilters={clearAllAddressFilters}
+                radiusFilter={filters.radiusFilter}
+                onRadiusFilterChange={handleRadiusFilterChange}
+                onClearRadiusFilter={handleClearRadiusFilter}
               />
             </AccordionContent>
           </AccordionItem>
 
           {/* Voter Info Filters */}
-          <AccordionItem value="voter-info" data-accordion-id="voter-info">
+          <AccordionItem value="voter-info" data-accordion-id="voter-info" className="border-b border-border/50">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.voterInfo.accordionTriggerClasses
@@ -559,7 +587,7 @@ export function FilterPanel() {
                 </span>
               )}
             </AccordionTrigger>
-            <AccordionContent className="pt-1 pl-2 space-y-3">
+            <AccordionContent className="pt-1 pl-2 space-y-3 pb-3">
               <VoterInfoFilterControls
                 filters={filters}
                 updateFilter={updateFilter}
@@ -572,7 +600,7 @@ export function FilterPanel() {
           </AccordionItem>
 
           {/* Demographic Filters */}
-          <AccordionItem value="demographics" data-accordion-id="demographics">
+          <AccordionItem value="demographics" data-accordion-id="demographics" className="border-b border-border/50">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.demographics.accordionTriggerClasses
@@ -584,7 +612,7 @@ export function FilterPanel() {
                 </span>
               )}
             </AccordionTrigger>
-            <AccordionContent className="pt-1 pl-2 space-y-3">
+            <AccordionContent className="pt-1 pl-2 space-y-3 pb-3">
               <DemographicsFilterControls
                 filters={filters}
                 updateFilter={updateFilter}
@@ -596,7 +624,7 @@ export function FilterPanel() {
           </AccordionItem>
 
           {/* Elections Section (Formerly Voting History) */}
-          <AccordionItem value="voting-history" data-accordion-id="voting-history">
+          <AccordionItem value="voting-history" data-accordion-id="voting-history" className="border-b border-border/50">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
               sectionColorConfig.votingHistory.accordionTriggerClasses
@@ -608,7 +636,7 @@ export function FilterPanel() {
                 </span>
               )}
             </AccordionTrigger>
-            <AccordionContent className="pt-1 pl-2 space-y-3">
+            <AccordionContent className="pt-1 pl-2 space-y-3 pb-3">
               <ElectionsFilterControls
                 filters={filters}
                 updateFilter={updateFilter}
@@ -619,7 +647,7 @@ export function FilterPanel() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* Census Data Filters */}
+          {/* Census Data Filters - Last item, no border */}
           <AccordionItem value="census-data" data-accordion-id="census-data">
             <AccordionTrigger className={cn(
               "text-sm font-semibold flex justify-between items-center w-full py-2 px-3 rounded-sm hover:no-underline",
@@ -632,7 +660,7 @@ export function FilterPanel() {
                 </span>
               )}
             </AccordionTrigger>
-            <AccordionContent className="pt-1 pl-2 space-y-3">
+            <AccordionContent className="pt-1 pl-2 space-y-3 pb-3">
               <CensusDataFilterControls
                 filters={filters}
                 updateFilter={updateFilter}
