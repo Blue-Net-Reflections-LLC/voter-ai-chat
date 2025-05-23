@@ -248,7 +248,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
           type: 'numericColumn', 
           flex: 1 
         });
-
+        
         dynamicColDefs.push({ 
           headerName: `${headerPrefix} - Voted`, 
           valueGetter: (params) => {
@@ -266,7 +266,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
           type: 'numericColumn', 
           flex: 1 
         });
-
+        
         dynamicColDefs.push({ 
           headerName: `${headerPrefix} - Turnout`, 
           valueGetter: (params) => {
@@ -556,7 +556,7 @@ export const ReportTabContent = forwardRef<ReportActions, ReportTabContentProps>
         if (censusKey === 'totalPopulation') {
           // We'll add this after all other columns
         } else {
-          dynamicColDefs.push(colDef);
+        dynamicColDefs.push(colDef);
         }
       });
 
