@@ -2,11 +2,13 @@
 
 import { signIn, signOut } from './auth';
 
-export async function googleAuthenticate() {
+export async function googleAuthenticate({ prompt = false, callbackUrl = '/login' }: { prompt?: boolean; callbackUrl?: string }) {
+  const promptObject = prompt ? { prompt: "login" } : undefined;
   await signIn('google', {
-    callbackUrl: '/chat-google',
-    redirect: true
-  });
+    callbackUrl: callbackUrl,
+    redirect: true,
+    redirectTo: callbackUrl
+  }, promptObject);
 }
 
 export async function signOutAction() {

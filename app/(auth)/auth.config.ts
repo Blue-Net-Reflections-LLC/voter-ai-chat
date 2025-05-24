@@ -1,8 +1,10 @@
 import type { NextAuthConfig } from 'next-auth';
+import { notFound } from 'next/navigation';
 
 // Add minimal constants needed for state routing
 const SUPPORTED_STATES = new Set(['GA']); 
 const stateChatRouteRegex = /^\/([a-zA-Z]{2})\/chat(?:\/([0-9a-fA-F-]+))?$/;
+const adminRoutes = ['/admin', '/ga/voter'];
 
 async function checkUserProfile(origin: string, headers: Headers) {
   const profileRes = await fetch(`${origin}/api/profile/check`, {
@@ -30,6 +32,21 @@ export const authConfig = {
       const isOnRegister = nextUrl.pathname.startsWith('/register');
       const isOnLogin = nextUrl.pathname.startsWith('/login');
       const isOnOnboarding = nextUrl.pathname.startsWith('/onboarding');
+      const isOnAdmin = adminRoutes.some(route => nextUrl.pathname.startsWith(route));
+
+      if (isOnAdmin) {
+        if (!isLoggedIn) {
+          return Response.redirect(new URL('/login?redirect=' + nextUrl.pathname, nextUrl));
+          // return Response.redirect(new URL('/login', nextUrl));
+        }
+        const { role } = await checkUserProfile(nextUrl.origin, headers);
+        console.log('voterai.role', role);
+        if (role !== 'admin') {
+          return new Response(null, { status: 403 });
+        }
+        return true;
+      }
+
 
       // Check for state routes (new addition)
       const stateRouteMatch = nextUrl.pathname.match(stateChatRouteRegex);
@@ -67,7 +84,7 @@ export const authConfig = {
       // New addition: Handle state-specific routes
       if (isStateChatRoute && !isLoggedIn) {
         // Redirect unauthenticated users to login
-        return Response.redirect(new URL('/login', nextUrl));
+        return Response.redirect(new URL('/login?redirect=' + nextUrl.pathname, nextUrl));
       }
 
       if (isStateChatRoute && isLoggedIn) {

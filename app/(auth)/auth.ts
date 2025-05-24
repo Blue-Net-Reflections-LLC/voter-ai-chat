@@ -9,6 +9,7 @@ declare module 'next-auth' {
     user: {
       id: string;
       selectedState?: string | null;
+      role?: string | null;
     } & DefaultSession['user']
   }
 }
