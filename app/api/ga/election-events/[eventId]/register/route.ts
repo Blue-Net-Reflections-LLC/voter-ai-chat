@@ -165,7 +165,7 @@ export async function POST(
     const event = eventCheck[0];
     if (event.status !== 'active') {
       return NextResponse.json(
-        { error: 'Event is not currently accepting registrations' },
+        { error: 'Event is not currently accepting sign-ins' },
         { status: 400 }
       );
     }
@@ -178,7 +178,7 @@ export async function POST(
 
     if (duplicateCheck.length > 0) {
       return NextResponse.json(
-        { error: 'You have already registered for this event' },
+        { error: 'You have already signed in for this event' },
         { status: 409 }
       );
     }
@@ -214,7 +214,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `Successfully registered for ${event.title}`,
+      message: `Successfully signed in for ${event.title}`,
       registration: {
         id: registration[0].id,
         eventTitle: event.title,
@@ -228,7 +228,7 @@ export async function POST(
     // Handle unique constraint violation (duplicate email)
     if (error instanceof Error && error.message.includes('unique constraint')) {
       return NextResponse.json(
-        { error: 'You have already registered for this event' },
+        { error: 'You have already signed in for this event' },
         { status: 409 }
       );
     }
