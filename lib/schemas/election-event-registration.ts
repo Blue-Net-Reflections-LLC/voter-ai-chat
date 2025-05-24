@@ -8,12 +8,14 @@ export const registrationSchema = z.object({
       if (trimmed.length === 0) return false;
       if (trimmed.length < 2) return false;
       if (trimmed.length > 255) return false;
+      if (!trimmed.includes(' ')) return false; // Must contain at least one space
       return true;
     }, (val) => {
       const trimmed = val.trim();
       if (trimmed.length === 0) return { message: 'Full name is required' };
       if (trimmed.length < 2) return { message: 'Full name must be at least 2 characters' };
       if (trimmed.length > 255) return { message: 'Full name must be less than 255 characters' };
+      if (!trimmed.includes(' ')) return { message: 'Please enter your first and last name' };
       return { message: 'Invalid full name' };
     })
     .transform((val) => val.trim()),
@@ -23,13 +25,18 @@ export const registrationSchema = z.object({
       const trimmed = val.trim();
       if (trimmed.length === 0) return false;
       if (trimmed.length > 255) return false;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return false;
+      
+      // Use a reasonable email regex pattern based on Colin McDonnell's research
+      // This pattern prevents consecutive dots and handles edge cases properly
+      const emailRegex = /^(?!\.)(?!.*\.\.)([a-z0-9_'+\-\.]*)[a-z0-9_'+\-]@([a-z0-9][a-z0-9\-]*\.)+[a-z]{2,}$/i;
+      
+      if (!emailRegex.test(trimmed)) return false;
       return true;
     }, (val) => {
       const trimmed = val.trim();
       if (trimmed.length === 0) return { message: 'Email address is required' };
       if (trimmed.length > 255) return { message: 'Email must be less than 255 characters' };
-      return { message: 'Invalid email format' };
+      return { message: 'Please enter a valid email address' };
     })
     .transform((val) => val.trim().toLowerCase()),
   
@@ -37,7 +44,7 @@ export const registrationSchema = z.object({
     .refine((val) => {
       const trimmed = val.trim();
       if (trimmed.length === 0) return false;
-      if (!/^(\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{10})$/.test(trimmed)) return false;
+      if (!/^(\(\d{3}\)\s\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{10})$/.test(trimmed)) return false;
       return true;
     }, (val) => {
       const trimmed = val.trim();
