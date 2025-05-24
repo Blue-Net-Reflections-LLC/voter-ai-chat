@@ -26,7 +26,7 @@ interface PageProps {
 
 async function getEventDetails(eventId: string): Promise<ElectionEvent | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
     const response = await fetch(`${baseUrl}/api/ga/election-events/${eventId}`, {
       cache: 'no-store' // Always fetch fresh data for registration counts
     });
