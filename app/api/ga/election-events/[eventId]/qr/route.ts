@@ -38,12 +38,12 @@ export async function GET(
 
     const event = eventResult[0];
 
-    // Build the registration URL - require NEXT_PUBLIC_BASE_URL for reliable public URLs
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    // Build the registration URL - require NEXT_PUBLIC_APP_URL for reliable public URLs
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!baseUrl) {
-      console.error('NEXT_PUBLIC_BASE_URL environment variable is required for QR code generation');
+      console.error('NEXT_PUBLIC_APP_URL environment variable is required for QR code generation');
       return NextResponse.json(
-        { error: 'Server configuration error: Base URL not configured' },
+        { error: 'Server configuration error: App URL not configured' },
         { status: 500 }
       );
     }

@@ -54,3 +54,4 @@ VALUES (
     'active',
     'georgia-psc-primary-forum'
 ) ON CONFLICT DO NOTHING;
+ 
