@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { CheckCircleIcon, AlertCircleIcon, LoaderIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { gaCountyCodeToNameMap } from '@/lib/data/ga_county_codes';
@@ -11,36 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-
-// Validation schema matching the backend
-const registrationSchema = z.object({
-  fullName: z.string()
-    .min(2, 'Full name must be at least 2 characters')
-    .max(255, 'Full name must be less than 255 characters'),
-  email: z.string()
-    .email('Invalid email format')
-    .max(255, 'Email must be less than 255 characters'),
-  mobileNumber: z.string()
-    .regex(
-      /^(\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{10})$/,
-      'Invalid mobile number format. Please use (xxx) xxx-xxxx format.'
-    ),
-  countyCode: z.string().optional(),
-  countyName: z.string().optional(),
-  isVoterRegistered: z.enum(['Y', 'N', 'U']).optional()
-}).refine((data) => {
-  // If either county field is provided, both must be provided
-  const hasCountyCode = data.countyCode && data.countyCode.trim() !== '';
-  const hasCountyName = data.countyName && data.countyName.trim() !== '';
-  
-  if (hasCountyCode || hasCountyName) {
-    return hasCountyCode && hasCountyName;
-  }
-  return true;
-}, {
-  message: 'If county information is provided, both county code and county name are required',
-  path: ['countyCode']
-});
+import { registrationSchema, type RegistrationFormData } from '@/lib/schemas/election-event-registration';
 
 interface County {
   value: string;
@@ -94,6 +65,10 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [countiesLoading, setCountiesLoading] = useState(true);
   const [countyOpen, setCountyOpen] = useState(false);
+  
+  // Refs for scrolling to success message and error messages
+  const successRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   // Load counties on component mount
   useEffect(() => {
@@ -112,6 +87,44 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
     }
     loadCounties();
   }, []);
+
+  // Scroll to success message when it appears
+  useEffect(() => {
+    if (success && successRef.current) {
+      successRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
+    }
+  }, [success]);
+
+  // Scroll to error message when submit error appears
+  useEffect(() => {
+    if (errors.submit && errorRef.current) {
+      errorRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center',
+        inline: 'nearest'
+      });
+    }
+  }, [errors.submit]);
+
+  // Scroll to first field validation error when validation fails
+  useEffect(() => {
+    const fieldErrors = Object.keys(errors).filter(key => key !== 'submit');
+    if (fieldErrors.length > 0) {
+      const firstErrorField = fieldErrors[0];
+      const errorElement = document.getElementById(firstErrorField);
+      if (errorElement) {
+        errorElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center',
+          inline: 'nearest'
+        });
+      }
+    }
+  }, [errors]);
 
   // Format mobile number as user types
   const formatMobileNumber = (value: string): string => {
@@ -221,18 +234,22 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
 
   if (success) {
     return (
-      <div className="text-center py-8">
-        <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+      <div 
+        ref={successRef}
+        className="text-center py-8 px-4 sm:px-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border-2 border-green-200 dark:border-green-800 rounded-xl shadow-lg"
+      >
+        <CheckCircleIcon className="h-20 w-20 sm:h-24 sm:w-24 text-green-600 dark:text-green-400 mx-auto mb-6 drop-shadow-sm" />
+        <h3 className="text-2xl sm:text-3xl font-bold text-green-900 dark:text-green-100 mb-3">
           Sign-in Successful!
         </h3>
-        <p className="text-gray-600 mb-4">
+        <p className="text-lg sm:text-xl text-green-800 dark:text-green-200 mb-6 leading-relaxed">
           Thank you for signing in. You&apos;re all checked in for the event.
         </p>
         <Button
           onClick={() => setSuccess(false)}
-          variant="link"
-          className="text-blue-600 hover:text-blue-700"
+          variant="default"
+          size="lg"
+          className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white font-semibold px-8 py-3 text-lg shadow-md hover:shadow-lg transition-all duration-200"
         >
           Sign in another person
         </Button>
@@ -250,7 +267,7 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
       {/* Separator */}
       <div className="border-t border-border mb-8"></div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8" noValidate>
         {/* Full Name */}
         <div className="space-y-2">
           <Label htmlFor="fullName" className="text-lg font-medium text-foreground">
@@ -260,6 +277,7 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
             id="fullName"
             value={formData.fullName}
             onChange={(e) => handleInputChange('fullName', e.target.value)}
+            maxLength={255}
             className={cn(
               "text-xl h-14 bg-blue-50 dark:bg-slate-800 border-2 border-blue-200 dark:border-slate-600 text-foreground placeholder:text-muted-foreground",
               "focus:bg-blue-100 dark:focus:bg-slate-700 focus:border-blue-400 dark:focus:border-blue-400",
@@ -285,6 +303,10 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
             id="email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            maxLength={255}
             className={cn(
               "text-xl h-14 bg-blue-50 dark:bg-slate-800 border-2 border-blue-200 dark:border-slate-600 text-foreground placeholder:text-muted-foreground",
               "focus:bg-blue-100 dark:focus:bg-slate-700 focus:border-blue-400 dark:focus:border-blue-400",
@@ -427,7 +449,10 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
 
         {/* Submit Error */}
         {errors.submit && (
-          <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-500 p-6">
+          <div 
+            ref={errorRef}
+            className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-500 p-6 rounded-lg"
+          >
             <div className="flex items-center">
               <AlertCircleIcon className="h-6 w-6 text-red-500 dark:text-red-400 mr-3" />
               <p className="text-lg text-red-700 dark:text-red-300">{errors.submit}</p>

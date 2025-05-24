@@ -2,41 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/voter/db';
 import { z } from 'zod';
 import { gaCountyCodeToNameMap } from '@/lib/data/ga_county_codes';
-
-// Zod schema for registration validation
-const registrationSchema = z.object({
-  fullName: z.string()
-    .min(2, 'Full name must be at least 2 characters')
-    .max(255, 'Full name must be less than 255 characters')
-    .trim(),
-  email: z.string()
-    .email('Invalid email format')
-    .max(255, 'Email must be less than 255 characters')
-    .toLowerCase(),
-  mobileNumber: z.string()
-    .regex(
-      /^(\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{10})$/,
-      'Invalid mobile number format. Please use (xxx) xxx-xxxx format.'
-    ),
-  countyCode: z.string().optional(),
-  countyName: z.string().optional(),
-  isVoterRegistered: z.enum(['Y', 'N', 'U']).optional()
-}).refine((data) => {
-  // If either county field is provided, both must be provided
-  const hasCountyCode = data.countyCode && data.countyCode.trim() !== '';
-  const hasCountyName = data.countyName && data.countyName.trim() !== '';
-  
-  if (hasCountyCode || hasCountyName) {
-    return hasCountyCode && hasCountyName;
-  }
-  return true; // Both empty is valid
-}, {
-  message: 'If county information is provided, both county code and county name are required',
-  path: ['countyCode'] // This will attach the error to countyCode field
-});
-
-// UUID validation schema
-const eventIdSchema = z.string().uuid('Invalid event ID format');
+import { registrationSchema, eventIdSchema } from '@/lib/schemas/election-event-registration';
 
 // Simple rate limiting in memory (for production, use Redis or database)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -165,7 +131,7 @@ export async function POST(
     const event = eventCheck[0];
     if (event.status !== 'active') {
       return NextResponse.json(
-        { error: 'Event is not currently accepting registrations' },
+        { error: 'Event is not currently accepting sign-ins' },
         { status: 400 }
       );
     }
@@ -178,7 +144,7 @@ export async function POST(
 
     if (duplicateCheck.length > 0) {
       return NextResponse.json(
-        { error: 'You have already registered for this event' },
+        { error: 'You have already signed in for this event' },
         { status: 409 }
       );
     }
@@ -214,7 +180,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `Successfully registered for ${event.title}`,
+      message: `Successfully signed in for ${event.title}`,
       registration: {
         id: registration[0].id,
         eventTitle: event.title,
@@ -228,7 +194,7 @@ export async function POST(
     // Handle unique constraint violation (duplicate email)
     if (error instanceof Error && error.message.includes('unique constraint')) {
       return NextResponse.json(
-        { error: 'You have already registered for this event' },
+        { error: 'You have already signed in for this event' },
         { status: 409 }
       );
     }
