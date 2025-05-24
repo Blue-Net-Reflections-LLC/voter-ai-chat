@@ -14,6 +14,7 @@ import { GridPattern } from '@/components/ui/grid-pattern';
 import { cn } from '@/lib/utils';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 const fadeInUp = {
 	initial: { opacity: 0, y: 20 },
@@ -21,7 +22,43 @@ const fadeInUp = {
 	transition: { duration: 0.5 }
 };
 
-export default function LoginPage() {
+// Shared login form component
+function LoginForm({ 
+	onGoogleSignIn, 
+	disabled = false 
+}: { 
+	onGoogleSignIn?: () => void; 
+	disabled?: boolean; 
+}) {
+	return (
+		<Card className="bg-background shadow-lg">
+			<CardHeader>
+				<h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 text-center">Sign In</h1>
+				<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+					Continue with your Google account
+				</p>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<Button 
+					onClick={onGoogleSignIn}
+					disabled={disabled}
+					className="w-full flex items-center justify-center gap-2 bg-background hover:bg-muted text-foreground border border-border"
+				>
+					<Image 
+						src="/images/google.svg" 
+						alt="Google" 
+						width={20} 
+						height={20}
+					/>
+					Sign in with Google
+				</Button>
+			</CardContent>
+		</Card>
+	);
+}
+
+// Component that uses useSearchParams
+function LoginFormWithParams() {
 	const { trackEvent } = useGoogleAnalytics();
 	const { data: session } = useSession();
 	
@@ -31,6 +68,10 @@ export default function LoginPage() {
 		await googleAuthenticate({callbackUrl: searchParams.get('redirect') || undefined});
 	};
 
+	return <LoginForm onGoogleSignIn={handleGoogleSignIn} />;
+}
+
+export default function LoginPage() {
 	return (
 		<div className="flex min-h-screen flex-col bg-background relative overflow-hidden">
 			<GridPattern
@@ -67,28 +108,9 @@ export default function LoginPage() {
 						animate="animate"
 						variants={fadeInUp}
 					>
-						<Card className="bg-background shadow-lg">
-							<CardHeader>
-								<h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 text-center">Sign In</h1>
-								<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-									Continue with your Google account
-								</p>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<Button 
-									onClick={handleGoogleSignIn} 
-									className="w-full flex items-center justify-center gap-2 bg-background hover:bg-muted text-foreground border border-border"
-								>
-									<Image 
-										src="/images/google.svg" 
-										alt="Google" 
-										width={20} 
-										height={20}
-									/>
-									Sign in with Google
-								</Button>
-							</CardContent>
-						</Card>
+						<Suspense fallback={<LoginForm disabled />}>
+							<LoginFormWithParams />
+						</Suspense>
 					</motion.div>
 
 					<motion.div
