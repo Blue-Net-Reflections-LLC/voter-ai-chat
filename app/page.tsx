@@ -172,9 +172,9 @@ export default function HomePage() {
 				</motion.div>
 			</div>
 			<footer className="py-4 text-center text-sm text-gray-600 dark:text-gray-400">
-				Developed by <TrackingLink href="mailto:horace.reid@bluenetreflections.com" category="home"
+				Developed by <TrackingLink href="mailto:horace.reid@voterai.chat" category="home"
 																	 action="developer interest" className="hover:underline">Horace Reid
-				III</TrackingLink> @ 2024
+				III</TrackingLink> @ 2025
 			</footer>
 		</div>
 	)
