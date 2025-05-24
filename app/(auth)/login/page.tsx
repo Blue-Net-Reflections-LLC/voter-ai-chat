@@ -12,6 +12,8 @@ import TrackingLink from "@/components/ui/TrackingLink";
 import { googleAuthenticate } from '../actions';
 import { GridPattern } from '@/components/ui/grid-pattern';
 import { cn } from '@/lib/utils';
+import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 
 const fadeInUp = {
 	initial: { opacity: 0, y: 20 },
@@ -21,10 +23,12 @@ const fadeInUp = {
 
 export default function LoginPage() {
 	const { trackEvent } = useGoogleAnalytics();
-
+	const { data: session } = useSession();
+	
+	const searchParams = useSearchParams();
 	const handleGoogleSignIn = async () => {
 		trackEvent("signin", "cta", "Google Sign In", 0);
-		await googleAuthenticate();
+		await googleAuthenticate({callbackUrl: searchParams.get('redirect') || undefined});
 	};
 
 	return (

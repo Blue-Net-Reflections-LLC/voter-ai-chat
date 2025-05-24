@@ -14,6 +14,9 @@ export const config = {
     '/onboarding', 
     '/chat',
     '/api/profile/:path*',
+    '/admin',
+    '/admin/:path*',
+    '/ga/voter/:path*',
   ],
 };
   
