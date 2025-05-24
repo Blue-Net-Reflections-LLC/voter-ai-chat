@@ -1,11 +1,15 @@
 import { executeSelectsTool } from "@/lib/voter/query/execute-selects";
 import { z } from "zod";
 import { districtLookupTool } from "@/lib/tools/district-lookup-tool";
+import { impactLookupTool } from "@/lib/tools/impact-lookup-tool";
+import { geocodingTool } from "@/lib/tools/geocoding-tool";
 
 export const getVoterAiChatUiToolset = () => {
 	return {
 		executeSelectsTool,
 		districtLookupTool,
+		impactLookupTool,
+		geocodingTool,
 		errorMessageTool: {
 				description: "A utility tool to process and handle error messages returned by any other tool.",
 				parameters: z.object({
