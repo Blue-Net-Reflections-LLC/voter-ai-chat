@@ -11,36 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-
-// Validation schema matching the backend
-const registrationSchema = z.object({
-  fullName: z.string()
-    .min(2, 'Full name must be at least 2 characters')
-    .max(255, 'Full name must be less than 255 characters'),
-  email: z.string()
-    .email('Invalid email format')
-    .max(255, 'Email must be less than 255 characters'),
-  mobileNumber: z.string()
-    .regex(
-      /^(\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{10})$/,
-      'Invalid mobile number format. Please use (xxx) xxx-xxxx format.'
-    ),
-  countyCode: z.string().optional(),
-  countyName: z.string().optional(),
-  isVoterRegistered: z.enum(['Y', 'N', 'U']).optional()
-}).refine((data) => {
-  // If either county field is provided, both must be provided
-  const hasCountyCode = data.countyCode && data.countyCode.trim() !== '';
-  const hasCountyName = data.countyName && data.countyName.trim() !== '';
-  
-  if (hasCountyCode || hasCountyName) {
-    return hasCountyCode && hasCountyName;
-  }
-  return true;
-}, {
-  message: 'If county information is provided, both county code and county name are required',
-  path: ['countyCode']
-});
+import { registrationSchema, type RegistrationFormData } from '@/lib/schemas/election-event-registration';
 
 interface County {
   value: string;
@@ -296,7 +267,7 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
       {/* Separator */}
       <div className="border-t border-border mb-8"></div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8" noValidate>
         {/* Full Name */}
         <div className="space-y-2">
           <Label htmlFor="fullName" className="text-lg font-medium text-foreground">
@@ -306,6 +277,7 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
             id="fullName"
             value={formData.fullName}
             onChange={(e) => handleInputChange('fullName', e.target.value)}
+            maxLength={255}
             className={cn(
               "text-xl h-14 bg-blue-50 dark:bg-slate-800 border-2 border-blue-200 dark:border-slate-600 text-foreground placeholder:text-muted-foreground",
               "focus:bg-blue-100 dark:focus:bg-slate-700 focus:border-blue-400 dark:focus:border-blue-400",
@@ -331,6 +303,10 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
             id="email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            maxLength={255}
             className={cn(
               "text-xl h-14 bg-blue-50 dark:bg-slate-800 border-2 border-blue-200 dark:border-slate-600 text-foreground placeholder:text-muted-foreground",
               "focus:bg-blue-100 dark:focus:bg-slate-700 focus:border-blue-400 dark:focus:border-blue-400",
