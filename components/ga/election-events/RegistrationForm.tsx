@@ -227,7 +227,7 @@ export default function RegistrationForm({ eventId, eventTitle }: RegistrationFo
           Sign-in Successful!
         </h3>
         <p className="text-gray-600 mb-4">
-          Thank you for signing in. You're all checked in for the event.
+          Thank you for signing in. You&apos;re all checked in for the event.
         </p>
         <Button
           onClick={() => setSuccess(false)}

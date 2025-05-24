@@ -6,12 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Plus, FileDown, Eye, QrCode } from 'lucide-react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-quartz.css';
 import type { ColDef, GridReadyEvent, IGetRowsParams } from 'ag-grid-community';
 
-// Add custom CSS for AG Grid styling
-import './ag-grid-custom.css';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
