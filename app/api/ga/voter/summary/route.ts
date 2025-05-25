@@ -22,6 +22,9 @@ export interface AggregateItem {
   count: number;
   facility_name?: string;
   facility_address?: string;
+  race_category?: string;
+  data_type?: string;
+  registration_rate?: number;
 }
 
 // API response structure
@@ -541,25 +544,23 @@ async function getCensusAggregates(whereClause: string, shouldQuery: boolean) {
             ct.cvap_white_alone,
             ct.cvap_black_alone,
             ct.cvap_asian_alone,
+            ct.cvap_pacific_islander_alone,
             ct.cvap_hispanic_or_latino,
-            (COALESCE(ct.cvap_american_indian_alone, 0) + 
-             COALESCE(ct.cvap_pacific_islander_alone, 0) + 
-             COALESCE(ct.cvap_other_race_alone, 0) + 
-             COALESCE(ct.cvap_two_or_more_races, 0)) AS cvap_other_combined
+            ct.cvap_american_indian_alone
           FROM stg_processed_census_tract_data ct
           INNER JOIN GA_VOTER_REGISTRATION_LIST vrl ON ct.tract_id = vrl.census_tract
           ${whereClause}
-          WHERE ct.cvap_total IS NOT NULL AND ct.cvap_total > 0
+          AND ct.cvap_total IS NOT NULL AND ct.cvap_total > 0
         ),
         RegisteredVoters AS (
           -- Count registered voters by race in each tract
           SELECT 
             vrl.census_tract,
-            COUNT(CASE WHEN vrl.race = 'WHITE' THEN 1 END) as registered_white,
-            COUNT(CASE WHEN vrl.race = 'BLACK' THEN 1 END) as registered_black,
-            COUNT(CASE WHEN vrl.race = 'ASIAN/PACIFIC ISLANDER' THEN 1 END) as registered_asian,
-            COUNT(CASE WHEN vrl.race = 'HISPANIC/LATINO' THEN 1 END) as registered_hispanic,
-            COUNT(CASE WHEN vrl.race IN ('AMERICAN INDIAN', 'ALASKAN NATIVE', 'OTHER', 'UNKNOWN') THEN 1 END) as registered_other
+            COUNT(CASE WHEN UPPER(vrl.race) = 'WHITE' THEN 1 END) as registered_white,
+            COUNT(CASE WHEN UPPER(vrl.race) = 'BLACK' THEN 1 END) as registered_black,
+            COUNT(CASE WHEN UPPER(vrl.race) IN ('ASIAN/PACIFIC ISLANDER', 'ASIAN', 'PACIFIC ISLANDER') THEN 1 END) as registered_asian_pacific,
+            COUNT(CASE WHEN UPPER(vrl.race) = 'HISPANIC/LATINO' THEN 1 END) as registered_hispanic,
+            COUNT(CASE WHEN UPPER(vrl.race) IN ('AMERICAN INDIAN', 'ALASKAN NATIVE') THEN 1 END) as registered_american_indian
           FROM GA_VOTER_REGISTRATION_LIST vrl
           ${whereClause}
           GROUP BY vrl.census_tract
@@ -589,12 +590,12 @@ async function getCensusAggregates(whereClause: string, shouldQuery: boolean) {
           
           SELECT 
             'Asian/Pacific Islander' AS race_category,
-            SUM(ct.cvap_asian_alone) AS cvap_count,
-            SUM(COALESCE(rv.registered_asian, 0)) AS registered_count,
+            SUM(COALESCE(ct.cvap_asian_alone, 0) + COALESCE(ct.cvap_pacific_islander_alone, 0)) AS cvap_count,
+            SUM(COALESCE(rv.registered_asian_pacific, 0)) AS registered_count,
             3 AS sort_order
           FROM CensusTracts ct
           LEFT JOIN RegisteredVoters rv ON ct.tract_id = rv.census_tract
-          WHERE ct.cvap_asian_alone > 0
+          WHERE (COALESCE(ct.cvap_asian_alone, 0) + COALESCE(ct.cvap_pacific_islander_alone, 0)) > 0
           
           UNION ALL
           
@@ -610,54 +611,59 @@ async function getCensusAggregates(whereClause: string, shouldQuery: boolean) {
           UNION ALL
           
           SELECT 
-            'Other Races' AS race_category,
-            SUM(ct.cvap_other_combined) AS cvap_count,
-            SUM(COALESCE(rv.registered_other, 0)) AS registered_count,
+            'American Indian/Alaska Native' AS race_category,
+            SUM(ct.cvap_american_indian_alone) AS cvap_count,
+            SUM(COALESCE(rv.registered_american_indian, 0)) AS registered_count,
             5 AS sort_order
           FROM CensusTracts ct
           LEFT JOIN RegisteredVoters rv ON ct.tract_id = rv.census_tract
-          WHERE ct.cvap_other_combined > 0
-        ),
-        FinalData AS (
-          -- Create CVAP entries
-          SELECT 
-            race_category || ' - CVAP Eligible' AS label,
-            cvap_count AS count,
-            race_category,
-            'cvap' AS data_type,
-            sort_order * 2 - 1 AS final_sort
-          FROM RacialComparison
-          WHERE cvap_count > 0
-          
-          UNION ALL
-          
-          -- Create Registered entries
-          SELECT 
-            race_category || ' - Registered' AS label,
-            registered_count AS count,
-            race_category,
-            'registered' AS data_type,
-            sort_order * 2 AS final_sort
-          FROM RacialComparison
-          WHERE registered_count > 0
+          WHERE ct.cvap_american_indian_alone > 0
         )
         SELECT 
-          label,
-          count,
           race_category,
-          data_type
-        FROM FinalData
-        WHERE count > 0
-        ORDER BY final_sort
+          cvap_count,
+          registered_count,
+          sort_order,
+          CASE 
+            WHEN cvap_count > 0 THEN ROUND((registered_count::numeric / cvap_count::numeric) * 100, 1)
+            ELSE 0 
+          END AS registration_rate_pct
+        FROM RacialComparison
+        WHERE cvap_count > 0 OR registered_count > 0
+        ORDER BY sort_order
         LIMIT ${AGG_LIMIT}
       `;
       const results = await sql.unsafe(query);
-      return results.map((row: any) => ({ 
-        label: `${row.label}: ${Number(row.count).toLocaleString()}`, 
-        count: Number(row.count),
-        race_category: row.race_category,
-        data_type: row.data_type
-      }));
+      
+      // Transform results for side-by-side bar chart format
+      const chartData: AggregateItem[] = [];
+      
+      results.forEach((row: any) => {
+        const raceCategory = row.race_category;
+        const cvapCount = Number(row.cvap_count);
+        const registeredCount = Number(row.registered_count);
+        const registrationRate = Number(row.registration_rate_pct);
+        
+        // Add CVAP bar
+        chartData.push({
+          label: `${raceCategory} - CVAP Eligible`,
+          count: cvapCount,
+          race_category: raceCategory,
+          data_type: 'cvap',
+          registration_rate: registrationRate
+        });
+        
+        // Add Registered bar
+        chartData.push({
+          label: `${raceCategory} - Registered`,
+          count: registeredCount,
+          race_category: raceCategory,
+          data_type: 'registered',
+          registration_rate: registrationRate
+        });
+      });
+      
+      return chartData;
     } catch (e) {
       console.error(`[voter/summary] Error querying cvap_registration_rates:`, e);
       return [];
@@ -733,7 +739,6 @@ async function getPrecinctAggregates(whereClause: string, shouldQuery: boolean) 
           count DESC
         LIMIT ${AGG_LIMIT}
       `;
-      
       const results = await sql.unsafe(query);
       return results.map((row: any) => ({
         label: row.label,
@@ -750,7 +755,8 @@ async function getPrecinctAggregates(whereClause: string, shouldQuery: boolean) 
   // Municipal Precincts with facility information
   const municipalPrecinctPromise = (async () => {
     try {
-      // Similar query for municipal precincts
+      // REFERENCE_DATA contains facility information for precincts
+      // Use JOIN to get facility data along with precinct counts
       const extraFilter = `(v.municipal_precinct IS NOT NULL AND TRIM(v.municipal_precinct) != '')`;
       const fullWhere = whereClause
         ? whereClause.replace(/^WHERE/i, `WHERE ${extraFilter} AND`)
@@ -780,7 +786,6 @@ async function getPrecinctAggregates(whereClause: string, shouldQuery: boolean) 
           count DESC
         LIMIT ${AGG_LIMIT}
       `;
-      
       const results = await sql.unsafe(query);
       return results.map((row: any) => ({
         label: row.label,
@@ -860,4 +865,4 @@ export async function GET(req: NextRequest) {
     console.error('[voter/summary] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch voter summary.' }, { status: 500 });
   }
-} 
+}
