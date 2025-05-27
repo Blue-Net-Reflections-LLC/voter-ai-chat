@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { List, BarChart2, Map, PieChart, Landmark, Menu, X, Vote } from "lucide-react";
+import { List, BarChart2, Map, PieChart, Landmark, Menu, X, Vote, Users } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const tabs = [
@@ -36,6 +36,12 @@ const tabs = [
     label: "Charts",
     href: "/ga/voter/charts",
     icon: PieChart,
+    enabled: true,
+  },
+  {
+    label: "Campaigns",
+    href: "/ga/voter/campaigns",
+    icon: Users,
     enabled: true,
   },
   {
