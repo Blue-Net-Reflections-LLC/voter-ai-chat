@@ -589,8 +589,6 @@ export default function CampaignDetailsPage() {
             </Card>
           </TabsContent>
 
-
-
           {/* Volunteers Tab */}
           <TabsContent value="volunteers" className="space-y-6">
             <div className="flex items-center justify-between">
@@ -1279,16 +1277,393 @@ export default function CampaignDetailsPage() {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
-            <div className="text-center py-12">
-              <Settings className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Campaign Settings</h3>
-              <p className="text-muted-foreground mb-4">
-                Campaign configuration and management options
-              </p>
-              <Button variant="outline">
-                Edit Campaign
-              </Button>
+            {/* Settings Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Campaign Settings</h2>
+                <p className="text-muted-foreground">
+                  Configure campaign details, AI scripting, and contact preferences
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm">
+                  Reset to Defaults
+                </Button>
+                <Button size="sm">
+                  Save Changes
+                </Button>
+              </div>
             </div>
+
+            {/* Basic Campaign Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Basic Information</CardTitle>
+                <CardDescription>
+                  Core campaign details and timeline
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Campaign Name</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-2 border rounded-md" 
+                      defaultValue={campaign.name}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Campaign Type</label>
+                    <select className="w-full p-2 border rounded-md" defaultValue={campaign.type}>
+                      <option value="GOTV">Get Out The Vote (GOTV)</option>
+                      <option value="PHONE_BANK">Phone Bank</option>
+                      <option value="CANVASSING">Canvassing</option>
+                      <option value="MAIL">Mail Campaign</option>
+                      <option value="DIGITAL">Digital Outreach</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Description</label>
+                  <textarea 
+                    className="w-full p-2 border rounded-md h-20" 
+                    defaultValue={campaign.description}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Start Date</label>
+                    <input 
+                      type="date" 
+                      className="w-full p-2 border rounded-md" 
+                      defaultValue={campaign.startDate}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">End Date</label>
+                    <input 
+                      type="date" 
+                      className="w-full p-2 border rounded-md" 
+                      defaultValue={campaign.endDate}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Campaign Manager</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-2 border rounded-md" 
+                      defaultValue={campaign.campaignManager}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Campaign Goals & Targets */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Goals & Targets</CardTitle>
+                <CardDescription>
+                  Contact targets and performance goals
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Target Contacts</label>
+                    <input 
+                      type="number" 
+                      className="w-full p-2 border rounded-md" 
+                      defaultValue={campaign.targetContacts}
+                    />
+                    <p className="text-xs text-muted-foreground">Total voters to contact</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Target Response Rate</label>
+                    <div className="flex items-center space-x-2">
+                      <input 
+                        type="number" 
+                        className="w-full p-2 border rounded-md" 
+                        defaultValue="65"
+                        min="0" 
+                        max="100"
+                      />
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Volunteer Hours Goal</label>
+                    <input 
+                      type="number" 
+                      className="w-full p-2 border rounded-md" 
+                      defaultValue="200"
+                    />
+                    <p className="text-xs text-muted-foreground">Total volunteer hours</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* AI Script Generation Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MessageSquare className="h-5 w-5" />
+                  <span>AI Script Generation</span>
+                </CardTitle>
+                <CardDescription>
+                  Configure AI-powered script generation and personalization
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Default Script Tone</label>
+                    <select className="w-full p-2 border rounded-md" defaultValue="friendly">
+                      <option value="friendly">Friendly & Conversational</option>
+                      <option value="formal">Formal & Professional</option>
+                      <option value="urgent">Urgent & Direct</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">AI Model Preference</label>
+                    <select className="w-full p-2 border rounded-md" defaultValue="claude">
+                      <option value="chatgpt">ChatGPT (OpenAI)</option>
+                      <option value="claude">Claude (Anthropic)</option>
+                      <option value="gemini">Gemini (Google)</option>
+                      <option value="deepseek">DeepSeek</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Base Script Template</label>
+                  <textarea 
+                    className="w-full p-2 border rounded-md h-32" 
+                    defaultValue="Hi [VOTER_NAME], I'm calling from the [CAMPAIGN_NAME] campaign. We're reaching out to voters in [DISTRICT] about the upcoming election..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use placeholders like [VOTER_NAME], [VOTING_HISTORY], [DISTRICT] for personalization
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">Personalization Options</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked className="rounded" />
+                      <span className="text-sm">Voting History</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked className="rounded" />
+                      <span className="text-sm">Demographics</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked className="rounded" />
+                      <span className="text-sm">Local Issues</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked className="rounded" />
+                      <span className="text-sm">Candidate Info</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" className="rounded" />
+                      <span className="text-sm">Census Data</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" className="rounded" />
+                      <span className="text-sm">Previous Contacts</span>
+                    </label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contact Preferences & Compliance */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Preferences & Compliance</CardTitle>
+                <CardDescription>
+                  Contact frequency limits and compliance settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Max Contacts Per Voter</label>
+                    <select className="w-full p-2 border rounded-md" defaultValue="3">
+                      <option value="1">1 contact maximum</option>
+                      <option value="2">2 contacts maximum</option>
+                      <option value="3">3 contacts maximum</option>
+                      <option value="5">5 contacts maximum</option>
+                      <option value="unlimited">No limit</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Contact Frequency</label>
+                    <select className="w-full p-2 border rounded-md" defaultValue="7">
+                      <option value="1">Daily</option>
+                      <option value="3">Every 3 days</option>
+                      <option value="7">Weekly</option>
+                      <option value="14">Bi-weekly</option>
+                      <option value="30">Monthly</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Preferred Contact Hours</label>
+                    <select className="w-full p-2 border rounded-md" defaultValue="evening">
+                      <option value="morning">Morning (9 AM - 12 PM)</option>
+                      <option value="afternoon">Afternoon (12 PM - 5 PM)</option>
+                      <option value="evening">Evening (5 PM - 8 PM)</option>
+                      <option value="anytime">Anytime (9 AM - 8 PM)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">Compliance Settings</label>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked className="rounded" />
+                      <span className="text-sm">Respect Do Not Call lists</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked className="rounded" />
+                      <span className="text-sm">Honor opt-out requests immediately</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" defaultChecked className="rounded" />
+                      <span className="text-sm">Log all contact attempts</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" className="rounded" />
+                      <span className="text-sm">Require volunteer identification</span>
+                    </label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Filter Results Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Filter Results & Voter Lists</CardTitle>
+                <CardDescription>
+                  Manage voter filter results and list assignments
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  {campaign.filterResults.map((filter, index) => (
+                    <div key={filter.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{filter.name}</div>
+                        <div className="text-xs text-muted-foreground">{filter.totalVoters} voters</div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className={filter.status === 'ACTIVE' ? 'bg-green-50 text-green-700' : 'bg-gray-50'}>
+                          {filter.status}
+                        </Badge>
+                        <Button variant="outline" size="sm">
+                          Edit
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <Button variant="outline" className="w-full">
+                  <Users className="h-4 w-4 mr-2" />
+                  Add New Filter Result
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Advanced Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Advanced Settings</CardTitle>
+                <CardDescription>
+                  Additional configuration options and integrations
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">Data & Analytics</label>
+                    <div className="space-y-2">
+                      <label className="flex items-center space-x-2">
+                        <input type="checkbox" defaultChecked className="rounded" />
+                        <span className="text-sm">Enable real-time sentiment analysis</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input type="checkbox" defaultChecked className="rounded" />
+                        <span className="text-sm">Track conversation topics</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input type="checkbox" className="rounded" />
+                        <span className="text-sm">Export data automatically</span>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">Notifications</label>
+                    <div className="space-y-2">
+                      <label className="flex items-center space-x-2">
+                        <input type="checkbox" defaultChecked className="rounded" />
+                        <span className="text-sm">Daily progress reports</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input type="checkbox" className="rounded" />
+                        <span className="text-sm">Sentiment alerts</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input type="checkbox" className="rounded" />
+                        <span className="text-sm">Volunteer performance updates</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Danger Zone */}
+            <Card className="border-red-200">
+              <CardHeader>
+                <CardTitle className="text-red-700">Danger Zone</CardTitle>
+                <CardDescription>
+                  Irreversible actions that affect campaign data
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div>
+                    <div className="font-medium text-red-800">Archive Campaign</div>
+                    <div className="text-sm text-red-600">Move campaign to archived status</div>
+                  </div>
+                  <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
+                    Archive
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div>
+                    <div className="font-medium text-red-800">Delete Campaign</div>
+                    <div className="text-sm text-red-600">Permanently delete all campaign data</div>
+                  </div>
+                  <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
           </Tabs>
         </div>
