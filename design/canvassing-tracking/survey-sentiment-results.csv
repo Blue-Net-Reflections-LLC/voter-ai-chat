@@ -1,0 +1,70 @@
+Respondent_ID,Age_Group,Gender,Race,Employment,County,ZIP,Sentiment_Score,Confidence_Level,Engagement_Level,Voting_Consistency,Key_Issues,AI_Insight,Recommended_Contact_Strategy,Priority_Level
+114481890968,18-24,Male,Black/African-American,Student,Cobb,30008,1,0.8,High,Excellent,"Social Issues, Economy, Education",Highly engaged young voter with positive civic outlook,Mobilization - encourage continued engagement,High
+114458647417,35-44,Male,Black/African-American,Full-time,Cobb,30008,1,0.9,High,Excellent,"Education parity, economic opportunities, affordable housing",Mission-driven voter with strong community focus,Mobilization - leverage family motivation,High
+114441206267,65+,Male,Black/African-American,Retired,Cobb,30008,0,0.7,High,Excellent,"Public transportation, housing, violent acts",Experienced voter with practical concerns,Information - address specific concerns,Medium
+114434392845,65+,Female,Black/African-American,Retired,Georgia,30034,2,0.9,Very High,Excellent,"Voting rights, civil rights, Medicaid expansion",Highly motivated activist with democracy focus,Mobilization - volunteer recruitment,Very High
+114454948025,18-24,Female,Asian,Student,Gwinnett,30047,0,0.6,High,Good,"Civic literacy, affordable housing, education",Young engaged voter developing civic awareness,Education - provide civic information,Medium
+114449662978,25-34,Female,Asian,Full-time,Gwinnett,30047,-1,0.8,Low,Excellent,"Gun control, abortion laws, police brutality",Concerned voter with selective engagement,Persuasion - address specific concerns,High
+114436462706,18-24,Female,Black/African-American,Student,United States,30047,1,0.7,High,Good,"Food insecurity, education, transportation",Committed young voter overcoming barriers,Support - address accessibility barriers,High
+114457767925,45-54,Female,Black/African-American,Full-time,Cobb,30060,0,0.5,Low,Excellent,Taxes,Practical voter focused on immediate concerns,Information - tax policy impacts,Low
+114438918264,25-34,Female,White,Full-time,Cobb,30060,1,0.8,Medium,Excellent,"Reproductive healthcare, wealth inequality, healthcare",Issue-focused voter with clear priorities,Mobilization - issue-based messaging,High
+114434421891,55-64,Prefer not to answer,Prefer not to answer,Full-time,Cobb,30060,0,0.6,Medium,Good,"Taxes, safety, government transparency",Principled voter valuing transparency,Information - government accountability,Medium
+114434388206,55-64,Female,Prefer not to answer,Full-time,Cobb,30060,-1,0.7,High,Excellent,"Safety, Freedom, Economy",Politically frustrated but highly engaged,Persuasion - address political concerns,Medium
+114433585429,25-34,Male,Hispanic/White,Full-time,Cobb,30060,0,0.7,Medium,Excellent,"Public safety, transportation, transparency",Pragmatic voter valuing genuine engagement,Information - demonstrate listening,Medium
+114482482190,45-54,Prefer not to answer,Prefer not to answer,Full-time,Cobb,30062,-1,0.8,High,Excellent,"Taxes, mental health, government spending",Fiscally conservative with spending concerns,Persuasion - fiscal responsibility focus,Medium
+114463726089,55-64,Female,White,Full-time,Cobb,30062,1,0.8,Medium,Excellent,"School board dysfunction, community development",Education advocate with positive engagement,Mobilization - education reform focus,High
+114438286822,65+,Female,White,Retired,Cobb,30062,-1,0.8,Medium,Excellent,"Crime, property values, neighborhood quality",Community-focused with neighborhood concerns,Persuasion - community safety focus,Medium
+114437224193,55-64,Female,White,Full-time,Cobb,30062,0,0.6,Medium,Excellent,"Income disparities, housing, book bans",Concerned about equity issues,Information - policy solutions,Medium
+114435527153,65+,Female,White,Retired,Cobb,30062,0,0.5,Low,Excellent,"Affordable housing, traffic, healthcare",Selective engagement based on importance,Information - issue relevance,Low
+114434489682,45-54,Female,White,Full-time,Cobb,30062,0,0.6,Medium,Excellent,"School board, transportation, zoning",Time-constrained but consistent voter,Information - efficient communication,Medium
+114434465565,55-64,Female,White,Retired,Cobb,30062,0,0.7,High,Excellent,County commissioner overreach,Concerned about government overreach,Information - local government limits,Medium
+114434465486,65+,Male,White,Retired,Cobb,30062,-1,0.7,Low,Excellent,"Redistricting, far-right conservatism, politics",Concerned about political extremism,Persuasion - moderate messaging,Medium
+114432771387,55-64,Female,White,Full-time,Cobb,30062,-1,0.8,Medium,Excellent,"Democracy risk, white supremacy, terrorism",Concerned about democratic threats,Mobilization - democracy protection,High
+114432141350,65+,Female,Black/African-American,Retired,Cobb,30062,1,0.8,Medium,Excellent,"Education, healthcare, housing",Quality-focused with positive engagement,Mobilization - quality of life issues,High
+114431705382,35-44,Female,Hispanic/White,Part-time,United States,30062,0,0.6,Medium,Good,"Wealth inequality, democracy abuse, misinformation",Concerned about democratic institutions,Information - fact-based messaging,Medium
+114431703958,35-44,Male,White,Full-time,Cobb,30062,0,0.5,Medium,Excellent,"Housing costs, income inequality, healthcare",Practical concerns with impact focus,Information - policy impact demonstration,Medium
+114431380440,45-54,Female,White,Unemployed,Cobb,30062,0,0.6,High,Good,"Inflation, growth, education",Time-constrained but engaged,Information - efficient updates,Medium
+114423199097,65+,Female,White,Part-time,Cobb,30062,1,0.7,High,Excellent,"Education equity, food security, healthcare",Equity-focused with positive engagement,Mobilization - equity issues,High
+114423171373,45-54,Female,White,Full-time,Cobb,30062,0,0.5,Low,Excellent,Education and governance equity,Knowledge-seeking voter,Education - provide information,Low
+114423164128,65+,Female,White,Retired,Cobb,30062,0,0.6,Medium,Excellent,"Affordable housing, food costs, abortion care",Issue-focused selective engagement,Information - issue-specific messaging,Medium
+114481012302,18-24,Male,White,Part-time,Cobb,30064,0,0.6,Low,Excellent,"Economic development, housing costs, infrastructure",Young voter with practical concerns,Information - economic policy impacts,Medium
+114457190868,35-44,Female,Black/African-American,Full-time,Cobb,30064,0,0.5,Very Low,Excellent,"Inflation, job loss",Time-constrained working parent,Support - flexible engagement options,Low
+114439419412,55-64,Female,White,Part-time,Cobb,30064,-1,0.7,Medium,Excellent,"Working class stress, corruption, corporate greed",Concerned about systemic issues,Persuasion - anti-corruption messaging,Medium
+114439386291,65+,Male,White,Retired,Cobb,30064,0,0.7,High,Excellent,"Affordable housing, school board decisions",Mixed concerns with high engagement,Information - balanced messaging,Medium
+114438431528,65+,Female,White,Retired,Cobb,30064,1,0.8,High,Excellent,"Affordable housing, healthcare, rights erosion",Rights-focused activist,Mobilization - rights protection,High
+114437298618,65+,Male,Prefer not to answer,Prefer not to answer,Part-time,Cobb,30064,-1,0.8,High,Excellent,"Forced urbanization, tax waste, transportation",Anti-development concerns,Persuasion - development balance,Medium
+114434706610,65+,Female,White,Retired,Cobb,30064,-1,0.7,Medium,Excellent,"Cost of living, education basics, crime",Traditional values focus,Persuasion - traditional messaging,Medium
+114472495100,45-54,Female,Other,Full-time,Cobb,30066,0,0.6,Low,Excellent,"Economic equality, financial literacy, education",Reform-focused but limited engagement,Information - reform benefits,Medium
+114444410605,35-44,Male,White,Full-time,Cobb,30066,1,0.8,High,Excellent,"Zoning reform, parking minimums, walkability",Community development advocate,Mobilization - urban planning focus,High
+114437590797,55-64,Female,Hispanic/Black,Full-time,Cobb,30066,0,0.5,Medium,Excellent,"Taxation, food prices, education",Basic concerns focus,Information - economic impacts,Medium
+114436800866,45-54,Female,White,Full-time,Cobb,30066,1,0.7,Medium,Excellent,"Educational equity, workers rights, reproductive freedom",Progressive issues advocate,Mobilization - progressive messaging,High
+114434921573,45-54,Male,Hispanic/White,Full-time,Cobb,30066,1,0.8,Medium,Excellent,"Public education, gun violence, redistricting",Reform-focused community advocate,Mobilization - reform messaging,High
+114433798251,55-64,Female,White,Retired,Cobb,30066,1,0.7,Very Low,Excellent,"Public education, women's issues, acceptance",Progressive but limited engagement,Support - engagement facilitation,Medium
+114431757412,25-34,Female,White,Part-time,United States,30066,0,0.5,Very Low,Excellent,"Housing, transportation, education",Disengaged but concerned,Support - engagement barriers removal,Low
+114439421719,45-54,Male,Black/African-American,Full-time,Cobb,30067,0,0.6,Medium,Excellent,"Economy, education, opportunities",Practical focus with moderate engagement,Information - opportunity messaging,Medium
+114434429355,55-64,Male,White,Full-time,Cobb,30067,-1,0.8,Medium,Excellent,Liberal policies opposition,Strong conservative opposition,Persuasion - conservative messaging,Low
+114433080554,65+,Male,White,Retired,Cobb,30067,0,0.7,Medium,Excellent,"Political divide, gerrymandering, traffic, school board",Systemic concerns focus,Information - systemic solutions,Medium
+114431018255,18-24,Prefer not to answer,Prefer not to answer,Full-time,Cobb,30067,1,0.7,High,Good,"Transit, housing, road safety",Young urban planning advocate,Mobilization - transportation focus,High
+114423269738,65+,Male,White,Retired,Cobb,30067,0,0.7,Medium,Excellent,"Housing costs, education equity, political divide",Balanced concerns approach,Information - balanced solutions,Medium
+114464390319,45-54,Female,Prefer not to answer,Prefer not to answer,Full-time,Cobb,30068,-1,0.8,High,Excellent,"Tax reduction, housing density, MARTA opposition",Conservative development opposition,Persuasion - fiscal conservative messaging,Low
+114454870188,45-54,Male,Black/African-American,Full-time,Cobb,30068,0,0.6,Medium,Excellent,"Economy, community development, education",Development-focused moderate,Information - development benefits,Medium
+114439361165,55-64,Female,White,Part-time,Cobb,30068,1,0.8,Very Low,Excellent,"Democracy, women's rights, voting rights",Rights advocate with limited engagement,Support - engagement facilitation,High
+114438410164,65+,Female,Hispanic/White,Full-time,Cobb,30068,1,0.9,Very High,Excellent,"Voting rights, environmental protection, transportation",Environmental and rights activist,Mobilization - environmental focus,Very High
+114436142461,55-64,Female,White,Retired,Cobb,30068,0,0.7,High,Excellent,"Development, transportation, schools",Practical planning focus,Information - planning benefits,Medium
+114431039373,18-24,Male,White,Part-time,United States,30068,1,0.8,High,Excellent,"Transit, housing, schools",Young transit advocate,Mobilization - transit expansion,High
+114435463443,45-54,Female,White,Part-time,Cobb,30075,0,0.7,High,Excellent,"Individual rights, property rights, power abuse",Constitutional rights focus,Information - rights protection,Medium
+114434674893,45-54,Female,White,Full-time,Cobb,30075,-1,0.7,Medium,Excellent,"School board dysfunction, property taxes, culture wars",Frustrated parent with system concerns,Persuasion - practical solutions focus,Medium
+114431226283,45-54,Male,White,Full-time,Cobb,30075,-1,0.6,Very Low,Excellent,"Inflation, border",Conservative with limited engagement,Persuasion - economic messaging,Low
+114430890240,65+,Female,White,Retired,Cobb,30075,1,0.8,High,Excellent,"Book bans, Black history, women's healthcare",Progressive education advocate,Mobilization - education freedom,High
+114423737095,55-64,Male,Black/African-American,Full-time,Cobb,30075,1,0.8,Medium,Excellent,"Education equity, social services, small business",Equity and business advocate,Mobilization - equity and opportunity,High
+114487408796,55-64,Female,White,Full-time,Cobb,30080,0,0.6,High,Excellent,"Local development, official integrity, taxes",Local governance focus,Information - local accountability,Medium
+114479177700,25-34,Male,White,Full-time,Cobb,30080,1,0.7,High,Good,"Transit, affordable housing, development patterns",Urban planning advocate,Mobilization - smart growth,High
+114457220818,65+,Female,Black/African-American,Retired,Cobb,30080,1,0.7,High,Excellent,"Housing equity, tax reduction, senior programs",Senior advocate with equity focus,Mobilization - senior and equity issues,High
+114454833380,45-54,Male,Black/African-American,Full-time,Cobb,30080,0,0.5,Medium,Excellent,Taxes,Single-issue tax focus,Information - tax policy,Low
+114454826351,55-64,Female,Black/African-American,Full-time,Covb,30080,-1,0.7,Very Low,Excellent,Governor Kemp opposition,Strong political opposition,Persuasion - alternative messaging,Low
+114440888620,55-64,Male,White,Part-time,Cobb,30080,0,0.6,Medium,Excellent,"Affordability, traffic, overdevelopment",Development concerns,Information - balanced development,Medium
+114438029437,65+,Male,White,Retired,Cobb,30080,0,0.6,Medium,Excellent,"Affordable housing, traffic, crime",Senior with practical concerns,Information - senior-focused solutions,Medium
+114435249674,25-34,Male,White,Full-time,Cobb,30080,-1,0.8,High,Excellent,"Secure elections, safe schools, lower taxes, legislative maps",Conservative activist,Persuasion - conservative messaging,Low
+114434473088,25-34,Male,Hispanic/White,Full-time,Cobb,30080,1,0.7,High,Excellent,"Housing, healthcare, workers' rights",Progressive worker advocate,Mobilization - worker rights focus,High
+114434461702,65+,Female,White,Retired,Cobb,30080,1,0.7,High,Excellent,"Food prices, community safety, traffic",Community improvement focus,Mobilization - community betterment,High
+114423164531,65+,Female,White,Retired,Cobb,30080,1,0.9,High,Excellent,"Voter rights, reproductive rights, LGBTQ rights",Rights activist,Mobilization - rights protection,Very High 
