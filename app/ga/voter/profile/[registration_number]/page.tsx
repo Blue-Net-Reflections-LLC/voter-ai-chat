@@ -2,9 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Phone, MessageSquare, Mail, MapPin, Mic, MicOff, Save, CheckCircle, AlertCircle, Clock, Info, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+
+// Import Campaign Context
+import { useCampaignContext } from "../../CampaignContext";
 
 // Import Section Components
 import { VoterInfoSection } from "@/components/ga/voter/profile-sections/VoterInfoSection";
@@ -174,11 +183,395 @@ function formatAddress(address: any) {
   return String(address);
 }
 
+// Compact Voter Verification Component
+function CompactVoterVerification({ voterData }: { voterData: any }) {
+  if (!voterData) return null;
+
+  const getAge = (birthYear: number) => {
+    const currentYear = new Date().getFullYear();
+    return currentYear - birthYear;
+  };
+
+  const formatRace = (race: string) => {
+    if (!race) return "Unknown";
+    const raceMap: { [key: string]: string } = {
+      'WH': 'White', 'BH': 'Black', 'HP': 'Hispanic', 'AS': 'Asian', 
+      'AI': 'Native', 'OT': 'Other', 'UN': 'Unknown'
+    };
+    return raceMap[race] || race;
+  };
+
+  const formatGender = (gender: string) => {
+    if (!gender) return "Unknown";
+    return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+  };
+
+  const birthYear = voterData.birthYear || (voterData.dateOfBirth ? new Date(voterData.dateOfBirth).getFullYear() : null);
+  const age = birthYear ? getAge(birthYear) : null;
+
+  return (
+    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+      <User className="h-4 w-4" />
+      <span className="font-medium">
+        {formatRace(voterData.race)} | {age ? `${age}y` : 'Age unknown'} | {formatGender(voterData.gender)}
+      </span>
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-orange-600 hover:text-orange-700">
+            <Info className="h-4 w-4" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-orange-800">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              Voter Verification
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg">
+              <p className="text-sm font-medium mb-2">Before starting conversation:</p>
+              <ul className="text-xs space-y-1">
+                <li>• Verify you're speaking with <strong>{voterData.firstName} {voterData.lastName}</strong></li>
+                <li>• Confirm person matches: <strong>{formatRace(voterData.race)}, {age ? `${age} years old` : 'age unknown'}, {formatGender(voterData.gender)}</strong></li>
+                <li>• If there's a mismatch, politely ask if {voterData.firstName} is available</li>
+                <li>• Use "Wrong person" option if speaking with different individual</li>
+              </ul>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Campaign Status Banner Component
+function CampaignStatusBanner({ voterData, registrationNumber }: { voterData: any; registrationNumber: string }) {
+  const { selectedCampaign } = useCampaignContext();
+  
+  if (!selectedCampaign) return null;
+
+  // Mock contact status - in real app this would be fetched
+  const contactStatus = 'not_contacted'; // For prototype, always show as not contacted
+  
+  return (
+    <Card className="mb-4 border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20">
+      <CardContent className="pt-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:text-blue-300">
+              {selectedCampaign.name}
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              Campaign #{Math.floor(Math.random() * 200) + 1} of {selectedCampaign.targetContacts.toLocaleString()}
+            </span>
+          </div>
+          <Badge variant="outline" className="text-yellow-800 bg-yellow-100 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300">
+            <Clock className="h-3 w-3 mr-1" />
+            Not Contacted
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          You are the first team member to visit this voter. Use the AI talking points below to guide your conversation.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// AI Talking Points Component
+function AITalkingPoints({ voterData }: { voterData: any }) {
+  const { selectedCampaign } = useCampaignContext();
+  
+  if (!selectedCampaign || !voterData) return null;
+
+  // Generate mock talking points based on voter data
+  const generateTalkingPoints = () => {
+    const points = [];
+    const voterName = voterData.firstName || 'there';
+    
+    // Greeting
+    points.push(`Hi ${voterName}, I'm here with ${selectedCampaign.name}.`);
+    
+    // Voting history point
+    if (voterData.lastVoteDate) {
+      points.push(`I see you're a reliable voter who participated in recent elections - that's great!`);
+    } else {
+      points.push(`This election is really important, and every vote counts.`);
+    }
+    
+    // Local connection
+    if (voterData.county) {
+      points.push(`As a ${voterData.county} County resident, you know how important local issues are.`);
+    }
+    
+    // Call to action
+    points.push(`Do you have a plan for voting on Election Day? I'd love to help make sure you have all the information you need.`);
+    
+    return points;
+  };
+
+  const talkingPoints = generateTalkingPoints();
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center">
+          <MessageSquare className="h-5 w-5 mr-2 text-blue-500" />
+          AI Talking Points
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {talkingPoints.map((point, index) => (
+            <div key={index} className="flex items-start space-x-2">
+              <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{index + 1}</span>
+              </div>
+              <p className="text-sm leading-relaxed">{point}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 p-3 bg-muted rounded-lg">
+          <p className="text-xs text-muted-foreground">
+            <strong>Tip:</strong> Personalize these points based on the conversation. Use the voter's information below to connect on local issues.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Contact Recording Component
+function ContactRecording({ voterData, registrationNumber }: { voterData: any; registrationNumber: string }) {
+  const { selectedCampaign } = useCampaignContext();
+  const { toast } = useToast();
+  const [isRecording, setIsRecording] = useState(false);
+  const [contactOutcome, setContactOutcome] = useState<string>('');
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  if (!selectedCampaign) return null;
+
+  const handleStartRecording = () => {
+    setIsRecording(true);
+    toast({
+      title: "Recording Started",
+      description: "Capturing audio for sentiment analysis...",
+    });
+    
+    // Mock recording - in real app would start audio capture
+    setTimeout(() => {
+      setIsRecording(false);
+      toast({
+        title: "Recording Stopped",
+        description: "Audio captured for analysis.",
+      });
+    }, 3000);
+  };
+
+  const handleSubmitContact = async () => {
+    if (!contactOutcome) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please select a contact outcome.",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    // Mock API call
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast({
+        title: "Contact Recorded",
+        description: "Voter interaction has been saved to the campaign.",
+      });
+      
+      // Reset form
+      setContactOutcome('');
+      setNotes('');
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to record contact. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Card className="mb-4 border-l-4 border-l-green-500">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center">
+          <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+          Record Contact
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Audio Recording */}
+        <div className="flex items-center space-x-3">
+          <Button
+            variant={isRecording ? "destructive" : "outline"}
+            size="sm"
+            onClick={handleStartRecording}
+            disabled={isRecording}
+            className="flex items-center space-x-2"
+          >
+            {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            <span>{isRecording ? "Recording..." : "Capture Response"}</span>
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {isRecording ? "Recording voter response for sentiment analysis" : "Record key voter responses"}
+          </span>
+        </div>
+
+        {/* Contact Outcome */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Contact Outcome *</label>
+          <Select value={contactOutcome} onValueChange={setContactOutcome}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select outcome..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="positive">✅ Positive - Committed to vote</SelectItem>
+              <SelectItem value="neutral">🔵 Neutral - Acknowledged information</SelectItem>
+              <SelectItem value="negative">🔴 Negative - Not interested</SelectItem>
+              <SelectItem value="not_home">🏠 Not home - Left information</SelectItem>
+              <SelectItem value="wrong_person">👤 Wrong person - Different individual</SelectItem>
+              <SelectItem value="moved">📦 Moved - No longer at address</SelectItem>
+              <SelectItem value="callback">📞 Requested callback</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Notes */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Notes</label>
+          <Textarea
+            placeholder="Key points from conversation, voter concerns, follow-up needed..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+          />
+        </div>
+
+        {/* Submit Button */}
+        <Button 
+          onClick={handleSubmitContact}
+          disabled={isSubmitting || !contactOutcome}
+          className="w-full"
+        >
+          {isSubmitting ? (
+            <>
+              <Save className="h-4 w-4 mr-2 animate-spin" />
+              Recording Contact...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Record Contact
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Contact History Component (for non-campaign mode)
+function ContactHistory({ registrationNumber }: { registrationNumber: string }) {
+  // Mock contact history data
+  const contactHistory = [
+    {
+      id: 1,
+      date: "2024-01-15",
+      method: "door",
+      outcome: "positive",
+      campaign: "GOTV Drive 2024",
+      volunteer: "Sarah M.",
+      notes: "Committed to vote early. Interested in education issues."
+    },
+    {
+      id: 2,
+      date: "2024-01-08",
+      method: "phone",
+      outcome: "neutral",
+      campaign: "Voter Outreach",
+      volunteer: "Mike R.",
+      notes: "Answered questions about polling location."
+    }
+  ];
+
+  const getOutcomeColor = (outcome: string) => {
+    switch (outcome) {
+      case 'positive': return 'text-green-600 bg-green-100';
+      case 'neutral': return 'text-blue-600 bg-blue-100';
+      case 'negative': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getMethodIcon = (method: string) => {
+    switch (method) {
+      case 'door': return '🚪';
+      case 'phone': return '📞';
+      case 'email': return '📧';
+      case 'text': return '💬';
+      default: return '📋';
+    }
+  };
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg">Contact History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {contactHistory.length > 0 ? (
+          <div className="space-y-3">
+            {contactHistory.map((contact) => (
+              <div key={contact.id} className="border rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">{getMethodIcon(contact.method)}</span>
+                    <span className="font-medium">{contact.campaign}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge className={`text-xs ${getOutcomeColor(contact.outcome)}`}>
+                      {contact.outcome}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{contact.date}</span>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Contacted by: {contact.volunteer}
+                </p>
+                {contact.notes && (
+                  <p className="text-sm">{contact.notes}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No previous contact history found.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // Main Profile Page Component
 export default function VoterProfilePage() {
   const params = useParams<{ registration_number: string }>();
   const registrationNumber = params?.registration_number; // Use optional chaining
   const router = useRouter();
+  const { selectedCampaign } = useCampaignContext();
 
   // Section data hooks
   const {
@@ -250,7 +643,7 @@ export default function VoterProfilePage() {
   }
 
   return (
-    <div className="container py-2 max-w-5xl mx-auto">
+    <div className="container py-2 max-w-4xl mx-auto">
       {/* Back Button and Header */}
       <div className="mb-4 flex items-center gap-4" id="page-top">
         <Button
@@ -262,20 +655,87 @@ export default function VoterProfilePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-grow min-w-0">
-           <h1 className="text-2xl md:text-3xl font-bold truncate">
-             {infoLoading ? <Skeleton className="w-48 h-9 inline-block" /> : voterName}
+           <h1 className="text-xl md:text-2xl font-bold truncate">
+             {infoLoading ? <Skeleton className="w-48 h-8 inline-block" /> : voterName}
            </h1>
+           {locationData?.residenceAddress && (
+             <p className="text-sm text-muted-foreground flex items-center mt-1">
+               <MapPin className="h-4 w-4 mr-1" />
+               {formatAddress(locationData.residenceAddress)}
+             </p>
+           )}
+           {/* Compact Voter Verification under address */}
+           {infoData && (
+             <div className="mt-1">
+               <CompactVoterVerification voterData={infoData} />
+             </div>
+           )}
         </div>
       </div>
 
-      {/* Section Navigation & Score Bar */}
+      {/* Campaign Context Section - Only show if campaign is selected */}
+      {selectedCampaign && (
+        <>
+          <CampaignStatusBanner voterData={infoData} registrationNumber={registrationNumber} />
+          <AITalkingPoints voterData={infoData} />
+          <ContactRecording voterData={infoData} registrationNumber={registrationNumber} />
+        </>
+      )}
+
+      {/* Quick Voter Facts for Field Operations */}
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Quick Facts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Registration:</span>
+                <span className="text-sm">{registrationNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">County:</span>
+                <span className="text-sm">{infoData?.county || 'Loading...'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Status:</span>
+                <span className="text-sm">{infoData?.status || 'Loading...'}</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Last Voted:</span>
+                <span className="text-sm">{participationData?.lastVoteDate || 'Loading...'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Participation:</span>
+                <div className="text-sm">
+                  {participationData?.participationScore !== undefined ? (
+                    <ParticipationScoreWidget score={participationData.participationScore} size="small" variant="compact" />
+                  ) : (
+                    'Loading...'
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Show Contact History only when NOT in campaign mode */}
+      {!selectedCampaign && (
+        <ContactHistory registrationNumber={registrationNumber} />
+      )}
+
+      {/* Section Navigation - Simplified for mobile */}
       <div className="sticky top-0 z-50 bg-background border-b shadow-sm py-3 mb-6 -mx-4 px-4">
-        <nav className="flex space-x-6 overflow-x-auto no-scrollbar">
-          <a href="#voter-info" className="text-sm font-medium hover:text-primary whitespace-nowrap">Voter Info</a>
+        <nav className="flex space-x-4 overflow-x-auto no-scrollbar">
+          <a href="#voter-info" className="text-sm font-medium hover:text-primary whitespace-nowrap">Info</a>
           <a href="#location" className="text-sm font-medium hover:text-primary whitespace-nowrap">Location</a>
-          <a href="#voting-history" className="text-sm font-medium hover:text-primary whitespace-nowrap">Voting History</a>
+          <a href="#voting-history" className="text-sm font-medium hover:text-primary whitespace-nowrap">History</a>
           <a href="#districts" className="text-sm font-medium hover:text-primary whitespace-nowrap">Districts</a>
-          <a href="#census" className="text-sm font-medium hover:text-primary whitespace-nowrap">Census Data</a>
+          <a href="#census" className="text-sm font-medium hover:text-primary whitespace-nowrap">Census</a>
         </nav>
       </div>
 
