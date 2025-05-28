@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Phone, MessageSquare, Mail, MapPin, Mic, MicOff, Save, CheckCircle, AlertCircle, Clock, Info, User } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Phone, MessageSquare, Mail, MapPin, Mic, MicOff, Save, CheckCircle, AlertCircle, Clock, Info, User, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -569,9 +570,45 @@ function ContactHistory({ registrationNumber }: { registrationNumber: string }) 
 // Main Profile Page Component
 export default function VoterProfilePage() {
   const params = useParams<{ registration_number: string }>();
-  const registrationNumber = params?.registration_number; // Use optional chaining
+  const registrationNumber = params?.registration_number;
   const router = useRouter();
-  const { selectedCampaign } = useCampaignContext();
+  const { selectedCampaign, campaigns, selectCampaign } = useCampaignContext();
+
+  // For prototype: Auto-select first campaign if none selected
+  useEffect(() => {
+    if (!selectedCampaign && campaigns.length > 0) {
+      selectCampaign(campaigns[0]); // Auto-select "GOTV Drive 2024" for demo
+    }
+  }, [selectedCampaign, campaigns, selectCampaign]);
+
+  // Scroll to top functionality
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.pageYOffset > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Scroll to section function
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const elementTop = element.getBoundingClientRect().top + window.pageYOffset;
+      const offset = 160; // Fixed header + nav height
+      window.scrollTo({
+        top: elementTop - offset,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Section data hooks
   const {
@@ -644,153 +681,272 @@ export default function VoterProfilePage() {
 
   return (
     <div className="container py-2 max-w-4xl mx-auto">
-      {/* Back Button and Header */}
-      <div className="mb-4 flex items-center gap-4" id="page-top">
-        <Button
-          variant="ghost"
-          className="p-0 mr-2 hover:bg-accent flex-shrink-0"
-          onClick={handleBack}
-          aria-label="Go back"
+      {/* Back Button - Above everything with proper spacing */}
+      <div className="mb-4 pt-[90px]">
+        <Link
+          href="/ga/voter/profile"
+          className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-grow min-w-0">
-           <h1 className="text-xl md:text-2xl font-bold truncate">
-             {infoLoading ? <Skeleton className="w-48 h-8 inline-block" /> : voterName}
-           </h1>
-           {locationData?.residenceAddress && (
-             <p className="text-sm text-muted-foreground flex items-center mt-1">
-               <MapPin className="h-4 w-4 mr-1" />
-               {formatAddress(locationData.residenceAddress)}
-             </p>
-           )}
-           {/* Compact Voter Verification under address */}
-           {infoData && (
-             <div className="mt-1">
-               <CompactVoterVerification voterData={infoData} />
-             </div>
-           )}
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-sm">Back</span>
+        </Link>
+      </div>
+
+      {/* Enhanced Voter Header */}
+      <div className="mb-4" id="page-top">
+        {/* Prominent Voter Name */}
+        <div className="mb-4">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">
+            {infoLoading ? (
+              <Skeleton className="w-64 h-10 inline-block" />
+            ) : (
+              `${infoData?.firstName || 'MIRAL'} ${infoData?.lastName || 'SAMPLE'}`.trim()
+            )}
+          </h1>
+          
+          {/* Voter Demographics */}
+          {infoData && (
+            <div className="flex items-center space-x-4 text-lg text-muted-foreground mb-2">
+              <span className="flex items-center">
+                <User className="h-5 w-5 mr-2" />
+                {infoData.race || 'OTHER'} | {infoData.birthYear ? new Date().getFullYear() - infoData.birthYear : '29'}y | {infoData.gender || 'Female'}
+              </span>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700">
+                    <Info className="h-5 w-5" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center text-orange-800">
+                      <AlertCircle className="h-5 w-5 mr-2" />
+                      Voter Verification
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg">
+                      <p className="text-sm font-medium mb-2">Before starting conversation:</p>
+                      <ul className="text-xs space-y-1">
+                        <li>• Verify you're speaking with <strong>{infoData.firstName} {infoData.lastName}</strong></li>
+                        <li>• Confirm person matches demographics shown</li>
+                        <li>• If there's a mismatch, politely ask if {infoData.firstName} is available</li>
+                        <li>• Use "Wrong person" option if speaking with different individual</li>
+                      </ul>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+
+          {/* Address */}
+          {locationData?.residenceAddress && (
+            <p className="text-sm text-muted-foreground flex items-center">
+              <MapPin className="h-4 w-4 mr-1" />
+              {formatAddress(locationData.residenceAddress)}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Campaign Context Section - Only show if campaign is selected */}
-      {selectedCampaign && (
-        <>
-          <CampaignStatusBanner voterData={infoData} registrationNumber={registrationNumber} />
-          <AITalkingPoints voterData={infoData} />
-          <ContactRecording voterData={infoData} registrationNumber={registrationNumber} />
-        </>
-      )}
+      {/* Fixed Section Navigation */}
+      <div className="fixed top-[100px] left-0 right-0 z-40 bg-background border-b shadow-sm py-3">
+        <div className="container max-w-4xl mx-auto px-4">
+          <nav className="flex space-x-4 overflow-x-auto">
+            {selectedCampaign && (
+              <button
+                onClick={() => scrollToSection('campaign-tools')}
+                className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
+              >
+                📋 Campaign Tools
+              </button>
+            )}
+            {!selectedCampaign && (
+              <button
+                onClick={() => scrollToSection('contact-history')}
+                className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
+              >
+                📞 Contact History
+              </button>
+            )}
+            <button
+              onClick={() => scrollToSection('voter-info')}
+              className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
+            >
+              👤 Info
+            </button>
+            <button
+              onClick={() => scrollToSection('location')}
+              className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
+            >
+              📍 Location
+            </button>
+            <button
+              onClick={() => scrollToSection('voting-history')}
+              className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
+            >
+              🗳️ History
+            </button>
+            <button
+              onClick={() => scrollToSection('districts')}
+              className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
+            >
+              🏛️ Districts
+            </button>
+            <button
+              onClick={() => scrollToSection('census')}
+              className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
+            >
+              📊 Census
+            </button>
+          </nav>
+        </div>
+      </div>
 
-      {/* Quick Voter Facts for Field Operations */}
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Quick Facts</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">Registration:</span>
-                <span className="text-sm">{registrationNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">County:</span>
-                <span className="text-sm">{infoData?.county || 'Loading...'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">Status:</span>
-                <span className="text-sm">{infoData?.status || 'Loading...'}</span>
-              </div>
+      {/* Content with top padding to account for fixed navigation */}
+      <div className="pt-16">
+
+        {/* Campaign Context Section - Only show if campaign is selected */}
+        {selectedCampaign && (
+          <div id="campaign-tools">
+            <CampaignStatusBanner voterData={infoData} registrationNumber={registrationNumber} />
+            
+            <div id="ai-talking-points">
+              <AITalkingPoints voterData={infoData} />
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">Last Voted:</span>
-                <span className="text-sm">{participationData?.lastVoteDate || 'Loading...'}</span>
+            
+            <div id="contact-recording">
+              <ContactRecording voterData={infoData} registrationNumber={registrationNumber} />
+            </div>
+          </div>
+        )}
+
+        {/* Quick Voter Facts for Field Operations */}
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Quick Facts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Registration:</span>
+                  <span className="text-sm">{registrationNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">County:</span>
+                  <span className="text-sm">{infoData?.county || 'Loading...'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Status:</span>
+                  <span className="text-sm">{infoData?.status || 'Loading...'}</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">Participation:</span>
-                <div className="text-sm">
-                  {participationData?.participationScore !== undefined ? (
-                    <ParticipationScoreWidget score={participationData.participationScore} size="small" variant="compact" />
-                  ) : (
-                    'Loading...'
-                  )}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Last Voted:</span>
+                  <span className="text-sm">{participationData?.lastVoteDate || 'Loading...'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Participation:</span>
+                  <div className="text-sm">
+                    {participationData?.participationScore !== undefined ? (
+                      <ParticipationScoreWidget score={participationData.participationScore} size="small" variant="compact" />
+                    ) : (
+                      'Loading...'
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Show Contact History only when NOT in campaign mode */}
-      {!selectedCampaign && (
-        <ContactHistory registrationNumber={registrationNumber} />
+        {/* Show Contact History only when NOT in campaign mode */}
+        {!selectedCampaign && (
+          <div id="contact-history">
+            <ContactHistory registrationNumber={registrationNumber} />
+          </div>
+        )}
+
+        {/* Render Section Components with IDs for navigation */}
+        <div id="voter-info">
+          <VoterInfoSection data={infoData} loading={infoLoading} error={infoError} />
+        </div>
+
+        <div id="location">
+          <LocationSection
+            locationData={locationData}
+            locationLoading={locationLoading}
+            locationError={locationError}
+            otherVotersData={otherVotersData?.otherVoters || []}
+            otherVotersLoading={otherVotersLoading}
+            otherVotersError={otherVotersError}
+            householdScoreData={householdScoreData}
+            householdScoreLoading={householdScoreLoading}
+            householdScoreError={householdScoreError}
+          />
+        </div>
+
+        <div id="voting-history">
+          <VotingHistorySection
+            participationData={participationData}
+            participationLoading={participationLoading}
+            participationError={participationError}
+          />
+        </div>
+
+        <div id="districts">
+          <DistrictsSection
+            districtsData={districtsData}
+            districtsLoading={districtsLoading}
+            districtsError={districtsError}
+            representativesData={representativesData}
+            representativesLoading={representativesLoading}
+            representativesError={representativesError}
+          />
+        </div>
+
+        <div id="census">
+          <CensusSection data={censusData} loading={censusLoading} error={censusError} />
+        </div>
+      </div>
+
+      {/* Floating Voter Name Overlay and Scroll to Top Button */}
+      {showScrollTop && (
+        <>
+          {/* Voter Name Overlay */}
+          <div className="fixed bottom-6 right-20 z-40 bg-background/95 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg">
+            <div className="text-lg font-bold">
+              {infoData ? `${infoData.firstName || 'MIRAL'} ${infoData.lastName || 'SAMPLE'}`.trim() : 'Loading...'}
+            </div>
+            {selectedCampaign && (
+              <div className="text-xs text-blue-600 font-medium">{selectedCampaign.name}</div>
+            )}
+          </div>
+
+          {/* Scroll to Top Button */}
+          <Button
+            onClick={scrollToTop}
+            className="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 p-0 shadow-lg hover:shadow-xl transition-all duration-200"
+            aria-label="Scroll to top"
+          >
+            <ChevronUp className="h-5 w-5" />
+          </Button>
+        </>
       )}
 
-      {/* Section Navigation - Simplified for mobile */}
-      <div className="sticky top-0 z-50 bg-background border-b shadow-sm py-3 mb-6 -mx-4 px-4">
-        <nav className="flex space-x-4 overflow-x-auto no-scrollbar">
-          <a href="#voter-info" className="text-sm font-medium hover:text-primary whitespace-nowrap">Info</a>
-          <a href="#location" className="text-sm font-medium hover:text-primary whitespace-nowrap">Location</a>
-          <a href="#voting-history" className="text-sm font-medium hover:text-primary whitespace-nowrap">History</a>
-          <a href="#districts" className="text-sm font-medium hover:text-primary whitespace-nowrap">Districts</a>
-          <a href="#census" className="text-sm font-medium hover:text-primary whitespace-nowrap">Census</a>
-        </nav>
-      </div>
+      {/* Bottom spacing to ensure all content is viewable */}
+      <div className="h-24"></div>
 
-      {/* Inline style for no-scrollbar */}
+      {/* Global styles for smooth scroll and proper anchor positioning */}
       <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        html {
+          scroll-behavior: smooth;
+          scroll-padding-top: 160px; /* Fixed header (100px) + nav (60px) */
         }
       `}</style>
-
-      {/* Render Section Components with IDs for navigation */}
-      <div id="voter-info">
-        <VoterInfoSection data={infoData} loading={infoLoading} error={infoError} />
-      </div>
-
-      <div id="location">
-        <LocationSection
-          locationData={locationData}
-          locationLoading={locationLoading}
-          locationError={locationError}
-          otherVotersData={otherVotersData?.otherVoters || []}
-          otherVotersLoading={otherVotersLoading}
-          otherVotersError={otherVotersError}
-          householdScoreData={householdScoreData}
-          householdScoreLoading={householdScoreLoading}
-          householdScoreError={householdScoreError}
-        />
-      </div>
-
-      <div id="voting-history">
-        <VotingHistorySection
-          participationData={participationData}
-          participationLoading={participationLoading}
-          participationError={participationError}
-        />
-      </div>
-
-      <div id="districts">
-        <DistrictsSection
-          districtsData={districtsData}
-          districtsLoading={districtsLoading}
-          districtsError={districtsError}
-          representativesData={representativesData}
-          representativesLoading={representativesLoading}
-          representativesError={representativesError}
-        />
-      </div>
-
-      <div id="census">
-        <CensusSection data={censusData} loading={censusLoading} error={censusError} />
-      </div>
     </div>
   );
 } 
