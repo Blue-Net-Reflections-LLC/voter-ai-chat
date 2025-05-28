@@ -1,0 +1,82 @@
+Candidate + Issue ID Script
+
+Script Background: This script is based on the Gillum support ID script we used in Florida in 2018. It is a basic issue ID script with a candidate support question and volunteer ask. 
+
+Editing: Any level of the ballot can be discussed in your call script. Please let the data team member know what level of the ballot or ballot initiative you are supporting when creating your call script. For the first question in the script this is a standard question, not a survey question. The answers recorded for this question will be recorded as Activist Codes for future reference.
+
+
+Script:
+Hello! Is _____ available? Hi _____, my name is _____, I’m a volunteer with Indivisible Action. We’re calling voters today to talk about the upcoming election. Our local group, (name of your Indivisible group), is a local group of progressives working to make sure our elected officials listen to and support people in the community. We’re talking to voters about the elections coming up this November.
+
+What issue is most important to you this election cycle?
+
+Activist Codes:
+Healthcare 
+Taxes
+Immigration
+Supreme Court
+Jobs and the Economy 
+Environment
+Education 
+LGBTQ Rights
+Climate Change
+Women’s Rights
+Gun Violence
+Foreign Policy 
+Criminal Justice
+Democracy Reform 
+Retirement Benefits
+Other 
+
+Share with the voter how your Indivisible group also cares about the same issue(s). 
+
+Survey Question: We've got an election coming up for Governor this November, do you know who you'll be voting for?
+
+[If STRONG or LEAN DEM] That is great to hear! Our group is supporting Andrew Gillum, the democrat running for Governor. He was the underdog candidate in the democratic primary, but he won by actually talking to people and showing us that he'll fight for things that working people need, like public education and healthcare.
+(Skip next question. Move on to volunteer question.) 
+
+[If UNDECIDED] Our group is supporting Andrew Gillum, the democrat running for Governor. He was the underdog candidate in the democratic primary, but he won by actually talking to people and showing us that he'll fight for things that working people need, like public education and healthcare.
+(Move to next question, then after hearing the voter’s response to that question, decide if you should move on to the volunteer question.) 
+
+[If LEAN or STRONG REP, NOT VOTING, or REFUSED] Thank you for your time, have a nice day!
+(Politely end the call.) 
+
+Survey Question: Now that you know more about him, can we count on your support for Andrew Gillum for Governor?
+
+[If YES] That is great to hear! Andrew needs all the support he can get to win in November and bring real change for all Floridians to the state. 
+(Move to next question.) 
+
+[If MAYBE] I understand. Who we vote for is an important decision and who we put into office will determine Florida’s progress for the next four years. Are there any questions I can try to answer for you that might help you make a decision? 
+(Answer any questions the voter might have that you are able to answer, then politely end the call.) 
+
+[If NO or REFUSED] I understand. Thank you for your time, have a nice day!
+(Politely end the call.) 
+
+Survey Question: Are you interested in joining Indivisible members in your area in actions to make lasting change?
+
+[IF YES] That’s great! Can I get a good email and phone number for you so we can stay in contact?
+(Move to next question.)
+
+[IF MAYBE/LATER] I completely understand. If you ever decide you would like to volunteer you can visit us at _____ to learn about how our local group is taking action in your community. Would you like us to add you to our email list in case you change your mind? 
+(Skip next question. Politely end the call.) 
+ 
+[IF NO] I completely understand. If you ever decide you would like to volunteer you can visit us at _____ to learn about how our local group is taking action in your community. Would you like us to add you to our email list in case you change your mind?
+(Skip next question. Politely end the call.)
+
+Survey Question: What's the way you would most be interested in getting involved?
+
+Canvass (Door to door)
+Phonebank
+Legislative Advocacy 
+Organize Meeting
+Social Media
+Postcards/Letters
+Letters to the Editor 
+Texting/Textbanking
+Other
+Maybe/Later
+No
+
+Share what volunteer opportunities your group is currently offering, and let them know someone from the group will be in touch with them soon. 
+
+Thank you so much for taking the time to chat with me today. Have a great day!

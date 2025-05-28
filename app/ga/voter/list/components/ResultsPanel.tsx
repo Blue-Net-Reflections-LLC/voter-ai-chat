@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FilterX, LoaderCircle, LayoutGrid, LayoutList, ArrowUp, ArrowDown } from "lucide-react";
+import { Download, FilterX, LoaderCircle, LayoutGrid, LayoutList, ArrowUp, ArrowDown, Plus } from "lucide-react";
 import { Voter, PaginationState } from '../types';
 import VoterTable from './VoterTable';
 import PaginationControls from './PaginationControls';
@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { VoterQuickview } from "@/components/ga/voter/quickview/VoterQuickview";
 import { ParticipationScoreWidget } from "@/components/voter/ParticipationScoreWidget";
 import { useVoterList } from '../hooks/useVoterList';
+import { CampaignStatusBadge } from '@/components/ga/voter/CampaignStatusBadge';
+import { useCampaignContext } from '../../CampaignContext';
 
 interface ResultsPanelProps {
   voters: Voter[];
@@ -34,7 +36,9 @@ interface ResultsPanelProps {
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 // Card component for each voter in the grid layout
-const VoterCard = ({ voter, onClick }: { voter: Voter; onClick: () => void }) => {
+const VoterCard = ({ voter, voterIndex, onClick }: { voter: Voter; voterIndex: number; onClick: () => void }) => {
+  const { selectedCampaign } = useCampaignContext();
+  
   const getStatusProps = (status: string | undefined) => {
     if (!status) {
       return {
@@ -114,6 +118,11 @@ const VoterCard = ({ voter, onClick }: { voter: Voter; onClick: () => void }) =>
           <span className="font-medium mr-1">Score:</span> 
           <ParticipationScoreWidget score={voter.participationScore} size="small" variant="compact" />
         </div>
+        {selectedCampaign && (
+          <div className="text-xs">
+            <CampaignStatusBadge voterId={voter.id} voterIndex={voterIndex} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -145,10 +154,11 @@ const VoterCardGrid = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 p-1">
-          {voters.map((voter) => (
+          {voters.map((voter, index) => (
             <VoterCard 
               key={voter.id} 
               voter={voter} 
+              voterIndex={index}
               onClick={() => onVoterClick(voter.id)}
             />
           ))}

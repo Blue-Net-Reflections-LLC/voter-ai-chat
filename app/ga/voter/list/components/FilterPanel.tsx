@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from "@/lib/utils";
-import { FilterX, X, Info } from "lucide-react";
+import { FilterX, X, Info, Plus, Target } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useVoterFilterContext } from '../../VoterFilterProvider';
+import { useCampaignContext } from '../../CampaignContext';
 import { ResidenceAddressFilterState } from '../types';
 import {
   Accordion,
@@ -42,6 +43,9 @@ import {
 } from '../constants';
 import { sectionColorConfig } from './filters/colorConfig';
 import { ActiveBadgeInfo } from './filters/types';
+import { CampaignSelector } from '../../components/CampaignSelector';
+import { AddToCampaignModal } from '../../components/AddToCampaignModal';
+import { useVoterList } from '../hooks/useVoterList';
 
 export function FilterPanel() {
   const {
@@ -53,6 +57,9 @@ export function FilterPanel() {
     clearAllFilters,
     hasActiveFilters
   } = useVoterFilterContext();
+
+  const { selectedCampaign } = useCampaignContext();
+  const { pagination, currentQueryParams } = useVoterList();
 
   const {
     isLoading,
@@ -413,10 +420,38 @@ export function FilterPanel() {
 
   const activeFilterBadges = getActiveFilterBadges();
 
+  // State for Add to Campaign modal
+  const [isAddToCampaignModalOpen, setIsAddToCampaignModalOpen] = useState(false);
+
   return (
     <div className="w-full h-full overflow-y-auto flex flex-col" ref={scrollableContainerRef}>
+      {/* Campaign Section */}
+      <div className="px-3 py-2 border-b border-border dark:border-border sticky top-0 bg-background dark:bg-gray-900/95 z-20 backdrop-blur-sm">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-foreground dark:text-gray-200 flex items-center">
+              <Target className="h-3 w-3 mr-1 text-blue-500 dark:text-blue-400" />
+              Campaign
+            </h3>
+            {hasActiveFilters() && selectedCampaign && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-6 px-2 dark:border-blue-600 dark:hover:bg-blue-900/50 dark:text-blue-300 border-blue-300 text-blue-700 hover:bg-blue-50"
+                onClick={() => setIsAddToCampaignModalOpen(true)}
+              >
+                <Plus size={10} className="mr-1" />
+                Add
+              </Button>
+            )}
+          </div>
+          <CampaignSelector compact={true} />
+        </div>
+      </div>
+
+      {/* Active Filters Section */}
       <div
-        className="px-3 py-3 border-b border-border dark:border-border sticky top-0 bg-background z-10"
+        className="px-3 py-3 border-b border-border dark:border-border sticky top-[80px] bg-background z-10"
         ref={activeFiltersHeaderRef}
       >
         {hasActiveFilters() ? (
@@ -670,6 +705,14 @@ export function FilterPanel() {
           </AccordionItem>
         </Accordion>
       </div>
+      
+      {/* Add to Campaign Modal */}
+      <AddToCampaignModal
+        isOpen={isAddToCampaignModalOpen}
+        onClose={() => setIsAddToCampaignModalOpen(false)}
+        voterCount={pagination.totalItems}
+        currentQueryParams={currentQueryParams}
+      />
     </div>
   );
 }
