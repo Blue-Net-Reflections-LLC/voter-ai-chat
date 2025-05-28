@@ -682,7 +682,7 @@ export default function VoterProfilePage() {
   return (
     <div className="container py-2 max-w-4xl mx-auto">
       {/* Back Button - Above everything with proper spacing */}
-      <div className="mb-4 pt-[90px]">
+      <div className="mb-4 pt-[75px]">
         <Link
           href="/ga/voter/profile"
           className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
@@ -751,7 +751,7 @@ export default function VoterProfilePage() {
       </div>
 
       {/* Fixed Section Navigation */}
-      <div className="fixed top-[100px] left-0 right-0 z-40 bg-background border-b shadow-sm py-3">
+      <div className="fixed top-[87px] left-0 right-0 z-40 bg-background border-b shadow-sm py-3">
         <div className="container max-w-4xl mx-auto px-4">
           <nav className="flex space-x-4 overflow-x-auto">
             {selectedCampaign && (
@@ -805,7 +805,7 @@ export default function VoterProfilePage() {
       </div>
 
       {/* Content with top padding to account for fixed navigation */}
-      <div className="pt-16">
+      <div className="pt-2">
 
         {/* Campaign Context Section - Only show if campaign is selected */}
         {selectedCampaign && (
