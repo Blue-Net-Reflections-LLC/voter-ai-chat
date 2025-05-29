@@ -485,37 +485,120 @@ function ContactRecording({ voterData, registrationNumber }: { voterData: any; r
   );
 }
 
-// Contact History Component (for non-campaign mode)
+// Contact History Component (enhanced for demonstration)
 function ContactHistory({ registrationNumber }: { registrationNumber: string }) {
-  // Mock contact history data
+  // Enhanced mock contact history data for demonstration
   const contactHistory = [
     {
       id: 1,
       date: "2024-01-15",
+      time: "2:30 PM",
       method: "door",
       outcome: "positive",
       campaign: "GOTV Drive 2024",
-      volunteer: "Sarah M.",
-      notes: "Committed to vote early. Interested in education issues."
+      volunteer: "Sarah Martinez",
+      duration: "8 minutes",
+      sentiment: 2, // -2 to 2 scale
+      votingLikelihood: 9, // 1-10 scale
+      issues: ["Education", "Healthcare"],
+      notes: "Very engaged voter. Committed to vote early. Expressed strong interest in education funding initiatives. Asked about early voting locations and dates. Promised to share information with neighbors.",
+      followUp: "Send early voting guide",
+      followUpDate: "2024-01-20",
+      scriptUsed: "Education-focused door script v2.1"
     },
     {
       id: 2,
       date: "2024-01-08",
+      time: "6:45 PM",
       method: "phone",
       outcome: "neutral",
-      campaign: "Voter Outreach",
-      volunteer: "Mike R.",
-      notes: "Answered questions about polling location."
+      campaign: "Voter Outreach January",
+      volunteer: "Mike Rodriguez",
+      duration: "4 minutes",
+      sentiment: 0,
+      votingLikelihood: 6,
+      issues: ["Local Infrastructure"],
+      notes: "Answered questions about polling location changes. Seemed moderately interested but non-committal. Mentioned concerns about road conditions in neighborhood.",
+      followUp: null,
+      followUpDate: null,
+      scriptUsed: "General phone script v1.3"
+    },
+    {
+      id: 3,
+      date: "2023-12-22",
+      time: "11:15 AM",
+      method: "text",
+      outcome: "positive",
+      campaign: "Holiday Outreach 2023",
+      volunteer: "System (Automated)",
+      duration: null,
+      sentiment: 1,
+      votingLikelihood: 8,
+      issues: [],
+      notes: "Responded positively to holiday greeting text. Replied 'Thank you! Looking forward to voting in 2024.' Opted in for future text updates.",
+      followUp: "Add to text campaign list",
+      followUpDate: "2024-01-01",
+      scriptUsed: "Holiday greeting template"
+    },
+    {
+      id: 4,
+      date: "2023-11-28",
+      time: "4:20 PM",
+      method: "email",
+      outcome: "no_response",
+      campaign: "Post-Election Survey",
+      volunteer: "Jennifer Chen",
+      duration: null,
+      sentiment: null,
+      votingLikelihood: null,
+      issues: [],
+      notes: "Email sent requesting feedback on voting experience. No response received after 2 weeks.",
+      followUp: null,
+      followUpDate: null,
+      scriptUsed: "Post-election survey email"
+    },
+    {
+      id: 5,
+      date: "2023-11-07",
+      time: "7:30 AM",
+      method: "phone",
+      outcome: "attempted",
+      campaign: "Election Day GOTV",
+      volunteer: "David Kim",
+      duration: null,
+      sentiment: null,
+      votingLikelihood: null,
+      issues: [],
+      notes: "No answer. Left voicemail reminding about election day and polling hours. Attempted callback at 2 PM - still no answer.",
+      followUp: "Check if voted",
+      followUpDate: "2023-11-08",
+      scriptUsed: "Election day reminder script"
     }
   ];
 
   const getOutcomeColor = (outcome: string) => {
     switch (outcome) {
-      case 'positive': return 'text-green-600 bg-green-100';
-      case 'neutral': return 'text-blue-600 bg-blue-100';
-      case 'negative': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'positive': return 'text-green-700 bg-green-100 border-green-200 dark:text-green-400 dark:bg-green-900/20 dark:border-green-800';
+      case 'neutral': return 'text-blue-700 bg-blue-100 border-blue-200 dark:text-blue-400 dark:bg-blue-900/20 dark:border-blue-800';
+      case 'negative': return 'text-red-700 bg-red-100 border-red-200 dark:text-red-400 dark:bg-red-900/20 dark:border-red-800';
+      case 'no_response': return 'text-gray-700 bg-gray-100 border-gray-200 dark:text-gray-400 dark:bg-gray-900/20 dark:border-gray-800';
+      case 'attempted': return 'text-orange-700 bg-orange-100 border-orange-200 dark:text-orange-400 dark:bg-orange-900/20 dark:border-orange-800';
+      default: return 'text-gray-700 bg-gray-100 border-gray-200 dark:text-gray-400 dark:bg-gray-900/20 dark:border-gray-800';
     }
+  };
+
+  const getSentimentIcon = (sentiment: number | null) => {
+    if (sentiment === null) return '❓';
+    if (sentiment >= 1) return '😊';
+    if (sentiment <= -1) return '😞';
+    return '😐';
+  };
+
+  const getSentimentColor = (sentiment: number | null) => {
+    if (sentiment === null) return 'text-gray-500';
+    if (sentiment >= 1) return 'text-green-600';
+    if (sentiment <= -1) return 'text-red-600';
+    return 'text-yellow-600';
   };
 
   const getMethodIcon = (method: string) => {
@@ -524,43 +607,181 @@ function ContactHistory({ registrationNumber }: { registrationNumber: string }) 
       case 'phone': return '📞';
       case 'email': return '📧';
       case 'text': return '💬';
+      case 'event': return '🎪';
+      case 'mail': return '📮';
       default: return '📋';
+    }
+  };
+
+  const getMethodLabel = (method: string) => {
+    switch (method) {
+      case 'door': return 'Door-to-Door';
+      case 'phone': return 'Phone Call';
+      case 'email': return 'Email';
+      case 'text': return 'Text Message';
+      case 'event': return 'Event/Tent';
+      case 'mail': return 'Direct Mail';
+      default: return method;
+    }
+  };
+
+  const getOutcomeLabel = (outcome: string) => {
+    switch (outcome) {
+      case 'positive': return 'Positive Response';
+      case 'neutral': return 'Neutral Response';
+      case 'negative': return 'Negative Response';
+      case 'no_response': return 'No Response';
+      case 'attempted': return 'Contact Attempted';
+      default: return outcome;
     }
   };
 
   return (
     <Card className="mb-4">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Contact History</CardTitle>
+        <CardTitle className="text-lg flex items-center justify-between">
+          <div className="flex items-center">
+            <MessageSquare className="h-5 w-5 mr-2" />
+            Contact History
+          </div>
+          <Badge variant="outline" className="text-xs">
+            {contactHistory.length} interactions
+          </Badge>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {contactHistory.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {contactHistory.map((contact) => (
-              <div key={contact.id} className="border rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{getMethodIcon(contact.method)}</span>
-                    <span className="font-medium">{contact.campaign}</span>
+              <div key={contact.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                {/* Header Row */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xl">{getMethodIcon(contact.method)}</span>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-sm">{getMethodLabel(contact.method)}</span>
+                        <Badge className={`text-xs border ${getOutcomeColor(contact.outcome)}`}>
+                          {getOutcomeLabel(contact.outcome)}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {contact.date} at {contact.time}
+                        {contact.duration && ` • ${contact.duration}`}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge className={`text-xs ${getOutcomeColor(contact.outcome)}`}>
-                      {contact.outcome}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{contact.date}</span>
+                  
+                  {/* Sentiment & Likelihood */}
+                  <div className="flex items-center space-x-3 text-sm">
+                    {contact.sentiment !== null && (
+                      <div className="flex items-center space-x-1">
+                        <span className={getSentimentColor(contact.sentiment)}>
+                          {getSentimentIcon(contact.sentiment)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Sentiment: {contact.sentiment > 0 ? '+' : ''}{contact.sentiment}
+                        </span>
+                      </div>
+                    )}
+                    {contact.votingLikelihood && (
+                      <div className="flex items-center space-x-1">
+                        <span className="text-xs text-muted-foreground">
+                          Vote Likelihood: {contact.votingLikelihood}/10
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mb-1">
-                  Contacted by: {contact.volunteer}
-                </p>
+
+                {/* Campaign & Volunteer */}
+                <div className="flex items-center justify-between mb-2 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="text-xs">
+                      {contact.campaign}
+                    </Badge>
+                    <span className="text-muted-foreground">by {contact.volunteer}</span>
+                  </div>
+                  {contact.scriptUsed && (
+                    <span className="text-xs text-muted-foreground">
+                      Script: {contact.scriptUsed}
+                    </span>
+                  )}
+                </div>
+
+                {/* Issues Discussed */}
+                {contact.issues.length > 0 && (
+                  <div className="mb-2">
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-xs text-muted-foreground mr-2">Issues:</span>
+                      {contact.issues.map((issue, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {issue}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
                 {contact.notes && (
-                  <p className="text-sm">{contact.notes}</p>
+                  <div className="mb-2">
+                    <p className="text-sm leading-relaxed">{contact.notes}</p>
+                  </div>
+                )}
+
+                {/* Follow-up */}
+                {contact.followUp && (
+                  <div className="flex items-center space-x-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-2 rounded">
+                    <Clock className="h-3 w-3" />
+                    <span>Follow-up: {contact.followUp}</span>
+                    {contact.followUpDate && (
+                      <span>• Due: {contact.followUpDate}</span>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
+
+            {/* Summary Stats */}
+            <div className="mt-6 p-4 bg-muted rounded-lg">
+              <h4 className="font-medium mb-3 text-sm">Contact Summary</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground">Total Contacts</div>
+                  <div className="font-medium">{contactHistory.length}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Positive Responses</div>
+                  <div className="font-medium text-green-600">
+                    {contactHistory.filter(c => c.outcome === 'positive').length}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Avg. Sentiment</div>
+                  <div className="font-medium">
+                    {(() => {
+                      const sentiments = contactHistory.filter(c => c.sentiment !== null).map(c => c.sentiment!);
+                      const avg = sentiments.length > 0 ? sentiments.reduce((a, b) => a + b, 0) / sentiments.length : 0;
+                      return avg > 0 ? `+${avg.toFixed(1)}` : avg.toFixed(1);
+                    })()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Last Contact</div>
+                  <div className="font-medium">{contactHistory[0]?.date}</div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No previous contact history found.</p>
+          <div className="text-center py-8">
+            <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground mb-2">No contact history found</p>
+            <p className="text-xs text-muted-foreground">
+              This voter has not been contacted through any campaigns yet.
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -762,25 +983,17 @@ export default function VoterProfilePage() {
                 📋 Campaign Tools
               </button>
             )}
-            {!selectedCampaign && (
-              <button
-                onClick={() => scrollToSection('contact-history')}
-                className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
-              >
-                📞 Contact History
-              </button>
-            )}
+            <button
+              onClick={() => scrollToSection('contact-history')}
+              className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
+            >
+              📞 Contact History
+            </button>
             <button
               onClick={() => scrollToSection('voter-info')}
               className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
             >
-              👤 Info
-            </button>
-            <button
-              onClick={() => scrollToSection('location')}
-              className="text-sm font-medium hover:text-primary whitespace-nowrap px-3 py-1 rounded hover:bg-muted transition-colors"
-            >
-              📍 Location
+              👤 Voter Info
             </button>
             <button
               onClick={() => scrollToSection('voting-history')}
@@ -863,19 +1076,15 @@ export default function VoterProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Show Contact History only when NOT in campaign mode */}
-        {!selectedCampaign && (
-          <div id="contact-history">
-            <ContactHistory registrationNumber={registrationNumber} />
-          </div>
-        )}
+        {/* Contact History Section - Always visible */}
+        <div id="contact-history">
+          <ContactHistory registrationNumber={registrationNumber} />
+        </div>
 
         {/* Render Section Components with IDs for navigation */}
         <div id="voter-info">
           <VoterInfoSection data={infoData} loading={infoLoading} error={infoError} />
-        </div>
-
-        <div id="location">
+          
           <LocationSection
             locationData={locationData}
             locationLoading={locationLoading}
