@@ -105,7 +105,7 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     } else {
       sessionStorage.removeItem(SELECTED_CAMPAIGN_KEY);
       // When clearing campaign, navigate to clean voter list with page reload
-      window.location.href = '/ga/voter/list';
+      // window.location.href = '/ga/voter/list';
     }
   };
 

@@ -217,6 +217,16 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // On mount, initialize filters from URL and set filtersHydrated
   React.useEffect(() => {
+    // Only hydrate filters from URL on pages that actually use filtering
+    const filteringPages = ['/ga/voter/list', '/ga/voter/stats', '/ga/voter/map', '/ga/voter/charts'];
+    const isFilteringPage = filteringPages.some(page => pathname.startsWith(page));
+    
+    if (!isFilteringPage) {
+      // On non-filtering pages, just set as hydrated without reading URL params
+      setFiltersHydrated(true);
+      return;
+    }
+    
     const newFilters: FilterState = { ...initialFilterState };
     FILTER_URL_KEYS.forEach(key => {
       const urlValue = searchParams.getAll(key);
@@ -263,11 +273,18 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setFilters(newFilters);
     setResidenceAddressFilters(addressFilters);
     setFiltersHydrated(true);
-    // eslint-disable-next-line
-  }, []);
+  }, [pathname, searchParams]);
 
   // Update URL with filter params when filters or address filters change
   React.useEffect(() => {
+    // Only manage URL parameters on pages that actually use filtering
+    const filteringPages = ['/ga/voter/list', '/ga/voter/stats', '/ga/voter/map', '/ga/voter/charts'];
+    const isFilteringPage = filteringPages.some(page => pathname.startsWith(page));
+    
+    if (!isFilteringPage) {
+      return; // Don't manage URL parameters on non-filtering pages (like profile pages)
+    }
+    
     const params = buildQueryParams(filters, residenceAddressFilters);
     const currentParams = new URLSearchParams(searchParams.toString());
     // Remove all filter keys from currentParams using the constant
@@ -276,7 +293,7 @@ export const VoterFilterProvider: React.FC<{ children: React.ReactNode }> = ({ c
     params.forEach((value, key) => currentParams.append(key, value));
     const newParamsString = currentParams.toString();
     router.replace(`${pathname}?${newParamsString}`, { scroll: false });
-  }, [filters, residenceAddressFilters, router, pathname]);
+  }, [filters, residenceAddressFilters, router, pathname, searchParams]);
 
   // Expose a function for other panels to add their own params
   const addUrlParams = (extraParams: Record<string, string | number>) => {

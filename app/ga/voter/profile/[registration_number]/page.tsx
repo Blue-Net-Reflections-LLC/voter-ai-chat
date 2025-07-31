@@ -23,6 +23,7 @@ import { DistrictsSection } from "@/components/ga/voter/profile-sections/Distric
 import { VotingHistorySection } from "@/components/ga/voter/profile-sections/VotingHistorySection";
 import { CensusSection } from "@/components/ga/voter/profile-sections/CensusSection";
 import { ParticipationScoreWidget } from "@/components/voter/ParticipationScoreWidget";
+import { EditableContactInfo } from '@/components/ga/voter/profile-sections/EditableContactInfo';
 
 // Helper hook for fetching voter profile section data
 function useVoterProfileSection(registrationNumber: string | undefined, section: string) {
@@ -78,7 +79,7 @@ function useVoterProfileSection(registrationNumber: string | undefined, section:
 
   }, [registrationNumber, section]);
 
-  return { data, loading, error };
+  return { data, loading, error, setData };
 }
 
 // Helper hook for fetching HOUSEHOLD participation score based on address
@@ -796,11 +797,15 @@ export default function VoterProfilePage() {
   const { selectedCampaign, campaigns, selectCampaign } = useCampaignContext();
 
   // For prototype: Auto-select first campaign if none selected
+  // NOTE: Removed auto-selection on profile pages to prevent unwanted redirects
+  // Profile pages should not trigger campaign navigation
+  /*
   useEffect(() => {
     if (!selectedCampaign && campaigns.length > 0) {
       selectCampaign(campaigns[0]); // Auto-select "GOTV Drive 2024" for demo
     }
   }, [selectedCampaign, campaigns, selectCampaign]);
+  */
 
   // Scroll to top functionality
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -835,7 +840,8 @@ export default function VoterProfilePage() {
   const {
     data: infoData,
     loading: infoLoading,
-    error: infoError
+    error: infoError,
+    setData: setInfoData
   } = useVoterProfileSection(registrationNumber, 'info');
 
   const {
@@ -1035,46 +1041,34 @@ export default function VoterProfilePage() {
           </div>
         )}
 
-        {/* Quick Voter Facts for Field Operations */}
-        <Card className="mb-4">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Quick Facts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Registration:</span>
-                  <span className="text-sm">{registrationNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">County:</span>
-                  <span className="text-sm">{infoData?.county || 'Loading...'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Status:</span>
-                  <span className="text-sm">{infoData?.status || 'Loading...'}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Last Voted:</span>
-                  <span className="text-sm">{participationData?.lastVoteDate || 'Loading...'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Participation:</span>
-                  <div className="text-sm">
-                    {participationData?.participationScore !== undefined ? (
-                      <ParticipationScoreWidget score={participationData.participationScore} size="small" variant="compact" />
-                    ) : (
-                      'Loading...'
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Editable Contact Info Section */}
+        <div id="editable-contact-info">
+          <EditableContactInfo
+            registrationNumber={registrationNumber}
+            contactData={{
+              homePhone: infoData?.homePhone,
+              workPhone: infoData?.workPhone,
+              mobilePhone: infoData?.mobilePhone,
+              emailAddress: infoData?.emailAddress,
+              contactUpdatedDate: infoData?.contactUpdatedDate,
+              contactUpdatedBy: infoData?.contactUpdatedBy,
+            }}
+            loading={infoLoading}
+            onContactUpdate={(updatedData) => {
+              // Update the infoData with new contact information
+              setInfoData(prevInfoData => ({
+                ...prevInfoData,
+                homePhone: updatedData.homePhone,
+                workPhone: updatedData.workPhone,
+                mobilePhone: updatedData.mobilePhone,
+                emailAddress: updatedData.emailAddress,
+                contactUpdatedDate: updatedData.contactUpdatedDate,
+                contactUpdatedBy: updatedData.contactUpdatedBy,
+              }));
+              console.log('Contact updated:', updatedData);
+            }}
+          />
+        </div>
 
         {/* Contact History Section - Always visible */}
         <div id="contact-history">

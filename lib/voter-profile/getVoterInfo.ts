@@ -6,7 +6,9 @@ export async function getVoterInfo(registration_number: string) {
       voter_registration_number, registration_date, status, status_reason,
       first_name, middle_name, last_name, suffix, birth_year, race, gender,
       last_modified_date, voter_created_date,
-      participation_score
+      participation_score,
+      home_phone, work_phone, mobile_phone, email_address,
+      contact_updated_date, contact_updated_by
     FROM ga_voter_registration_list
     WHERE voter_registration_number = ${registration_number}
     LIMIT 1;
@@ -41,5 +43,12 @@ export async function getVoterInfo(registration_number: string) {
                         : (typeof v.participation_score === 'string' && !isNaN(parseFloat(v.participation_score)) 
                             ? parseFloat(v.participation_score) 
                             : null),
+    // Contact information fields
+    homePhone: v.home_phone,
+    workPhone: v.work_phone,
+    mobilePhone: v.mobile_phone,
+    emailAddress: v.email_address,
+    contactUpdatedDate: v.contact_updated_date,
+    contactUpdatedBy: v.contact_updated_by,
   };
 } 
