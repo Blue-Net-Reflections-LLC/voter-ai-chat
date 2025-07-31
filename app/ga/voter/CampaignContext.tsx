@@ -14,6 +14,7 @@ export interface Campaign {
   targetContacts: number;
   completedContacts: number;
   contactRate: number;
+  filterUrl?: string; // Stored filter URL for this campaign's target voters
 }
 
 // Mock campaigns for prototype
@@ -28,7 +29,8 @@ const mockCampaigns: Campaign[] = [
     endDate: '2024-11-05',
     targetContacts: 2552,
     completedContacts: 413,
-    contactRate: 16.2
+    contactRate: 16.2,
+    filterUrl: '/ga/voter/list?scoreRanges=High%2CMedium&status=Active&ageRange=18-34%2C35-54&eventParty=DEMOCRAT'
   },
   {
     id: '2',
@@ -40,7 +42,8 @@ const mockCampaigns: Campaign[] = [
     endDate: '2024-10-31',
     targetContacts: 1200,
     completedContacts: 890,
-    contactRate: 74.2
+    contactRate: 74.2,
+    filterUrl: '/ga/voter/list?status=Active&scoreRanges=Medium,Low&ageRange=35-54,55-74&gender=Female'
   },
   {
     id: '3',
@@ -52,7 +55,8 @@ const mockCampaigns: Campaign[] = [
     endDate: '2024-11-01',
     targetContacts: 800,
     completedContacts: 245,
-    contactRate: 30.6
+    contactRate: 30.6,
+    filterUrl: '/ga/voter/list?county=067&status=Active&scoreRanges=High,Medium'
   }
 ];
 
@@ -94,8 +98,14 @@ export function CampaignProvider({ children }: { children: ReactNode }) {
     setSelectedCampaign(campaign);
     if (campaign) {
       sessionStorage.setItem(SELECTED_CAMPAIGN_KEY, campaign.id);
+      // Navigate to the campaign's stored filter URL with page reload
+      if (campaign.filterUrl) {
+        window.location.href = campaign.filterUrl;
+      }
     } else {
       sessionStorage.removeItem(SELECTED_CAMPAIGN_KEY);
+      // When clearing campaign, navigate to clean voter list with page reload
+      window.location.href = '/ga/voter/list';
     }
   };
 
